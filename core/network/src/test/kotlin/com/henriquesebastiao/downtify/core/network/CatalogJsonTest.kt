@@ -2,6 +2,7 @@ package com.henriquesebastiao.downtify.core.network
 
 import com.henriquesebastiao.downtify.core.model.CatalogSource
 import com.henriquesebastiao.downtify.core.model.LinkKind
+import com.henriquesebastiao.downtify.core.model.RemoteSong
 import com.henriquesebastiao.downtify.core.model.ServerJobStatus
 import com.henriquesebastiao.downtify.core.network.live.LiveEvent
 import com.henriquesebastiao.downtify.core.network.live.LiveUpdatesClient
@@ -96,6 +97,18 @@ class CatalogJsonTest {
         )
         assertEquals(LinkKind.Album, link.kind)
         assertEquals(1, link.tracks.size)
+    }
+
+    @Test
+    fun readsSimilarTracks() {
+        val tracks = CatalogJson.similarTracks(
+            obj("""{"artist":"Cher","track":"Believe","source":"youtube","tracks":[$ytSong]}"""),
+        )
+        assertEquals(1, tracks.size)
+        assertEquals("dQw4w9WgXcQ", tracks.single().id)
+        assertEquals("Harbor Song", tracks.single().title)
+        assertEquals(emptyList<RemoteSong>(), CatalogJson.similarTracks(obj("""{"tracks":[]}""")))
+        assertEquals(emptyList<RemoteSong>(), CatalogJson.similarTracks(obj("""{}""")))
     }
 
     @Test

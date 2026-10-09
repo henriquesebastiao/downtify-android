@@ -95,9 +95,9 @@ data class PairResponse(
 @Serializable
 data class UserDto(val username: String = "", val role: String = "")
 
-/** `GET /api/preview`: a Deezer clip, short-lived; blank when there's none. */
+/** `POST /api/stream/prefetch`: warm the server's stream cache for a video. */
 @Serializable
-data class PreviewResponse(@SerialName("preview_url") val previewUrl: String = "")
+data class PrefetchRequestDto(@SerialName("video_id") val videoId: String)
 
 /** `GET /api/me`. */
 @Serializable

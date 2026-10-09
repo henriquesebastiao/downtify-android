@@ -71,6 +71,7 @@ fun HomeRoute(
     onSeeAll: () -> Unit,
     onOpenDiscover: () -> Unit,
     onOpenPodcasts: () -> Unit,
+    onOpenSimilar: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
@@ -85,6 +86,7 @@ fun HomeRoute(
         modifier,
         onOpenDiscover,
         onOpenPodcasts,
+        onOpenSimilar,
     )
 }
 
@@ -100,6 +102,7 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     onOpenDiscover: () -> Unit = {},
     onOpenPodcasts: () -> Unit = {},
+    onOpenSimilar: () -> Unit = {},
 ) {
     Scaffold(
         modifier = modifier,
@@ -164,6 +167,7 @@ fun HomeScreen(
                             showPodcasts = state.showPodcasts,
                             onOpenDiscover = onOpenDiscover,
                             onOpenPodcasts = onOpenPodcasts,
+                            onOpenSimilar = onOpenSimilar,
                         )
                     }
                 }
@@ -172,15 +176,15 @@ fun HomeScreen(
     }
 }
 
-/** Where Discover and Podcasts live: the four tabs stay as designed. */
+/** Where Discover, Podcasts and Similar live: the four tabs stay as designed. */
 @Composable
 private fun Shortcuts(
     showDiscover: Boolean,
     showPodcasts: Boolean,
     onOpenDiscover: () -> Unit,
     onOpenPodcasts: () -> Unit,
+    onOpenSimilar: () -> Unit,
 ) {
-    if (!showDiscover && !showPodcasts) return
     Column(
         Modifier.padding(horizontal = Spacing.screen).padding(top = Spacing.xl),
         verticalArrangement = Arrangement.spacedBy(Spacing.sm),
@@ -193,6 +197,12 @@ private fun Shortcuts(
                 onClick = onOpenDiscover,
             )
         }
+        Shortcut(
+            icon = DowntifyIcons.Graphic,
+            title = stringResource(R.string.home_shortcut_similar),
+            body = stringResource(R.string.home_shortcut_similar_body),
+            onClick = onOpenSimilar,
+        )
         if (showPodcasts) {
             Shortcut(
                 icon = DowntifyIcons.Podcasts,

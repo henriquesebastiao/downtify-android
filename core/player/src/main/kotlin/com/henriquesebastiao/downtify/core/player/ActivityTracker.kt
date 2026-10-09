@@ -5,6 +5,7 @@ import androidx.media3.common.Player
 import com.henriquesebastiao.downtify.core.data.activity.ActivityTrack
 import com.henriquesebastiao.downtify.core.data.activity.PlaybackActivityReporter
 import com.henriquesebastiao.downtify.core.data.activity.PlaybackActivityState
+import com.henriquesebastiao.downtify.core.model.StreamIds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -60,6 +61,12 @@ internal class ActivityTracker(
         if (key == last) return
         // Nothing was reported yet and nothing plays: no need to say "stopped".
         if (last == null && state == PlaybackActivityState.Stopped) return
+        // Streams have no library row to report: keep quiet, like the web player does.
+        if (StreamIds.isStream(player.currentMediaItem?.mediaId)) {
+            last = key
+            ticker?.cancel()
+            return
+        }
         last = key
         post(state)
         ticker?.cancel()

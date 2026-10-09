@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -90,6 +91,7 @@ fun DiscoverRoute(
         onShowAll = viewModel::showAll,
         onOpenInSearch = onOpenInSearch,
         onHide = viewModel::hide,
+        onPreview = viewModel::preview,
         snackbarHostState = snackbar,
         modifier = modifier,
     )
@@ -109,6 +111,7 @@ fun DiscoverScreen(
     onOpenInSearch: (String) -> Unit,
     onHide: (DiscoverArtist) -> Unit,
     modifier: Modifier = Modifier,
+    onPreview: (DiscoverArtist) -> Unit = {},
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
     Scaffold(
@@ -161,7 +164,7 @@ fun DiscoverScreen(
                     body = stringResource(R.string.discover_try_again),
                 )
 
-                else -> Content(state, onShowAll, onOpenInSearch, onHide)
+                else -> Content(state, onShowAll, onOpenInSearch, onHide, onPreview)
             }
         }
     }
@@ -189,6 +192,7 @@ private fun Content(
     onShowAll: () -> Unit,
     onOpen: (String) -> Unit,
     onHide: (DiscoverArtist) -> Unit,
+    onPreview: (DiscoverArtist) -> Unit,
 ) {
     LazyColumn(contentPadding = PaddingValues(bottom = Spacing.xl), modifier = Modifier.fillMaxSize()) {
         if (state.partial) {
@@ -215,7 +219,12 @@ private fun Content(
                 SectionHeader(stringResource(R.string.discover_artists), modifier = Modifier.padding(top = Spacing.sm))
             }
             items(state.shownArtists, key = { "artist:${it.name}" }) { artist ->
-                ArtistRow(artist, onOpen = { onOpen(DiscoverInput.searchFor(artist)) }, onHide = { onHide(artist) })
+                ArtistRow(
+                    artist,
+                    onOpen = { onOpen(DiscoverInput.searchFor(artist)) },
+                    onHide = { onHide(artist) },
+                    onPreview = { onPreview(artist) },
+                )
             }
             if (!state.showAll && state.artists.size > DiscoverUiState.TOP_ARTISTS) {
                 item(key = "show-all") {
@@ -257,7 +266,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.collections(
 }
 
 @Composable
-private fun ArtistRow(artist: DiscoverArtist, onOpen: () -> Unit, onHide: () -> Unit) {
+private fun ArtistRow(artist: DiscoverArtist, onOpen: () -> Unit, onHide: () -> Unit, onPreview: () -> Unit) {
     CoverRow(
         title = artist.name,
         subtitle = artist.because.takeIf { it.isNotEmpty() }
@@ -269,23 +278,32 @@ private fun ArtistRow(artist: DiscoverArtist, onOpen: () -> Unit, onHide: () -> 
         // Why it was suggested is the point of the row: let it wrap.
         subtitleLines = 2,
         trailing = {
-            var open by remember { mutableStateOf(false) }
-            Box {
-                IconButton(onClick = { open = true }) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onPreview) {
                     Icon(
-                        painterResource(DowntifyIcons.MoreVert),
-                        contentDescription = stringResource(R.string.discover_artist_options, artist.name),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        painterResource(DowntifyIcons.Play),
+                        contentDescription = stringResource(R.string.discover_preview, artist.name),
+                        tint = MaterialTheme.colorScheme.primary,
                     )
                 }
-                DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.discover_not_interested)) },
-                        onClick = {
-                            open = false
-                            onHide()
-                        },
-                    )
+                var open by remember { mutableStateOf(false) }
+                Box {
+                    IconButton(onClick = { open = true }) {
+                        Icon(
+                            painterResource(DowntifyIcons.MoreVert),
+                            contentDescription = stringResource(R.string.discover_artist_options, artist.name),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.discover_not_interested)) },
+                            onClick = {
+                                open = false
+                                onHide()
+                            },
+                        )
+                    }
                 }
             }
         },

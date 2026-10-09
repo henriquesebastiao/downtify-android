@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.content.Context
 import androidx.annotation.OptIn
 import androidx.media3.common.C
+import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -17,6 +18,7 @@ import com.henriquesebastiao.downtify.core.data.library.RecentsRepository
 import com.henriquesebastiao.downtify.core.model.PlaybackContext
 import com.henriquesebastiao.downtify.core.model.PodcastEpisode
 import com.henriquesebastiao.downtify.core.model.PodcastShow
+import com.henriquesebastiao.downtify.core.model.RemoteSong
 import com.henriquesebastiao.downtify.core.model.Track
 import com.henriquesebastiao.downtify.core.network.session.SessionStore
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -66,7 +68,15 @@ class PlayerController @Inject constructor(
 
     /** The playing track and context, without position ticks. */
     val nowPlaying: StateFlow<NowPlayingRef> = mutableState
-        .map { NowPlayingRef(it.track?.id, it.episode?.episodeId, it.isPlaying, it.context) }
+        .map {
+            NowPlayingRef(
+                it.track?.id,
+                it.episode?.episodeId,
+                it.stream?.videoId,
+                it.isPlaying,
+                it.context,
+            )
+        }
         .distinctUntilChanged()
         .stateIn(scope, SharingStarted.Eagerly, NowPlayingRef())
 
@@ -121,6 +131,44 @@ class PlayerController @Inject constructor(
             player.play()
             mutableState.update { it.copy(error = null) }
             recents.record(from, tracks[start].takeIf { it.hasCover }?.id ?: tracks.firstOrNull { it.hasCover }?.id)
+        }
+    }
+
+    /**
+     * Plays songs that aren't in the library, in full, from the server's
+     * stream cache — the queue works through downloaded and streamed rows
+     * alike. Streaming rows never reach [recents]: there is no library id
+     * to remember them by.
+     */
+    fun playStreams(entries: List<StreamEntry>, startIndex: Int, from: PlaybackContext, shuffle: Boolean = false) {
+        if (entries.isEmpty()) return
+        main.launch {
+            val player = connect()
+            val start = if (shuffle && startIndex == 0) {
+                entries.indices.random()
+            } else {
+                startIndex.coerceIn(entries.indices)
+            }
+            player.setMediaItems(entries.map { MediaItems.stream(it.song, it.videoId) }, start, C.TIME_UNSET)
+            player.setPlaybackSpeed(1f)
+            player.shuffleModeEnabled = shuffle
+            player.playlistMetadata = MediaItems.contextMetadata(from)
+            player.prepare()
+            player.play()
+            mutableState.update { it.copy(error = null) }
+        }
+    }
+
+    /**
+     * Appends streamed songs behind the current one: the rows after a tap
+     * resolve in the background while the tapped song already plays.
+     */
+    fun appendStreams(entries: List<StreamEntry>) {
+        if (entries.isEmpty()) return
+        main.launch {
+            val player = connect()
+            val baseUrl = sessions.current?.baseUrl ?: return@launch
+            player.addMediaItems(entries.map { MediaItems.stream(it.song, it.videoId) })
         }
     }
 
@@ -189,12 +237,27 @@ class PlayerController @Inject constructor(
         main.launch { block(connect()) }
     }
 
+    private data class CurrentContent(val track: Track?, val episode: PlayingEpisode?, val stream: PlayingStream?)
+
+    private fun contentOf(item: MediaItem?): CurrentContent {
+        val episode = item?.let(MediaItems::episodeOf)
+        val stream = if (episode == null) item?.let(MediaItems::streamOf) else null
+        val track = if (episode == null && stream == null) {
+            item?.mediaId?.let { library.library.value?.byId?.get(it) }
+        } else {
+            null
+        }
+        return CurrentContent(track, episode, stream)
+    }
+
+    private fun isNewContent(old: PlayerState, content: CurrentContent): Boolean = old.track?.id != content.track?.id ||
+        old.episode?.episodeId != content.episode?.episodeId ||
+        old.stream?.videoId != content.stream?.videoId
+
     private fun refresh() {
         val player = controller ?: return
-        val snapshot = library.library.value
         val item = player.currentMediaItem
-        val episode = item?.let(MediaItems::episodeOf)
-        val track = if (episode == null) item?.mediaId?.let { snapshot?.byId?.get(it) } else null
+        val (track, episode, stream) = contentOf(item)
         val queue = (0 until player.mediaItemCount).map { i ->
             val entry = player.getMediaItemAt(i)
             QueueEntry(
@@ -208,6 +271,7 @@ class PlayerController @Inject constructor(
             old.copy(
                 track = track,
                 episode = episode,
+                stream = stream,
                 speed = player.playbackParameters.speed,
                 isPlaying = player.isPlaying,
                 isBuffering = player.playbackState == Player.STATE_BUFFERING,
@@ -227,11 +291,7 @@ class PlayerController @Inject constructor(
                 context = MediaItems.contextOf(player.playlistMetadata),
                 quality = item?.mediaId?.let(resolver::qualityOf),
                 fromPhone = item?.mediaId?.let(resolver::isLocal) == true,
-                error = if (old.track?.id != track?.id || old.episode?.episodeId != episode?.episodeId) {
-                    null
-                } else {
-                    old.error
-                },
+                error = if (isNewContent(old, CurrentContent(track, episode, stream))) null else old.error,
             )
         }
         if (player.isPlaying) startTicker() else ticker?.cancel()
@@ -250,9 +310,13 @@ class PlayerController @Inject constructor(
 
     private fun classify(error: PlaybackException): PlaybackError {
         val cause = error.cause
+        val isStream = controller?.currentMediaItem?.let(MediaItems::streamOf) != null
         return when {
             cause is HttpDataSource.InvalidResponseCodeException && cause.responseCode == 401 ->
                 PlaybackError.Unauthorized
+
+            cause is HttpDataSource.InvalidResponseCodeException && cause.responseCode == 404 && isStream ->
+                PlaybackError.OldServer
 
             cause is HttpDataSource.InvalidResponseCodeException && cause.responseCode == 404 ->
                 PlaybackError.NotFound
@@ -273,3 +337,6 @@ class PlayerController @Inject constructor(
         )
     }
 }
+
+/** One not-downloaded row with the video the server streams for it. */
+data class StreamEntry(val song: RemoteSong, val videoId: String)

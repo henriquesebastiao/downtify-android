@@ -2,6 +2,16 @@
 
 Things the app needs from the server that it doesn't offer yet, and places where the server's docs and code disagree. The server is the source of truth; nothing here is implemented server-side from this repo.
 
+## Endpoints the app uses beyond the contract's device list
+
+The mobile contract (§"What a device may do") lists reads, searching, previews, download requests, likes, listens and podcast downloads. The app additionally uses three web routes the server offers to any signed-in client, for full-track streaming and Similar:
+
+- `GET /api/similar/tracks` — the Similar screen (YouTube Music's radio mix, no key).
+- `GET /api/stream/file?video_id=` — full audio of a song that isn't downloaded, cached on the server. The player behind it: rows play it in the media session instead of 30-second preview clips.
+- `POST /api/stream/prefetch` — warms that cache one track ahead so skipping starts at once.
+
+Deleting library files stays out: the contract answers `403` for devices, so the app offers download but never delete.
+
 ## Doc/code mismatches
 
 ### Revoked token on the WebSocket handshake is HTTP 403, not close code 4401

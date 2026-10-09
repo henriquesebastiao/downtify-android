@@ -121,7 +121,7 @@
     <string name="search_no_results">Nothing in your library matches \"%1$s\".</string>
     <string name="search_prompt">Find music in your library, or new music for the server to download. A Spotify or YouTube Music link works too.</string>
     <string name="search_not_in_library">Not in your library yet</string>
-    <string name="search_server_body">Hear a 30-second preview, or have the server download it.</string>
+    <string name="search_server_body">Play it in full, or have the server download it.</string>
     <string name="search_server_loading">Searching the server…</string>
     <string name="search_link_loading">Opening the link…</string>
     <string name="search_server_unreachable">The server can\'t be reached, so only your library was searched.</string>
@@ -130,8 +130,10 @@
     <string name="search_link_empty">Nothing found at that link.</string>
     <string name="search_server_nothing">The server found nothing more for \"%1$s\".</string>
     <string name="search_retry">Try again</string>
-    <string name="search_preview_play">Play a preview of %1$s</string>
-    <string name="search_preview_stop">Stop the preview of %1$s</string>
+    <string name="search_play_full">Play %1$s in full</string>
+    <string name="search_stop_full">Stop %1$s</string>
+    <string name="search_similar">Tracks like %1$s</string>
+
     <string name="search_download_to_server">Download %1$s to the server</string>
     <string name="search_job_queued">Waiting on the server</string>
     <string name="search_job_downloading">The server is downloading it</string>
@@ -144,6 +146,7 @@
         <item quantity="one">Download %1$d song to the server</item>
         <item quantity="other">Download all %1$d songs to the server</item>
     </plurals>
+    <string name="search_link_play_all">Play all in full</string>
     <string name="search_source_spotify">Spotify</string>
     <string name="search_source_youtube">YT Music</string>
     <string name="search_source_soulseek">Soulseek</string>
@@ -152,13 +155,26 @@
         <item quantity="one">The server will download %2$d song from %1$s</item>
         <item quantity="other">The server will download %2$d songs from %1$s</item>
     </plurals>
-    <string name="search_no_preview">No preview for this song</string>
+    <string name="search_no_stream">That song can\'t play right now</string>
     <string name="search_request_failed">The server didn\'t take the download</string>
     <string name="search_unreachable">The server can\'t be reached</string>
     <string name="search_kind_album">Album</string>
     <string name="search_kind_artist">Artist</string>
     <string name="search_kind_song">Song</string>
     <string name="search_kind_playlist">Playlist</string>
+
+    <!-- Similar -->
+    <string name="similar_title">Similar</string>
+    <string name="similar_artist">Artist</string>
+    <string name="similar_track">Track</string>
+    <string name="similar_find">Find similar</string>
+    <string name="similar_empty">Name an artist or a track to hear what sounds like it.</string>
+    <string name="similar_failed">Couldn\'t find similar tracks</string>
+    <string name="similar_unreachable">The server can\'t be reached</string>
+    <string name="similar_no_results">Nothing similar found</string>
+    <string name="similar_no_stream">That song can\'t play right now</string>
+    <string name="home_shortcut_similar">Similar tracks</string>
+    <string name="home_shortcut_similar_body">Name a track to hear what sounds like it — no download needed.</string>
     <string name="search_play">Play %1$s</string>
 
     <!-- Downloads -->
@@ -182,6 +198,7 @@
     <string name="discover_because">Because you like %1$s</string>
     <string name="discover_show_all">Show all %1$d</string>
     <string name="discover_artist_options">Options for %1$s</string>
+    <string name="discover_preview">Preview %1$s</string>
     <string name="discover_not_interested">Not interested</string>
     <string name="discover_hidden">%1$s won\'t be suggested again</string>
     <string name="discover_undo">Undo</string>
@@ -314,6 +331,7 @@
     <string name="player_lyrics">Lyrics</string>
     <string name="player_queue">Up next</string>
     <string name="player_like">Add to Liked songs</string>
+    <string name="player_source_stream">Streaming from %1$s</string>
     <string name="player_unlike">Remove from Liked songs</string>
     <string name="player_playing_from_album">Playing from album</string>
     <string name="player_playing_from_artist">Playing from artist</string>
@@ -332,6 +350,7 @@
     <string name="player_lyrics_loading">Loading lyrics…</string>
     <string name="player_error_network">Can\'t reach the server to play this song.</string>
     <string name="player_error_not_found">This song isn\'t on the server anymore.</string>
+    <string name="player_error_old_server">The server is too old for streaming — update Downtify on the server.</string>
     <string name="player_error_other">This song couldn\'t be played.</string>
     <string name="player_notifications_rationale">Allow notifications to control playback from the lock screen and the notification shade.</string>
 </resources>

@@ -56,6 +56,9 @@ object NetworkModule {
         }
         .build()
 
-    /** ≥ 60 s, as the contract asks for transcoded requests. */
-    private const val STREAM_READ_TIMEOUT_SECONDS = 90L
+    /**
+     * First play of an uncached track waits on the server downloading it,
+     * which on a slow link takes minutes: reads may stall that long.
+     */
+    private const val STREAM_READ_TIMEOUT_SECONDS = 300L
 }

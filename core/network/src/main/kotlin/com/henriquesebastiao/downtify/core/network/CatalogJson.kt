@@ -84,6 +84,9 @@ object CatalogJson {
         albums = (obj["albums"] as? JsonArray)?.let(::albums).orEmpty(),
     )
 
+    /** `GET /api/similar/tracks`: downloadable rows under `tracks`. */
+    fun similarTracks(obj: JsonObject): List<RemoteSong> = (obj["tracks"] as? JsonArray)?.let(::songs).orEmpty()
+
     fun jobs(array: JsonArray): List<ServerJob> = array.mapNotNull { (it as? JsonObject)?.let(::job) }
 
     /** A queue row, or a WebSocket progress message (the same fields, no `type`). */

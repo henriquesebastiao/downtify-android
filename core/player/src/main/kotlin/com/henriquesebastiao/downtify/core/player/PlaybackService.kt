@@ -22,10 +22,12 @@ import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.henriquesebastiao.downtify.core.data.activity.PlaybackActivityReporter
+import com.henriquesebastiao.downtify.core.data.catalog.CatalogRepository
 import com.henriquesebastiao.downtify.core.data.library.LibraryRepository
 import com.henriquesebastiao.downtify.core.data.listens.ListenReporter
 import com.henriquesebastiao.downtify.core.data.podcasts.PodcastsRepository
 import com.henriquesebastiao.downtify.core.model.EpisodeIds
+import com.henriquesebastiao.downtify.core.model.StreamIds
 import com.henriquesebastiao.downtify.core.network.session.SessionStore
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -68,11 +70,14 @@ class PlaybackService : MediaSessionService() {
 
     @Inject lateinit var sessions: SessionStore
 
+    @Inject lateinit var catalog: CatalogRepository
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var session: MediaSession? = null
     private var listens: ListenTracker? = null
     private var activity: ActivityTracker? = null
     private var episodes: EpisodeProgressTracker? = null
+    private var prefetch: StreamPrefetchTracker? = null
     private val likeCommand = SessionCommand(ACTION_TOGGLE_LIKE, Bundle.EMPTY)
 
     override fun onCreate() {
@@ -108,6 +113,7 @@ class PlaybackService : MediaSessionService() {
         listens = ListenTracker(player, reporter, scope).also { it.start() }
         activity = ActivityTracker(player, activityReporter, scope).also { it.start() }
         episodes = EpisodeProgressTracker(player, podcasts, scope).also { it.start() }
+        prefetch = StreamPrefetchTracker(player, catalog, scope).also { it.start() }
         keepLikeButtonCurrent(player)
         stopWhenSignedOut(player)
     }
@@ -135,6 +141,7 @@ class PlaybackService : MediaSessionService() {
         listens?.stop()
         activity?.stop()
         episodes?.stop()
+        prefetch?.stop()
         scope.cancel()
         session?.run {
             player.release()
@@ -164,10 +171,10 @@ class PlaybackService : MediaSessionService() {
                 }
             },
         )
-        // Songs get a heart; an episode has nothing to like.
+        // Songs get a heart; an episode or a stream has nothing to like.
         combine(currentId, library.likedIds) { id, liked ->
             when {
-                EpisodeIds.isEpisode(id) -> null
+                EpisodeIds.isEpisode(id) || StreamIds.isStream(id) -> null
                 else -> id != null && id in liked
             }
         }
@@ -203,7 +210,7 @@ class PlaybackService : MediaSessionService() {
         ): ListenableFuture<SessionResult> {
             if (customCommand.customAction == ACTION_TOGGLE_LIKE) {
                 val id = session.player.currentMediaItem?.mediaId
-                if (id != null && !EpisodeIds.isEpisode(id)) {
+                if (id != null && !EpisodeIds.isEpisode(id) && !StreamIds.isStream(id)) {
                     val liked = id in library.likedIds.value
                     scope.launch { library.setLiked(id, !liked) }
                 }
@@ -227,6 +234,11 @@ class PlaybackService : MediaSessionService() {
                 // An episode carries its file's address in the request metadata.
                 if (EpisodeIds.isEpisode(item.mediaId)) {
                     return@mapNotNull item.requestMetadata.mediaUri?.let { item.buildUpon().setUri(it).build() }
+                }
+                // A stream rebuilt as a library address would point the
+                // resolver at `/api/v1/tracks/stream:…` (404): keep its own.
+                StreamIds.videoIdOf(item.mediaId)?.let { videoId ->
+                    return@mapNotNull item.buildUpon().setUri(MediaItems.streamUri(videoId)).build()
                 }
                 snapshot?.byId?.get(item.mediaId)?.let { MediaItems.from(it, baseUrl) }
                     ?: item.takeIf {

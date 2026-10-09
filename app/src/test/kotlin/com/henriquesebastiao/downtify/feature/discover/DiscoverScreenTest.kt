@@ -30,7 +30,12 @@ class DiscoverScreenTest {
     )
     private val archive = DiscoverArtist("Archive", "", listOf("Portishead"), "")
 
-    private fun show(state: DiscoverUiState, onOpen: (String) -> Unit = {}, onHide: (DiscoverArtist) -> Unit = {}) {
+    private fun show(
+        state: DiscoverUiState,
+        onOpen: (String) -> Unit = {},
+        onHide: (DiscoverArtist) -> Unit = {},
+        onPreview: (DiscoverArtist) -> Unit = {},
+    ) {
         compose.setContent {
             DowntifyTheme {
                 DiscoverScreen(
@@ -40,6 +45,7 @@ class DiscoverScreenTest {
                     onShowAll = {},
                     onOpenInSearch = onOpen,
                     onHide = onHide,
+                    onPreview = onPreview,
                 )
             }
         }
@@ -60,6 +66,14 @@ class DiscoverScreenTest {
         show(DiscoverUiState(loading = false, artists = listOf(archive)), onOpen = { opened = it })
         compose.onNodeWithText("Archive").performClick()
         assertEquals("Archive", opened)
+    }
+
+    @Test
+    fun anArtistCanBePreviewed() {
+        var previewed: DiscoverArtist? = null
+        show(DiscoverUiState(loading = false, artists = listOf(archive)), onPreview = { previewed = it })
+        compose.onNodeWithContentDescription("Preview Archive").performClick()
+        assertEquals(archive, previewed)
     }
 
     @Test

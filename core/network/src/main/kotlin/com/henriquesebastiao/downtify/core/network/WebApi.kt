@@ -20,7 +20,7 @@ import com.henriquesebastiao.downtify.core.network.dto.PodcastEpisodeDto
 import com.henriquesebastiao.downtify.core.network.dto.PodcastEpisodesDto
 import com.henriquesebastiao.downtify.core.network.dto.PodcastPlaybackRequest
 import com.henriquesebastiao.downtify.core.network.dto.PodcastShowDto
-import com.henriquesebastiao.downtify.core.network.dto.PreviewResponse
+import com.henriquesebastiao.downtify.core.network.dto.PrefetchRequestDto
 import com.henriquesebastiao.downtify.core.network.dto.ServerInfoDto
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -49,12 +49,17 @@ interface WebApi {
     @GET("api/url/resolve")
     suspend fun resolve(@Query("url") url: String): JsonObject
 
-    @GET("api/preview")
-    suspend fun preview(
+    /** Tracks like one track, from YouTube Music's radio mix (`GET /api/similar/tracks`). Needs no key. */
+    @GET("api/similar/tracks")
+    suspend fun similarTracks(
         @Query("artist") artist: String,
-        @Query("title") title: String,
-        @Query("duration") duration: Int?,
-    ): PreviewResponse
+        @Query("track") track: String,
+        @Query("limit") limit: Int,
+    ): JsonObject
+
+    /** Start caching a video's audio on the server without waiting for it. */
+    @POST("api/stream/prefetch")
+    suspend fun prefetchStream(@Body body: PrefetchRequestDto): Response<Unit>
 
     @POST("api/download/batch")
     suspend fun downloadBatch(@Body body: JsonObject): Response<Unit>

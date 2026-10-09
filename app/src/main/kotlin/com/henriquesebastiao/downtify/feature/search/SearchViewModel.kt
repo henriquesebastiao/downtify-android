@@ -18,11 +18,12 @@ import com.henriquesebastiao.downtify.core.model.RemoteAlbum
 import com.henriquesebastiao.downtify.core.model.RemoteSong
 import com.henriquesebastiao.downtify.core.model.ResolvedLink
 import com.henriquesebastiao.downtify.core.model.ServerJob
+import com.henriquesebastiao.downtify.core.model.StreamVideo
 import com.henriquesebastiao.downtify.core.model.TextSearch
 import com.henriquesebastiao.downtify.core.model.Track
 import com.henriquesebastiao.downtify.core.player.PlayerController
-import com.henriquesebastiao.downtify.core.player.PreviewPlayer
-import com.henriquesebastiao.downtify.core.player.PreviewState
+import com.henriquesebastiao.downtify.core.player.RemotePlayback
+import com.henriquesebastiao.downtify.feature.player.LyricsState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
@@ -81,15 +82,20 @@ data class SearchUiState(
     val jobs: Map<String, ServerJob> = emptyMap(),
     /** Albums asked for from here: their songs' ids. */
     val requestedAlbums: Map<String, List<String>> = emptyMap(),
-    val preview: PreviewState? = null,
-    /** A preview whose clip is being looked up. */
-    val previewLookup: String? = null,
+    /** The video id of the stream playing now, for its row's pause button. Null while resolving. */
+    val playingStreamId: String? = null,
+    /** A stream whose server address is being resolved. */
+    val resolvingStreamId: String? = null,
+    /** The synced library, for matching downloaded songs back to tracks. */
+    val library: LibrarySnapshot? = null,
+    /** Liked library track ids. */
+    val likedIds: Set<String> = emptySet(),
 )
 
 /** One-off messages for the snackbar. */
 sealed interface SearchMessage {
     data class Queued(val title: String, val count: Int) : SearchMessage
-    data object NoPreview : SearchMessage
+    data object NoStream : SearchMessage
     data object RequestFailed : SearchMessage
     data object Unreachable : SearchMessage
 }
@@ -97,22 +103,21 @@ sealed interface SearchMessage {
 /**
  * Searches the library on the phone and, alongside, the server's own search
  * (YouTube Music) — or resolves a pasted Spotify / YouTube Music link — for
- * music to preview or have the server download.
+ * music to play in full or have the server download.
  */
 @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class SearchViewModel @Inject constructor(
     private val savedState: SavedStateHandle,
-    library: LibraryRepository,
+    private val library: LibraryRepository,
     private val player: PlayerController,
     private val catalog: CatalogRepository,
     queue: ServerQueueRepository,
-    private val previews: PreviewPlayer,
+    private val remotePlayback: RemotePlayback,
 ) : ViewModel() {
     private val query = savedState.getStateFlow(KEY_QUERY, "")
     private val filter = savedState.getStateFlow(KEY_FILTER, SearchFilter.All.name)
     private val retries = MutableStateFlow(0)
-    private val previewLookup = MutableStateFlow<String?>(null)
     private val messageChannel = Channel<SearchMessage>(Channel.BUFFERED)
 
     val messages: Flow<SearchMessage> = messageChannel.receiveAsFlow()
@@ -128,8 +133,8 @@ class SearchViewModel @Inject constructor(
         filter,
         library.library,
         library.playlists,
-        player.nowPlaying,
-    ) { q, f, snapshot, playlists, playing ->
+        combine(library.likedIds, player.nowPlaying) { liked, playing -> liked to playing },
+    ) { q, f, snapshot, playlists, (liked, playing) ->
         val selected = SearchFilter.entries.firstOrNull { it.name == f } ?: SearchFilter.All
         val isLink = CatalogLinks.isLink(q)
         SearchUiState(
@@ -143,30 +148,34 @@ class SearchViewModel @Inject constructor(
             currentTrackId = playing.trackId,
             isPlaying = playing.isPlaying,
             isLink = isLink,
+            library = snapshot,
+            likedIds = liked.toSet(),
         )
     }.flowOn(Dispatchers.Default)
 
     private val remote = combine(
         queue.jobs,
         catalog.requestedAlbums,
-        previews.state,
-        previewLookup,
-    ) { jobs, albums, preview, lookup -> RemoteState(jobs, albums, preview, lookup) }
+        player.nowPlaying,
+        remotePlayback.resolvingId,
+    ) { jobs, albums, playing, lookup ->
+        RemoteState(jobs, albums, playing.streamVideoId, lookup)
+    }
 
     val uiState: StateFlow<SearchUiState> = combine(local, server, remote) { l, s, r ->
         l.copy(
             server = s,
             jobs = r.jobs,
             requestedAlbums = r.albums,
-            preview = r.preview,
-            previewLookup = r.lookup,
+            playingStreamId = r.playing,
+            resolvingStreamId = r.lookup,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), SearchUiState())
 
     private data class RemoteState(
         val jobs: Map<String, ServerJob>,
         val albums: Map<String, List<String>>,
-        val preview: PreviewState?,
+        val playing: String?,
         val lookup: String?,
     )
 
@@ -186,21 +195,24 @@ class SearchViewModel @Inject constructor(
     }
 
     fun playSong(index: Int) {
-        previews.stop()
         player.play(uiState.value.results.songs, index, PlaybackContext(PlaybackContextType.Songs, "", ""))
     }
 
-    /** Plays [song]'s 30-second clip, or stops it when it's the one playing. */
-    fun togglePreview(song: RemoteSong) {
-        if (uiState.value.preview?.key == song.id) {
-            previews.stop()
+    /**
+     * Plays [song] in full from the server, with the rest of [songs] queued
+     * behind it; pauses when its stream is the one playing. The tapped song
+     * starts at once, the rows after it resolve in the background.
+     */
+    fun playRemote(song: RemoteSong, songs: List<RemoteSong>) {
+        val playing = uiState.value.playingStreamId
+        if (playing != null && StreamVideo.videoIdOf(song) == playing && player.state.value.isPlaying) {
+            player.pause()
             return
         }
+        val at = songs.indexOf(song).coerceAtLeast(0)
         viewModelScope.launch {
-            previewLookup.value = song.id
-            val url = catalog.previewUrl(song)
-            previewLookup.value = null
-            if (url == null) messageChannel.send(SearchMessage.NoPreview) else previews.play(song.id, url)
+            val played = remotePlayback.play(songs, at, PlaybackContext(PlaybackContextType.Songs, "", ""))
+            if (!played) messageChannel.send(SearchMessage.NoStream)
         }
     }
 
@@ -211,6 +223,33 @@ class SearchViewModel @Inject constructor(
     /** Everything a pasted link points at; a playlist stays a playlist on the server. */
     fun downloadLink(link: ResolvedLink) = request(link.name, link.tracks.size) {
         catalog.download(link.tracks, playlistUrl = link.url.takeIf(CatalogLinks::isPlaylist))
+    }
+
+    fun toggleLike(track: Track) {
+        viewModelScope.launch { library.setLiked(track.id, track.id !in uiState.value.likedIds) }
+    }
+
+    private val lyricsSheet = MutableStateFlow<LyricsState?>(null)
+    val lyricsFor: StateFlow<LyricsState?> = lyricsSheet
+
+    /** Lyrics of a downloaded song, shown in place instead of its download button. */
+    fun showLyrics(track: Track) {
+        lyricsSheet.value = LyricsState.Loading
+        viewModelScope.launch { lyricsSheet.value = LyricsState.Loaded(track.id, library.lyrics(track.id)) }
+    }
+
+    fun hideLyrics() {
+        lyricsSheet.value = null
+    }
+
+    /** Everything a pasted link points at, in full first: listen before downloading. */
+    fun playLink(link: ResolvedLink) {
+        val tracks = link.tracks
+        if (tracks.isEmpty()) return
+        viewModelScope.launch {
+            val played = remotePlayback.play(tracks, 0, PlaybackContext(PlaybackContextType.Songs, "", ""))
+            if (!played) messageChannel.send(SearchMessage.NoStream)
+        }
     }
 
     private fun request(title: String, count: Int, block: suspend () -> ServerResult<Unit>) {
@@ -243,10 +282,6 @@ class SearchViewModel @Inject constructor(
         is ServerResult.Ok -> transform(value)
         ServerResult.Unreachable -> ServerResults.Unreachable
         is ServerResult.Failed -> ServerResults.Failed(status)
-    }
-
-    override fun onCleared() {
-        previews.stop()
     }
 
     private fun search(

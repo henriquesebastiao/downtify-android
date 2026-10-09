@@ -20,7 +20,6 @@ import com.henriquesebastiao.downtify.core.network.dto.PodcastEpisodeDto
 import com.henriquesebastiao.downtify.core.network.dto.PodcastEpisodesDto
 import com.henriquesebastiao.downtify.core.network.dto.PodcastPlaybackRequest
 import com.henriquesebastiao.downtify.core.network.dto.PodcastShowDto
-import com.henriquesebastiao.downtify.core.network.dto.PreviewResponse
 import com.henriquesebastiao.downtify.core.network.dto.ServerInfoDto
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject

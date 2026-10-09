@@ -49,6 +49,12 @@ class StreamResolver @Inject constructor(
     private val local = LruCache<String, Boolean>(CHOSEN_CACHE_SIZE)
 
     override fun resolveDataSpec(dataSpec: DataSpec): DataSpec {
+        // A song that isn't in the library: the server's stream cache has
+        // the audio (or downloads it now), with seeking, under the token.
+        MediaItems.streamVideoIdOf(dataSpec.uri)?.let { videoId ->
+            val session = sessions.current ?: throw IOException("Not paired with a server")
+            return dataSpec.withUri(Uri.parse(ServerUrls.streamFile(session.baseUrl, videoId)))
+        }
         val trackId = MediaItems.trackIdOf(dataSpec.uri) ?: return dataSpec
         offline.localFile(trackId)?.let { file ->
             chosen.put(trackId, StreamQuality.Original)

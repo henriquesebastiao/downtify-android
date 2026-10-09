@@ -33,6 +33,9 @@ import kotlinx.serialization.Serializable
 /** Search with something typed in: a suggestion from Discover, or a link to open. */
 @Serializable data class SearchQueryRoute(val query: String)
 
+/** Tracks like one track, from YouTube Music's radio mix; blank until something is named. */
+@Serializable data class SimilarRoute(val artist: String = "", val track: String = "")
+
 /** The four top-level destinations of the navigation bar / rail. */
 enum class TopLevelDestination(
     val route: Any,

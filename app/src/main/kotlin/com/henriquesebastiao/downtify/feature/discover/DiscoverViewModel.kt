@@ -3,11 +3,15 @@ package com.henriquesebastiao.downtify.feature.discover
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.henriquesebastiao.downtify.core.data.ServerResult
+import com.henriquesebastiao.downtify.core.data.catalog.CatalogRepository
 import com.henriquesebastiao.downtify.core.data.discover.DiscoverRepository
 import com.henriquesebastiao.downtify.core.data.library.LibraryRepository
 import com.henriquesebastiao.downtify.core.model.DiscoverArtist
 import com.henriquesebastiao.downtify.core.model.DiscoverCollections
 import com.henriquesebastiao.downtify.core.model.DiscoverInput
+import com.henriquesebastiao.downtify.core.model.PlaybackContext
+import com.henriquesebastiao.downtify.core.model.PlaybackContextType
+import com.henriquesebastiao.downtify.core.player.RemotePlayback
 import com.henriquesebastiao.downtify.ui.common.LoadError
 import com.henriquesebastiao.downtify.ui.common.loadError
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -54,6 +58,8 @@ sealed interface DiscoverMessage {
 class DiscoverViewModel @Inject constructor(
     private val discover: DiscoverRepository,
     private val library: LibraryRepository,
+    private val catalog: CatalogRepository,
+    private val remotePlayback: RemotePlayback,
 ) : ViewModel() {
     private val state = MutableStateFlow(DiscoverUiState())
     val uiState: StateFlow<DiscoverUiState> = state.asStateFlow()
@@ -71,6 +77,19 @@ class DiscoverViewModel @Inject constructor(
     fun refresh() = load()
 
     fun showAll() = state.update { it.copy(showAll = true) }
+
+    /** Hear a suggestion first: plays the artist's top server match in full. */
+    fun preview(artist: DiscoverArtist) {
+        viewModelScope.launch {
+            val songs = (catalog.search(artist.name) as? ServerResult.Ok)?.value?.songs.orEmpty()
+            if (songs.isEmpty()) {
+                messageChannel.send(DiscoverMessage.Failed)
+                return@launch
+            }
+            val played = remotePlayback.play(songs, 0, PlaybackContext(PlaybackContextType.Songs, "", ""))
+            if (!played) messageChannel.send(DiscoverMessage.Failed)
+        }
+    }
 
     /** "Not interested": gone at once; undone if the server refuses. */
     fun hide(artist: DiscoverArtist) {

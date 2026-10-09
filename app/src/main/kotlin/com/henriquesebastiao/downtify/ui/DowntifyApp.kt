@@ -72,6 +72,7 @@ import com.henriquesebastiao.downtify.feature.podcasts.ShowRoute
 import com.henriquesebastiao.downtify.feature.search.SearchNavigation
 import com.henriquesebastiao.downtify.feature.search.SearchRoute
 import com.henriquesebastiao.downtify.feature.settings.SettingsRoute
+import com.henriquesebastiao.downtify.feature.similar.SimilarRoute as SimilarScreenRoute
 import com.henriquesebastiao.downtify.ui.common.CoverUrls
 import com.henriquesebastiao.downtify.ui.common.LocalCoverUrls
 import com.henriquesebastiao.downtify.ui.navigation.AlbumRoute
@@ -87,6 +88,7 @@ import com.henriquesebastiao.downtify.ui.navigation.SearchQueryRoute
 import com.henriquesebastiao.downtify.ui.navigation.SearchRoute as SearchDestination
 import com.henriquesebastiao.downtify.ui.navigation.SettingsRoute as SettingsDestination
 import com.henriquesebastiao.downtify.ui.navigation.ShowRoute as ShowDestination
+import com.henriquesebastiao.downtify.ui.navigation.SimilarRoute
 import com.henriquesebastiao.downtify.ui.navigation.TopLevelDestination
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -137,8 +139,19 @@ private fun MainShell() {
                     item(
                         selected = selected,
                         onClick = {
-                            currentTab = tab
-                            navController.navigateTopLevel(tab)
+                            if (selected) {
+                                // Re-tapping the open tab closes whatever was
+                                // opened above it (Discover, an album, a
+                                // search) and shows the tab's start view.
+                                // Falls back to a plain switch when the tab
+                                // has no entry in the stack.
+                                if (!navController.popBackStack(tab.route, inclusive = false)) {
+                                    navController.navigateTopLevel(tab)
+                                }
+                            } else {
+                                currentTab = tab
+                                navController.navigateTopLevel(tab)
+                            }
                         },
                         icon = {
                             Icon(
@@ -163,6 +176,9 @@ private fun MainShell() {
                         state = playerState,
                         onOpen = { nowPlayingOpen = true },
                         onTogglePlay = player::togglePlayPause,
+                        onSimilar = { artist, title -> navController.navigate(SimilarRoute(artist, title)) },
+                        downloadJob = player.streamJob.collectAsStateWithLifecycle().value,
+                        onDownloadStream = player::downloadStream,
                     )
                 }
             }
@@ -173,7 +189,14 @@ private fun MainShell() {
             onClose = { nowPlayingOpen = false },
             onNavigate = { route ->
                 nowPlayingOpen = false
-                navController.navigate(route) { launchSingleTop = true }
+                // Similar opens per track: a fresh entry, so tapping it for
+                // another track while its page is already open still shows the
+                // new mix (single-top would keep the stale one).
+                if (route is SimilarRoute) {
+                    navController.navigate(route)
+                } else {
+                    navController.navigate(route) { launchSingleTop = true }
+                }
             },
         )
     }
@@ -193,14 +216,34 @@ private fun AppNavHost(navController: NavHostController) {
                 onSeeAll = { navController.navigateTopLevel(TopLevelDestination.Library) },
                 onOpenDiscover = { navController.navigate(DiscoverDestination) },
                 onOpenPodcasts = { navController.navigate(PodcastsDestination) },
+                onOpenSimilar = { navController.navigate(SimilarRoute()) },
             )
         }
         composable<SearchDestination> {
-            SearchRoute(SearchNavigation(onAlbum = toAlbum, onArtist = toArtist, onPlaylist = toPlaylist))
+            SearchRoute(
+                SearchNavigation(
+                    onAlbum = toAlbum,
+                    onArtist = toArtist,
+                    onPlaylist = toPlaylist,
+                    onSimilar = { artist, title -> navController.navigate(SimilarRoute(artist, title)) },
+                    onOpenLink = { navController.navigate(SearchQueryRoute(it)) },
+                ),
+            )
         }
         // The same screen with something typed in (a suggestion from Discover); its query is the route's argument.
         composable<SearchQueryRoute> {
-            SearchRoute(SearchNavigation(onAlbum = toAlbum, onArtist = toArtist, onPlaylist = toPlaylist))
+            SearchRoute(
+                SearchNavigation(
+                    onAlbum = toAlbum,
+                    onArtist = toArtist,
+                    onPlaylist = toPlaylist,
+                    onSimilar = { artist, title -> navController.navigate(SimilarRoute(artist, title)) },
+                    onOpenLink = { navController.navigate(SearchQueryRoute(it)) },
+                ),
+            )
+        }
+        composable<SimilarRoute> {
+            SimilarScreenRoute(onBack = navController::popBackStack)
         }
         composable<DiscoverDestination> {
             DiscoverRoute(
@@ -256,6 +299,8 @@ private fun AppNavHost(navController: NavHostController) {
 private fun NowPlayingOverlay(open: Boolean, player: PlayerViewModel, onClose: () -> Unit, onNavigate: (Any) -> Unit) {
     val state by player.state.collectAsStateWithLifecycle()
     val isLiked by player.isLiked.collectAsStateWithLifecycle()
+    val streamJob by player.streamJob.collectAsStateWithLifecycle()
+    val streamTrack by player.streamTrack.collectAsStateWithLifecycle()
     val serverName by player.serverName.collectAsStateWithLifecycle()
     val lyrics by player.lyrics.collectAsStateWithLifecycle()
     var backProgress by remember { mutableFloatStateOf(0f) }
@@ -282,6 +327,8 @@ private fun NowPlayingOverlay(open: Boolean, player: PlayerViewModel, onClose: (
             state = state,
             isLiked = isLiked,
             serverName = serverName,
+            downloadJob = streamJob,
+            hasLibraryCopy = streamTrack != null,
             actions = NowPlayingActions(
                 onCollapse = onClose,
                 onTogglePlay = player::togglePlayPause,
@@ -291,6 +338,8 @@ private fun NowPlayingOverlay(open: Boolean, player: PlayerViewModel, onClose: (
                 onToggleShuffle = player::toggleShuffle,
                 onCycleRepeat = player::cycleRepeat,
                 onToggleLike = player::toggleLike,
+                onDownloadStream = player::downloadStream,
+                onSimilar = { artist, title -> onNavigate(SimilarRoute(artist, title)) },
                 onOpenLyrics = {
                     player.loadLyrics()
                     sheet = SHEET_LYRICS
