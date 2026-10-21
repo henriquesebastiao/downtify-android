@@ -136,11 +136,11 @@ fun NowPlayingScreen(
     val coverUrls = LocalCoverUrls.current
     // An episode's artwork is the publisher's own, at whatever size they serve; a stream's cover
     // is the absolute address the search gave, not a server cover.
-    val coverUrl = episode?.artworkUrl?.ifBlank { null }
+    val coverUrl = state.artworkUrl ?: episode?.artworkUrl?.ifBlank { null }
         ?: stream?.coverUrl?.ifBlank { null }
         ?: track?.let { coverUrls.track(it.id.takeIf { _ -> it.hasCover }, ServerUrls.COVER_LARGE) }
     val colors = rememberCoverColors(
-        episode?.artworkUrl?.ifBlank { null }
+        state.artworkUrl ?: episode?.artworkUrl?.ifBlank { null }
             ?: stream?.coverUrl?.ifBlank { null }
             ?: track?.let { coverUrls.track(it.id.takeIf { _ -> it.hasCover }, ServerUrls.COVER_SMALL) },
     )

@@ -318,6 +318,7 @@ class PlayerController @Inject constructor(
                 episode = episode,
                 stream = stream,
                 speed = player.playbackParameters.speed,
+                artworkUrl = item?.mediaMetadata?.artworkUri?.toString(),
                 isPlaying = player.isPlaying,
                 isBuffering = player.playbackState == Player.STATE_BUFFERING,
                 positionMs = player.currentPosition.coerceAtLeast(0),

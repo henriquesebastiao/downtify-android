@@ -70,7 +70,7 @@ fun MiniPlayer(
     val similarArtist = track?.displayArtist ?: stream?.artist.orEmpty()
     val similarTitle = track?.displayTitle ?: stream?.title.orEmpty()
     val canSimilar = episode == null && similarArtist.isNotBlank() && similarTitle.isNotBlank()
-    val coverUrl = episode?.artworkUrl?.ifBlank { null }
+    val coverUrl = state.artworkUrl ?: episode?.artworkUrl?.ifBlank { null }
         ?: stream?.coverUrl?.ifBlank { null }
         ?: track?.let { LocalCoverUrls.current.track(it.id.takeIf { _ -> it.hasCover }, ServerUrls.COVER_SMALL) }
     val colors = rememberCoverColors(coverUrl)

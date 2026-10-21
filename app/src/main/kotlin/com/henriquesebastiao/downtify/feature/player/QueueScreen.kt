@@ -383,7 +383,8 @@ private data class NowRow(val title: String, val artist: String, val artworkUrl:
 @Composable
 private fun nowPlayingRow(state: PlayerState): NowRow? {
     state.track?.let { track ->
-        val cover = LocalCoverUrls.current.track(track.id.takeIf { track.hasCover }, ServerUrls.COVER_SMALL)
+        val cover =
+            state.artworkUrl ?: LocalCoverUrls.current.track(track.id.takeIf { track.hasCover }, ServerUrls.COVER_SMALL)
         return NowRow(track.displayTitle, track.displayArtist, cover)
     }
     return state.stream?.let { NowRow(it.title, it.artist, it.coverUrl.ifBlank { null }) }
@@ -395,7 +396,8 @@ private fun nowPlayingRow(state: PlayerState): NowRow? {
  */
 @Composable
 private fun artworkOf(entry: QueueEntry): String? {
-    if (entry.artworkUrl == null) return null
+    val artwork = entry.artworkUrl ?: return null
+    if (artwork.startsWith("content://")) return artwork
     if (EpisodeIds.isEpisode(entry.trackId) || StreamIds.isStream(entry.trackId)) return entry.artworkUrl
     return LocalCoverUrls.current.track(entry.trackId, ServerUrls.COVER_SMALL)
 }

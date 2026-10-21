@@ -23,6 +23,7 @@ import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import com.henriquesebastiao.downtify.core.data.NetworkMonitor
 import com.henriquesebastiao.downtify.core.data.activity.PlaybackActivityReporter
 import com.henriquesebastiao.downtify.core.data.catalog.CatalogRepository
 import com.henriquesebastiao.downtify.core.data.library.LibraryRepository
@@ -80,6 +81,10 @@ class PlaybackService : MediaSessionService() {
 
     @Inject lateinit var resolver: StreamResolver
 
+    @Inject lateinit var artworkCache: SessionArtworkCache
+
+    @Inject lateinit var network: NetworkMonitor
+
     @Inject
     @StreamingClient
     lateinit var streamingClient: OkHttpClient
@@ -91,6 +96,7 @@ class PlaybackService : MediaSessionService() {
     private var episodes: EpisodeProgressTracker? = null
     private var prefetch: StreamPrefetchTracker? = null
     private var warmer: TranscodeWarmer? = null
+    private var artwork: SessionArtworkTracker? = null
     private val likeCommand = SessionCommand(ACTION_TOGGLE_LIKE, Bundle.EMPTY)
     private val addToQueueCommand = SessionCommand(ACTION_ADD_TO_QUEUE, Bundle.EMPTY)
     private val moveInQueueCommand = SessionCommand(ACTION_MOVE_IN_QUEUE, Bundle.EMPTY)
@@ -132,6 +138,7 @@ class PlaybackService : MediaSessionService() {
         warmer = TranscodeWarmer(player, resolver, streamingClient, scope).also { it.start() }
         keepLikeButtonCurrent(player)
         stopWhenSignedOut(player)
+        artwork = SessionArtworkTracker(player, artworkCache, sessions, network, scope).also { it.start() }
     }
 
     /** Unpaired (here or from the web): the queue belongs to a server the app can't reach anymore. */
@@ -154,6 +161,7 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        artwork?.stop()
         listens?.stop()
         activity?.stop()
         episodes?.stop()

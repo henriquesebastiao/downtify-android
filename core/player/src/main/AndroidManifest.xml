@@ -7,6 +7,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application>
+        <provider android:name=".SessionArtworkProvider" android:authorities="${applicationId}.artwork" android:exported="true" />
         <service
             android:name=".PlaybackService"
             android:exported="true"

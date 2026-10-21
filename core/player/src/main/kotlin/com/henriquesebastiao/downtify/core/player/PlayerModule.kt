@@ -78,7 +78,8 @@ object PlayerModule {
     @Provides
     @Singleton
     @ArtworkDataSource
-    fun artworkDataSource(http: OkHttpDataSource.Factory): DataSource.Factory = http
+    fun artworkDataSource(@ApplicationContext context: Context, http: OkHttpDataSource.Factory): DataSource.Factory =
+        DefaultDataSource.Factory(context, http)
 
     private const val CACHE_BYTES = 512L * 1024 * 1024
     private const val USER_AGENT = "Downtify-Android"
