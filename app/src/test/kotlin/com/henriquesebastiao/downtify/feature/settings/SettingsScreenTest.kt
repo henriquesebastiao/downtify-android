@@ -81,4 +81,24 @@ class SettingsScreenTest {
         compose.onNodeWithText("Language").performScrollTo().performClick()
         assertEquals(true, opened)
     }
+
+    @Test
+    fun readAheadOffersOffAndThreeCounts() {
+        var count: Int? = null
+        show(actions = SettingsActions(onReadAhead = { count = it }))
+        compose.onNodeWithText("Preload upcoming songs").performScrollTo().performClick()
+        compose.onNodeWithText("Songs ahead: 1").assertExists()
+        compose.onNodeWithText("Songs ahead: 2").assertExists()
+        compose.onNodeWithText("Songs ahead: 3").performClick()
+        assertEquals(3, count)
+    }
+
+    @Test
+    fun cancellingCacheLimitDoesNotPersistAnything() {
+        var limit: Int? = null
+        show(actions = SettingsActions(onStreamCacheMb = { limit = it }))
+        compose.onNodeWithText("Temporary audio cache").performScrollTo().performClick()
+        compose.onNodeWithText("Cancel").performClick()
+        assertEquals(null, limit)
+    }
 }

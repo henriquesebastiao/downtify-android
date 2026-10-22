@@ -451,4 +451,14 @@
     <string name="license_limitation_warranty_body">Le logiciel est fourni sans aucune garantie.</string>
     <string name="license_full_text">Texte intégral de la licence</string>
     <string name="license_text_unavailable">Le texte de la licence n’a pas pu être chargé.</string>
+    <string name="settings_read_ahead">Précharger les prochains morceaux</string>
+    <string name="settings_read_ahead_off">Désactivé</string>
+    <string name="settings_read_ahead_count">Morceaux en avance : %1$d</string>
+    <string name="settings_stream_cache">Cache audio temporaire</string>
+    <string name="settings_stream_cache_size">%1$d Mo</string>
+    <string name="settings_stream_cache_body">Espace pour la musique récemment écoutée et préchargée. Les téléchargements hors ligne sont séparés. Les gros morceaux peuvent dépasser cette limite ; seuls les morceaux complets sont comptés comme prêts.</string>
+    <string name="settings_read_ahead_mobile">Précharger avec les données mobiles</string>
+    <string name="settings_read_ahead_mobile_body">Autoriser une consommation supplémentaire pour préparer les prochains morceaux.</string>
+    <string name="settings_cache_apply">Appliquer</string>
+    <string name="player_buffer_ready">Tampon hors ligne : %1$d/%2$d</string>
 </resources>

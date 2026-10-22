@@ -442,4 +442,14 @@
     <string name="license_limitation_warranty_body">A szoftver bármilyen garancia nélkül érkezik.</string>
     <string name="license_full_text">A licenc teljes szövege</string>
     <string name="license_text_unavailable">A licenc szövegét nem sikerült betölteni.</string>
+    <string name="settings_read_ahead">Következő számok előtöltése</string>
+    <string name="settings_read_ahead_off">Kikapcsolva</string>
+    <string name="settings_read_ahead_count">Előtöltött számok száma: %1$d</string>
+    <string name="settings_stream_cache">Ideiglenes hanggyorsítótár</string>
+    <string name="settings_stream_cache_size">%1$d MB</string>
+    <string name="settings_stream_cache_body">A nemrég játszott és előtöltött hang tárhelye. Az offline letöltések külön maradnak. A nagy számok túlléphetik a korlátot; csak a teljes számok számítanak késznek.</string>
+    <string name="settings_read_ahead_mobile">Előtöltés mobiladattal</string>
+    <string name="settings_read_ahead_mobile_body">Többlet adatforgalom engedélyezése a következő számokhoz.</string>
+    <string name="settings_cache_apply">Alkalmaz</string>
+    <string name="player_buffer_ready">Offline puffer: %1$d/%2$d</string>
 </resources>

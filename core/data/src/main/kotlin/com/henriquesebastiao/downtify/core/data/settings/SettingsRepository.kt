@@ -4,9 +4,11 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.henriquesebastiao.downtify.core.model.AppFont
+import com.henriquesebastiao.downtify.core.model.ReadAheadPolicy
 import com.henriquesebastiao.downtify.core.model.StreamQuality
 import java.util.UUID
 import javax.inject.Inject
@@ -30,6 +32,11 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
             librarySort = enumOr(prefs[LIBRARY_SORT], defaults.librarySort),
             downloadWifiOnly = prefs[DOWNLOAD_WIFI_ONLY] ?: defaults.downloadWifiOnly,
             offlineLimitBytes = prefs[OFFLINE_LIMIT] ?: defaults.offlineLimitBytes,
+            readAhead = ReadAheadPolicy(
+                prefs[READ_AHEAD] ?: defaults.readAhead.tracks,
+                prefs[STREAM_CACHE_MB] ?: defaults.readAhead.cacheMb,
+                prefs[READ_AHEAD_MOBILE] ?: defaults.readAhead.mobile,
+            ).normalized(),
         )
     }
 
@@ -73,6 +80,18 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
         store.edit { it[OFFLINE_LIMIT] = bytes }
     }
 
+    suspend fun setReadAhead(tracks: Int) {
+        store.edit { it[READ_AHEAD] = tracks.coerceIn(0, 3) }
+    }
+
+    suspend fun setStreamCacheMb(mb: Int) {
+        store.edit { it[STREAM_CACHE_MB] = ReadAheadPolicy(cacheMb = mb).normalized().cacheMb }
+    }
+
+    suspend fun setReadAheadMobile(enabled: Boolean) {
+        store.edit { it[READ_AHEAD_MOBILE] = enabled }
+    }
+
     /** A stable id for this install, sent as the WebSocket's `client_id`. */
     suspend fun clientId(): String {
         store.data.first()[CLIENT_ID]?.let { return it }
@@ -96,5 +115,8 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
         val CLIENT_ID = stringPreferencesKey("client_id")
         val DOWNLOAD_WIFI_ONLY = booleanPreferencesKey("download_wifi_only")
         val OFFLINE_LIMIT = longPreferencesKey("offline_limit_bytes")
+        val READ_AHEAD = intPreferencesKey("read_ahead_tracks")
+        val STREAM_CACHE_MB = intPreferencesKey("stream_cache_mb")
+        val READ_AHEAD_MOBILE = booleanPreferencesKey("read_ahead_mobile")
     }
 }

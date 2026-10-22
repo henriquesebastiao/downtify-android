@@ -15,6 +15,7 @@ internal class StreamPrefetchTracker(
     private val player: Player,
     private val catalog: CatalogRepository,
     private val scope: CoroutineScope,
+    private val enabled: () -> Boolean = { true },
 ) : Player.Listener {
     private var warmedFor = -1
 
@@ -36,6 +37,7 @@ internal class StreamPrefetchTracker(
     }
 
     private fun warmNext() {
+        if (!enabled()) return
         val index = player.currentMediaItemIndex
         if (index < 0 || warmedFor == index) return
         warmedFor = index

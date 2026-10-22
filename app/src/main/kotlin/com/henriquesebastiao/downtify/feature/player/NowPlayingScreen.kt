@@ -200,6 +200,14 @@ fun NowPlayingScreen(
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(top = Spacing.md),
                 )
+                if (state.readAheadTarget > 0) {
+                    Text(
+                        stringResource(R.string.player_buffer_ready, state.readAheadReady, state.readAheadTarget),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.onSurfaceVariant,
+                        modifier = Modifier.padding(top = Spacing.sm),
+                    )
+                }
                 state.error?.let { error ->
                     Text(
                         errorText(error),

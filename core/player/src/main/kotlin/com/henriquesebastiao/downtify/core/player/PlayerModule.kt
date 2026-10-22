@@ -39,11 +39,7 @@ object PlayerModule {
     /** The streaming cache: recently played audio, so replays and seeks back don't hit the network. */
     @Provides
     @Singleton
-    fun cache(@ApplicationContext context: Context): SimpleCache = SimpleCache(
-        File(context.cacheDir, "media"),
-        LeastRecentlyUsedCacheEvictor(CACHE_BYTES),
-        StandaloneDatabaseProvider(context),
-    )
+    fun cache(store: AudioCacheStore): SimpleCache = store.cache
 
     /**
      * OkHttp, whose auth interceptor sets `Authorization: Bearer <token>` on
@@ -63,6 +59,7 @@ object PlayerModule {
         cache: SimpleCache,
         http: OkHttpDataSource.Factory,
         resolver: StreamResolver,
+        store: AudioCacheStore,
     ): DataSource.Factory = ResolvingDataSource.Factory(
         // file:// (offline copies) is read straight from disk; http(s) goes through the streaming cache.
         DefaultDataSource.Factory(
@@ -70,6 +67,7 @@ object PlayerModule {
             CacheDataSource.Factory()
                 .setCache(cache)
                 .setUpstreamDataSourceFactory(http)
+                .setCacheKeyFactory { it.key ?: store.uriKey(it.uri.toString()) }
                 .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR),
         ),
         resolver,
@@ -80,6 +78,5 @@ object PlayerModule {
     @ArtworkDataSource
     fun artworkDataSource(http: OkHttpDataSource.Factory): DataSource.Factory = http
 
-    private const val CACHE_BYTES = 512L * 1024 * 1024
     private const val USER_AGENT = "Downtify-Android"
 }

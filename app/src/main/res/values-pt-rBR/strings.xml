@@ -451,4 +451,14 @@
     <string name="license_limitation_warranty_body">O software é fornecido sem nenhuma garantia.</string>
     <string name="license_full_text">Texto completo da licença</string>
     <string name="license_text_unavailable">Não foi possível carregar o texto da licença.</string>
+    <string name="settings_read_ahead">Pré-carregar as próximas músicas</string>
+    <string name="settings_read_ahead_off">Desativado</string>
+    <string name="settings_read_ahead_count">Músicas antecipadas: %1$d</string>
+    <string name="settings_stream_cache">Cache temporário de áudio</string>
+    <string name="settings_stream_cache_size">%1$d MB</string>
+    <string name="settings_stream_cache_body">Espaço para áudio recente e pré-carregado. Downloads offline são separados. Músicas grandes podem exceder esse limite; apenas músicas completas contam como prontas.</string>
+    <string name="settings_read_ahead_mobile">Pré-carregar usando dados móveis</string>
+    <string name="settings_read_ahead_mobile_body">Permitir consumo adicional para preparar as próximas músicas.</string>
+    <string name="settings_cache_apply">Aplicar</string>
+    <string name="player_buffer_ready">Buffer offline: %1$d/%2$d</string>
 </resources>

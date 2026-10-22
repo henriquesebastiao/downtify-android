@@ -29,6 +29,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -72,6 +73,7 @@ import com.henriquesebastiao.downtify.ui.common.GroupTitle
 import com.henriquesebastiao.downtify.ui.common.GroupedList
 import com.henriquesebastiao.downtify.ui.common.GroupedRow
 import com.henriquesebastiao.downtify.ui.common.RowAction
+import kotlin.math.roundToInt
 
 @Composable
 fun SettingsRoute(
@@ -96,6 +98,9 @@ fun SettingsRoute(
             onOpenLanguage = { openAppLanguageSettings(context) },
             onDownloadWifiOnly = viewModel::setDownloadWifiOnly,
             onOfflineLimit = viewModel::setOfflineLimit,
+            onReadAhead = viewModel::setReadAhead,
+            onStreamCacheMb = viewModel::setStreamCacheMb,
+            onReadAheadMobile = viewModel::setReadAheadMobile,
             onUnpair = viewModel::unpair,
             onOpenWeb = {
                 runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, state.baseUrl.toUri())) }
@@ -117,11 +122,23 @@ data class SettingsActions(
     val onOpenLanguage: () -> Unit = {},
     val onDownloadWifiOnly: (Boolean) -> Unit = {},
     val onOfflineLimit: (Long) -> Unit = {},
+    val onReadAhead: (Int) -> Unit = {},
+    val onStreamCacheMb: (Int) -> Unit = {},
+    val onReadAheadMobile: (Boolean) -> Unit = {},
     val onUnpair: () -> Unit = {},
     val onOpenWeb: () -> Unit = {},
 )
 
-private enum class SettingsDialog { WifiQuality, MobileQuality, Theme, Font, OfflineLimit, Unpair }
+private enum class SettingsDialog {
+    WifiQuality,
+    MobileQuality,
+    Theme,
+    Font,
+    OfflineLimit,
+    ReadAhead,
+    StreamCache,
+    Unpair,
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -153,6 +170,7 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
 
             GroupTitle(stringResource(R.string.settings_playback))
             GroupedList(playbackRows(state) { dialog = it })
+            GroupedList(bufferRows(state, actions) { dialog = it })
 
             GroupTitle(stringResource(R.string.settings_downloads))
             GroupedList(downloadRows(state, actions) { dialog = it })
@@ -232,6 +250,29 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
             selected = state.settings.offlineLimitBytes,
             label = { limitLabel(it) },
             onSelect = actions.onOfflineLimit,
+            onDismiss = { dialog = null },
+        )
+
+        SettingsDialog.ReadAhead -> ChoiceDialog(
+            title = stringResource(R.string.settings_read_ahead),
+            options = listOf(0, 1, 2, 3),
+            selected = state.settings.readAhead.tracks,
+            label = {
+                if (it ==
+                    0
+                ) {
+                    stringResource(R.string.settings_read_ahead_off)
+                } else {
+                    stringResource(R.string.settings_read_ahead_count, it)
+                }
+            },
+            onSelect = actions.onReadAhead,
+            onDismiss = { dialog = null },
+        )
+
+        SettingsDialog.StreamCache -> CacheLimitDialog(
+            state.settings.readAhead.cacheMb,
+            actions.onStreamCacheMb,
             onDismiss = { dialog = null },
         )
 
@@ -380,6 +421,62 @@ private fun downloadRows(
         action = RowAction.Click({ open(SettingsDialog.OfflineLimit) }),
     ),
 )
+
+@Composable
+private fun bufferRows(
+    state: SettingsUiState,
+    actions: SettingsActions,
+    open: (SettingsDialog) -> Unit,
+): List<GroupedRow> = listOf(
+    GroupedRow(
+        title = stringResource(R.string.settings_read_ahead),
+        summary = if (state.settings.readAhead.tracks == 0) {
+            stringResource(R.string.settings_read_ahead_off)
+        } else {
+            stringResource(R.string.settings_read_ahead_count, state.settings.readAhead.tracks)
+        },
+        icon = DowntifyIcons.Downloads,
+        action = RowAction.Click({ open(SettingsDialog.ReadAhead) }),
+    ),
+    GroupedRow(
+        title = stringResource(R.string.settings_stream_cache),
+        summary = stringResource(R.string.settings_stream_cache_size, state.settings.readAhead.cacheMb),
+        icon = DowntifyIcons.Storage,
+        action = RowAction.Click({ open(SettingsDialog.StreamCache) }),
+    ),
+    GroupedRow(
+        title = stringResource(R.string.settings_read_ahead_mobile),
+        summary = stringResource(R.string.settings_read_ahead_mobile_body),
+        icon = DowntifyIcons.Cellular,
+        enabled = state.settings.readAhead.tracks > 0,
+        action = RowAction.Toggle(state.settings.readAhead.mobile, actions.onReadAheadMobile),
+    ),
+)
+
+@Composable
+private fun CacheLimitDialog(current: Int, onSelect: (Int) -> Unit, onDismiss: () -> Unit) {
+    var value by rememberSaveable(current) { mutableStateOf(current.toFloat()) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_stream_cache)) },
+        text = {
+            Column {
+                Text(stringResource(R.string.settings_stream_cache_body))
+                Text(stringResource(R.string.settings_stream_cache_size, value.roundToInt()))
+                Slider(value = value, onValueChange = { value = it }, valueRange = 10f..200f, steps = 18)
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                onSelect(value.roundToInt())
+                onDismiss()
+            }) {
+                Text(stringResource(R.string.settings_cache_apply))
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+    )
+}
 
 @Composable
 private fun appearanceRows(

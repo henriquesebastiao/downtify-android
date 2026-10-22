@@ -442,4 +442,14 @@
     <string name="license_limitation_warranty_body">Софтуерът се предоставя без каквато и да е гаранция.</string>
     <string name="license_full_text">Пълен текст на лиценза</string>
     <string name="license_text_unavailable">Текстът на лиценза не можа да се зареди.</string>
+    <string name="settings_read_ahead">Предварително зареждане на песни</string>
+    <string name="settings_read_ahead_off">Изключено</string>
+    <string name="settings_read_ahead_count">Песни напред: %1$d</string>
+    <string name="settings_stream_cache">Временен аудио кеш</string>
+    <string name="settings_stream_cache_size">%1$d MB</string>
+    <string name="settings_stream_cache_body">Място за наскоро слушано и предварително заредено аудио. Офлайн изтеглянията са отделни. Големите песни може да надвишат лимита; само целите песни се считат за готови.</string>
+    <string name="settings_read_ahead_mobile">Зареждане през мобилни данни</string>
+    <string name="settings_read_ahead_mobile_body">Разрешаване на допълнителни данни за подготовка на следващите песни.</string>
+    <string name="settings_cache_apply">Прилагане</string>
+    <string name="player_buffer_ready">Офлайн буфер: %1$d/%2$d</string>
 </resources>

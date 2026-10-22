@@ -63,6 +63,7 @@ class PlayerController @Inject constructor(
     private val recents: RecentsRepository,
     private val sessions: SessionStore,
     private val resolver: StreamResolver,
+    private val readAhead: ReadAheadBuffer,
     @ApplicationScope scope: CoroutineScope,
 ) {
     private val main = CoroutineScope(scope.coroutineContext + Dispatchers.Main.immediate)
@@ -109,6 +110,11 @@ class PlayerController @Inject constructor(
     }
 
     init {
+        main.launch {
+            readAhead.state.collect { status ->
+                mutableState.update { it.copy(readAheadReady = status.ready, readAheadTarget = status.target) }
+            }
+        }
         // Library changes (a sync) can fill in details of the playing track.
         main.launch { library.library.collect { refresh() } }
     }

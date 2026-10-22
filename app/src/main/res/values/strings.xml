@@ -449,4 +449,14 @@
     <string name="license_limitation_warranty_body">The software comes without any warranty.</string>
     <string name="license_full_text">Full license text</string>
     <string name="license_text_unavailable">The license text couldn\'t be loaded.</string>
+    <string name="settings_read_ahead">Preload upcoming songs</string>
+    <string name="settings_read_ahead_off">Off</string>
+    <string name="settings_read_ahead_count">Songs ahead: %1$d</string>
+    <string name="settings_stream_cache">Temporary audio cache</string>
+    <string name="settings_stream_cache_size">%1$d MB</string>
+    <string name="settings_stream_cache_body">Space for recently played and preloaded audio. Saved offline downloads are separate. Large songs may exceed this limit; only complete songs count as ready.</string>
+    <string name="settings_read_ahead_mobile">Preload using mobile data</string>
+    <string name="settings_read_ahead_mobile_body">Allow extra data usage to prepare upcoming songs.</string>
+    <string name="settings_cache_apply">Apply</string>
+    <string name="player_buffer_ready">Offline buffer: %1$d/%2$d</string>
 </resources>
