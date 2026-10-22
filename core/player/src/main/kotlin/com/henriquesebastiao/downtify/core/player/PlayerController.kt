@@ -114,7 +114,9 @@ class PlayerController @Inject constructor(
     }
 
     suspend fun connect(): MediaController = mutex.withLock {
-        controller?.let { return it }
+        controller?.takeIf { it.isConnected }?.let { return it }
+        controller?.removeListener(listener)
+        controller?.release()
         val token = SessionToken(context, ComponentName(context, PlaybackService::class.java))
         val built = withContext(Dispatchers.Main) { MediaController.Builder(context, token).buildAsync().await() }
         built.addListener(listener)
@@ -226,7 +228,10 @@ class PlayerController @Inject constructor(
 
     fun pause() = command { it.pause() }
 
-    fun resume() = command { it.play() }
+    fun resume() = command {
+        if (it.playbackState == Player.STATE_IDLE) it.prepare()
+        it.play()
+    }
 
     fun next() = command { it.seekToNext() }
 
@@ -295,7 +300,7 @@ class PlayerController @Inject constructor(
         val episode = item?.let(MediaItems::episodeOf)
         val stream = if (episode == null) item?.let(MediaItems::streamOf) else null
         val track = if (episode == null && stream == null) {
-            item?.mediaId?.let { library.library.value?.byId?.get(it) }
+            item?.let { library.library.value?.byId?.get(it.mediaId) ?: MediaItems.trackFromMetadata(it) }
         } else {
             null
         }

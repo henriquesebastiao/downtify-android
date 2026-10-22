@@ -15,11 +15,12 @@ import androidx.room.TypeConverters
         PendingListenEntity::class,
         OfflineCollectionEntity::class,
         OfflineFileEntity::class,
+        PlaybackStateEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
     // Offline collections are the user's choices, not a copy of the server's: migrate, never drop.
-    autoMigrations = [AutoMigration(from = 1, to = 2)],
+    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3)],
 )
 @TypeConverters(Converters::class)
 abstract class DowntifyDatabase : RoomDatabase() {
@@ -29,4 +30,5 @@ abstract class DowntifyDatabase : RoomDatabase() {
     abstract fun recents(): RecentContextDao
     abstract fun pendingListens(): PendingListenDao
     abstract fun offline(): OfflineDao
+    abstract fun playback(): PlaybackStateDao
 }

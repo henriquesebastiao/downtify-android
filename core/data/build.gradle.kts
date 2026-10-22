@@ -12,6 +12,11 @@ room {
     schemaDirectory("$projectDir/schemas")
 }
 
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    systemProperty("downtify.schemas", layout.projectDirectory.dir("schemas").asFile.absolutePath)
+    inputs.dir("schemas")
+}
+
 dependencies {
     api(projects.core.model)
     api(projects.core.network)
@@ -24,6 +29,8 @@ dependencies {
     ksp(libs.androidx.hilt.compiler)
     implementation(libs.androidx.lifecycle.process)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.serialization.json)
 
     testImplementation(libs.okhttp.mockwebserver)
+    testImplementation(libs.robolectric)
 }

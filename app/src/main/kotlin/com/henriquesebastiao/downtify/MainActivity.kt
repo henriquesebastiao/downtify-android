@@ -3,6 +3,7 @@ package com.henriquesebastiao.downtify
 import android.content.Intent
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -12,8 +13,10 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.henriquesebastiao.downtify.core.data.settings.ThemeMode
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyTheme
 import com.henriquesebastiao.downtify.core.model.AppFont
@@ -21,6 +24,11 @@ import com.henriquesebastiao.downtify.core.player.PlayerController
 import com.henriquesebastiao.downtify.ui.DowntifyApp
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
@@ -35,6 +43,30 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         splash.setKeepOnScreenCondition { !viewModel.isReady }
         handleIntent(intent)
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                try {
+                    viewModel.appState.collectLatest { state ->
+                        if (state !is AppState.Paired) return@collectLatest
+                        while (isActive) {
+                            try {
+                                player.connect()
+                                awaitCancellation()
+                            } catch (error: CancellationException) {
+                                throw error
+                            } catch (_: Exception) {
+                                // A transient bind failure must not leave the mini player
+                                // absent until another Activity restart. No URLs/tokens logged.
+                                Log.w("PlaybackConnection", "Controller connection failed; retrying while visible")
+                                delay(1_000)
+                            }
+                        }
+                    }
+                } finally {
+                    player.release()
+                }
+            }
+        }
 
         setContent {
             val settings by viewModel.settings.collectAsStateWithLifecycle()
@@ -73,16 +105,6 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleIntent(intent)
-    }
-
-    override fun onStart() {
-        super.onStart()
-        lifecycleScope.launch { runCatching { player.connect() } }
-    }
-
-    override fun onStop() {
-        player.release()
-        super.onStop()
     }
 
     private fun handleIntent(intent: Intent?) {
