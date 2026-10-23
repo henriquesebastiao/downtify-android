@@ -77,8 +77,10 @@ fun CollectionRoute(
     viewModel: CollectionViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val favoriteBusy by viewModel.favoriteBusy.collectAsStateWithLifecycle()
+    val favoriteError by viewModel.favoriteError.collectAsStateWithLifecycle()
     CollectionScreen(
-        state = state,
+        state = state.copy(favoriteBusy = favoriteBusy, favoriteError = favoriteError),
         onBack = onBack,
         onArtist = onArtist,
         onPlay = viewModel::play,
@@ -92,6 +94,7 @@ fun CollectionRoute(
             onGoToArtist = { onArtist(it.artistId) },
         ),
         modifier = modifier,
+        onToggleFavorite = viewModel::toggleFavorite,
     )
 }
 
@@ -107,6 +110,7 @@ fun CollectionScreen(
     modifier: Modifier = Modifier,
     onToggleOffline: () -> Unit = {},
     trackActions: TrackActions = TrackActions(),
+    onToggleFavorite: () -> Unit = {},
 ) {
     val covers = LocalCoverUrls.current
     val coverUrl = state.playlist?.let { covers.playlist(it, state.coverTrackId, ServerUrls.COVER_LARGE) }
@@ -120,6 +124,27 @@ fun CollectionScreen(
         topBar = {
             TopAppBar(
                 title = {},
+                actions = {
+                    state.playlist?.takeIf { it.favoriteSupported }?.let { playlist ->
+                        IconButton(onClick = onToggleFavorite, enabled = !state.favoriteBusy) {
+                            Icon(
+                                painterResource(DowntifyIcons.FavoriteFilled),
+                                contentDescription = stringResource(
+                                    if (playlist.favorite) {
+                                        R.string.playlist_remove_favorite
+                                    } else {
+                                        R.string.playlist_add_favorite
+                                    },
+                                ),
+                                tint = if (playlist.favorite) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                            )
+                        }
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -154,6 +179,15 @@ fun CollectionScreen(
                     Header(state, title, coverUrl, colors.surface, colors.onSurfaceVariant, onArtist)
                 }
                 item { Actions(state, title, onPlayOrPause, onShuffle, onToggleOffline) }
+                if (state.favoriteError) {
+                    item {
+                        Text(
+                            stringResource(R.string.playlist_favorite_failed),
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(Spacing.screen),
+                        )
+                    }
+                }
                 itemsIndexed(state.tracks, key = { i, t -> "$i:${t.id}" }) { index, track ->
                     val current = track.id == state.currentTrackId && state.isCurrentContext
                     TrackRow(

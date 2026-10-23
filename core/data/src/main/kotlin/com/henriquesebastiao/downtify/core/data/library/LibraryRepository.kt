@@ -16,6 +16,7 @@ import com.henriquesebastiao.downtify.core.model.Playlist
 import com.henriquesebastiao.downtify.core.network.ApiFactory
 import com.henriquesebastiao.downtify.core.network.DowntifyApi
 import com.henriquesebastiao.downtify.core.network.dto.LikeRequest
+import com.henriquesebastiao.downtify.core.network.dto.PlaylistFavoriteRequest
 import com.henriquesebastiao.downtify.core.network.session.SessionStore
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -106,6 +107,22 @@ class LibraryRepository @Inject constructor(
         api()?.let { runCatching { refreshLikes(it) }.onFailure { if (it is CancellationException) throw it } }
     }
 
+    suspend fun setPlaylistFavorite(name: String, favorite: Boolean): Boolean {
+        val session = sessions.current ?: return false
+        val api = apis.create(session.baseUrl)
+        return try {
+            api.setPlaylistFavorite(PlaylistFavoriteRequest(name, favorite))
+            if (sessions.current != session) return false
+            refreshPlaylists(api)
+            true
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            Log.w(TAG, "Could not change a playlist favorite", error)
+            false
+        }
+    }
+
     /** Likes or unlikes [trackId] here at once, then on the server; undone if the server says no. */
     suspend fun setLiked(trackId: String, liked: Boolean): Boolean {
         val likes = db.likes()
@@ -145,7 +162,18 @@ class LibraryRepository @Inject constructor(
         db.withTransaction {
             db.playlists().deleteAll()
             db.playlists().upsert(
-                remote.mapIndexed { index, p -> PlaylistEntity(p.name, p.liked, p.cover, index, p.trackIds) },
+                remote.mapIndexed { index, p ->
+                    PlaylistEntity(
+                        p.name,
+                        p.liked,
+                        p.cover,
+                        index,
+                        p.trackIds,
+                        p.favorite == true,
+                        p.displayName,
+                        p.favorite != null,
+                    )
+                },
             )
         }
     }

@@ -16,6 +16,8 @@ import com.henriquesebastiao.downtify.core.network.dto.PairRequest
 import com.henriquesebastiao.downtify.core.network.dto.PairResponse
 import com.henriquesebastiao.downtify.core.network.dto.PlaybackActivityRequest
 import com.henriquesebastiao.downtify.core.network.dto.PlaylistDto
+import com.henriquesebastiao.downtify.core.network.dto.PlaylistFavoriteRequest
+import com.henriquesebastiao.downtify.core.network.dto.PlaylistFavoriteResponse
 import com.henriquesebastiao.downtify.core.network.dto.PodcastEpisodeDto
 import com.henriquesebastiao.downtify.core.network.dto.PodcastEpisodesDto
 import com.henriquesebastiao.downtify.core.network.dto.PodcastPlaybackRequest
@@ -55,6 +57,9 @@ interface DowntifyApi {
 
     @GET("api/v1/playlists")
     suspend fun playlists(): List<PlaylistDto>
+
+    @PUT("api/v1/playlists/favorite")
+    suspend fun setPlaylistFavorite(@Body body: PlaylistFavoriteRequest): PlaylistFavoriteResponse
 
     @GET("api/v1/likes")
     suspend fun likes(): LikesDto

@@ -202,9 +202,17 @@ data class PlaylistDto(
     val count: Int = 0,
     val cover: String = "",
     @SerialName("track_ids") val trackIds: List<String> = emptyList(),
+    val favorite: Boolean? = null,
+    @SerialName("display_name") val displayName: String = "",
 ) {
-    fun toModel() = Playlist(name, liked, cover, trackIds)
+    fun toModel() = Playlist(name, liked, cover, trackIds, favorite == true, displayName, favorite != null)
 }
+
+@Serializable
+data class PlaylistFavoriteRequest(val name: String, val favorite: Boolean)
+
+@Serializable
+data class PlaylistFavoriteResponse(val name: String = "", val favorite: Boolean = false)
 
 @Serializable
 data class LikesDto(@SerialName("track_ids") val trackIds: List<String> = emptyList())

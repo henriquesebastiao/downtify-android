@@ -12,8 +12,10 @@ import com.henriquesebastiao.downtify.core.model.Track
 import com.henriquesebastiao.downtify.core.player.PlayerController
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -38,6 +40,8 @@ data class CollectionUiState(
     val isCurrentContext: Boolean = false,
     val likedIds: Set<String> = emptySet(),
     val offline: CollectionOffline = CollectionOffline(),
+    val favoriteBusy: Boolean = false,
+    val favoriteError: Boolean = false,
 ) {
     val durationSeconds: Double get() = tracks.sumOf { it.duration }
 }
@@ -76,6 +80,10 @@ class CollectionViewModel @Inject constructor(
     }
 
     private val refId: String = albumId ?: playlistName.orEmpty()
+    private val mutableFavoriteBusy = MutableStateFlow(false)
+    val favoriteBusy = mutableFavoriteBusy.asStateFlow()
+    private val mutableFavoriteError = MutableStateFlow(false)
+    val favoriteError = mutableFavoriteError.asStateFlow()
 
     val uiState: StateFlow<CollectionUiState> = combine(
         library.library,
@@ -107,7 +115,7 @@ class CollectionViewModel @Inject constructor(
             CollectionKind.Playlist -> playlists.firstOrNull { it.name == playlistName }?.let { p ->
                 val tracks = snapshot.tracks(p.trackIds)
                 base.copy(
-                    title = p.name,
+                    title = p.title,
                     tracks = tracks,
                     playlist = p,
                     coverTrackId = tracks.firstOrNull {
@@ -156,6 +164,20 @@ class CollectionViewModel @Inject constructor(
 
     fun toggleLike(track: Track) {
         viewModelScope.launch { library.setLiked(track.id, track.id !in uiState.value.likedIds) }
+    }
+
+    fun toggleFavorite() {
+        val playlist = uiState.value.playlist ?: return
+        if (!playlist.favoriteSupported || mutableFavoriteBusy.value) return
+        mutableFavoriteBusy.value = true
+        mutableFavoriteError.value = false
+        viewModelScope.launch {
+            try {
+                mutableFavoriteError.value = !library.setPlaylistFavorite(playlist.name, !playlist.favorite)
+            } finally {
+                mutableFavoriteBusy.value = false
+            }
+        }
     }
 
     /** Keeps this collection on the phone, or removes its copies. */

@@ -171,9 +171,9 @@ class LibraryViewModel @Inject constructor(
         // The server lists its liked-songs playlist too; the app shows likes from /api/v1/likes instead.
         val others = playlists.filterNot { it.liked }.map { p ->
             val tracks = snapshot?.tracks(p.trackIds).orEmpty()
-            PlaylistItem(p, p.name, p.trackIds.size, tracks.firstOrNull { it.hasCover }?.id)
+            PlaylistItem(p, p.title, p.trackIds.size, tracks.firstOrNull { it.hasCover }?.id)
         }
-        return listOf(likedItem) + others
+        return (listOf(likedItem) + others).sortedByDescending { it.playlist?.favorite == true }
     }
 
     private companion object {

@@ -16,10 +16,10 @@ import androidx.room.TypeConverters
         OfflineCollectionEntity::class,
         OfflineFileEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
     // Offline collections are the user's choices, not a copy of the server's: migrate, never drop.
-    autoMigrations = [AutoMigration(from = 1, to = 2)],
+    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3)],
 )
 @TypeConverters(Converters::class)
 abstract class DowntifyDatabase : RoomDatabase() {

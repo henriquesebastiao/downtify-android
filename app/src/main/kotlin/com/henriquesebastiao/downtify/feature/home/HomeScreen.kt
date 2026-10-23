@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -19,6 +20,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -29,10 +31,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -56,11 +62,13 @@ import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyTheme
 import com.henriquesebastiao.downtify.core.designsystem.theme.Spacing
 import com.henriquesebastiao.downtify.core.model.Album
 import com.henriquesebastiao.downtify.core.model.PlaybackContextType
+import com.henriquesebastiao.downtify.core.model.Playlist
 import com.henriquesebastiao.downtify.core.model.RecentContext
 import com.henriquesebastiao.downtify.ui.common.CoverCard
 import com.henriquesebastiao.downtify.ui.common.LocalCoverUrls
 import com.henriquesebastiao.downtify.ui.common.PreviewData
 import com.henriquesebastiao.downtify.ui.common.albumSubtitle
+import com.henriquesebastiao.downtify.ui.common.songsCount
 import java.time.LocalTime
 
 @Composable
@@ -144,6 +152,7 @@ fun HomeScreen(
                     }
 
                     state.libraryEmpty -> item {
+                        if (state.favoritePlaylists.isNotEmpty()) HomeAccess(state, onOpenRecent)
                         EmptyState(
                             icon = DowntifyIcons.Library,
                             title = stringResource(R.string.home_empty_title),
@@ -152,7 +161,9 @@ fun HomeScreen(
                     }
 
                     else -> {
-                        if (state.jumpBackIn.isNotEmpty()) item { JumpBackIn(state.jumpBackIn, onOpenRecent) }
+                        if (state.jumpBackIn.isNotEmpty() || state.favoritePlaylists.isNotEmpty()) {
+                            item { HomeAccess(state, onOpenRecent) }
+                        }
                         if (state.recentlyAdded.isNotEmpty()) {
                             item {
                                 RecentlyAdded(state.recentlyAdded, onOpenAlbum, onSeeAll)
@@ -298,59 +309,127 @@ private fun Greeting(state: HomeUiState) {
 }
 
 @Composable
-private fun JumpBackIn(items: List<RecentContext>, onOpen: (RecentContext) -> Unit) {
-    val covers = LocalCoverUrls.current
-    val label = stringResource(R.string.home_jump_back_in)
+private fun HomeAccess(state: HomeUiState, onOpen: (RecentContext) -> Unit) {
+    val favorites = state.favoritePlaylists.map { playlist ->
+        RecentContext(PlaybackContextType.Playlist, playlist.name, playlist.title, playlist.trackIds.firstOrNull(), 0)
+    }
+    val playlists = state.favoritePlaylists.associateBy { it.name }
+    BoxWithConstraints {
+        val columns = if (maxWidth >= 480.dp) 3 else 2
+        val recentTitle = stringResource(R.string.home_jump_back_in)
+        val favoriteTitle = stringResource(R.string.favorite_playlists)
+        if (maxWidth >= 840.dp && state.jumpBackIn.isNotEmpty() && favorites.isNotEmpty()) {
+            Row(Modifier.fillMaxWidth()) {
+                QuickAccessSection(recentTitle, state.jumpBackIn, playlists, columns, onOpen, Modifier.weight(1f))
+                QuickAccessSection(favoriteTitle, favorites, playlists, columns, onOpen, Modifier.weight(1f))
+            }
+        } else {
+            Column {
+                if (state.jumpBackIn.isNotEmpty()) {
+                    QuickAccessSection(recentTitle, state.jumpBackIn, playlists, columns, onOpen)
+                }
+                if (favorites.isNotEmpty()) QuickAccessSection(favoriteTitle, favorites, playlists, columns, onOpen)
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuickAccessSection(
+    title: String,
+    entries: List<RecentContext>,
+    playlists: Map<String, Playlist>,
+    columns: Int,
+    onOpen: (RecentContext) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
     Column(
-        Modifier
-            .padding(horizontal = Spacing.screen, vertical = Spacing.md)
-            .semantics { heading() },
+        modifier.padding(horizontal = Spacing.screen, vertical = Spacing.md),
         verticalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {
-        Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        items.chunked(2).forEach { row ->
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                title,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.weight(1f).semantics {
+                    heading()
+                },
+            )
+            TextButton(onClick = { expanded = true }) { Text(stringResource(R.string.home_see_all)) }
+        }
+        entries.take(6).chunked(columns).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                row.forEach { item ->
-                    val title = if (item.type ==
-                        PlaybackContextType.Liked
-                    ) {
-                        stringResource(R.string.liked_songs)
-                    } else {
-                        item.title
-                    }
-                    Surface(
-                        color = MaterialTheme.colorScheme.surfaceContainer,
-                        shape = MaterialTheme.shapes.medium,
-                        modifier = Modifier.weight(1f).height(56.dp).clickable { onOpen(item) },
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        ) {
-                            CoverArt(
-                                url = covers.track(item.coverTrackId, 150),
-                                contentDescription = null,
-                                shape = RectangleShape,
-                                placeholderIcon = when (item.type) {
-                                    PlaybackContextType.Liked -> DowntifyIcons.FavoriteFilled
-                                    PlaybackContextType.Artist -> DowntifyIcons.Artist
-                                    PlaybackContextType.Playlist -> DowntifyIcons.Playlist
-                                    else -> DowntifyIcons.Album
-                                },
-                                modifier = Modifier.size(56.dp),
-                            )
-                            Text(
-                                title,
-                                style = MaterialTheme.typography.titleSmall,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.padding(end = Spacing.sm),
-                            )
-                        }
+                row.forEach { entry -> QuickAccessTile(entry, playlists, onOpen, Modifier.weight(1f)) }
+                repeat(columns - row.size) { Box(Modifier.weight(1f)) }
+            }
+        }
+    }
+    if (expanded) {
+        AlertDialog(
+            onDismissRequest = { expanded = false },
+            title = { Text(title) },
+            text = {
+                LazyColumn(
+                    Modifier.heightIn(max = 480.dp),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+                ) {
+                    items(entries) { entry ->
+                        QuickAccessTile(entry, playlists, {
+                            expanded = false
+                            onOpen(it)
+                        }, Modifier.fillMaxWidth())
                     }
                 }
-                if (row.size == 1) Box(Modifier.weight(1f))
-            }
+            },
+            confirmButton = {
+                TextButton(onClick = { expanded = false }) { Text(stringResource(R.string.action_close)) }
+            },
+        )
+    }
+}
+
+@Composable
+private fun QuickAccessTile(
+    entry: RecentContext,
+    playlists: Map<String, Playlist>,
+    onOpen: (RecentContext) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val covers = LocalCoverUrls.current
+    val playlist = if (entry.type == PlaybackContextType.Playlist) playlists[entry.refId] else null
+    val title = if (entry.type == PlaybackContextType.Liked) stringResource(R.string.liked_songs) else entry.title
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = MaterialTheme.shapes.medium,
+        modifier = modifier.height(64.dp).clickable { onOpen(entry) },
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+            CoverArt(
+                url = if (playlist !=
+                    null
+                ) {
+                    covers.playlist(playlist, playlist.trackIds.firstOrNull())
+                } else {
+                    covers.track(entry.coverTrackId, 150)
+                },
+                contentDescription = null,
+                shape = RectangleShape,
+                placeholderIcon = when (entry.type) {
+                    PlaybackContextType.Liked -> DowntifyIcons.FavoriteFilled
+                    PlaybackContextType.Artist -> DowntifyIcons.Artist
+                    PlaybackContextType.Playlist -> DowntifyIcons.Playlist
+                    else -> DowntifyIcons.Album
+                },
+                modifier = Modifier.size(48.dp),
+            )
+            Text(
+                title,
+                style = MaterialTheme.typography.labelLarge,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(end = Spacing.sm),
+            )
         }
     }
 }

@@ -350,7 +350,7 @@ private fun Playlists(state: LibraryUiState, navigation: LibraryNavigation) {
         ) {
             items(state.playlists, key = { it.playlist?.name ?: "" }) { item ->
                 CoverCard(
-                    title = item.playlist?.name ?: liked,
+                    title = item.playlist?.title ?: liked,
                     subtitle = songsCount(item.count),
                     coverUrl = cover(item, 300),
                     onClick = { open(item) },
@@ -368,7 +368,7 @@ private fun Playlists(state: LibraryUiState, navigation: LibraryNavigation) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = Spacing.xl)) {
             items(state.playlists, key = { it.playlist?.name ?: "" }) { item ->
                 CoverRow(
-                    title = item.playlist?.name ?: liked,
+                    title = item.playlist?.title ?: liked,
                     subtitle = songsCount(item.count),
                     coverUrl = cover(item, 150),
                     onClick = { open(item) },
