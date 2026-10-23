@@ -22,7 +22,7 @@ import okhttp3.Response
 class TrackDownloader(private val client: OkHttpClient) {
 
     sealed interface Result {
-        data class Complete(val bytes: Long) : Result
+        data class Complete(val bytes: Long, val etag: String? = null) : Result
 
         /** The server doesn't have it (404/410): the track left the library. */
         data object Gone : Result
@@ -82,7 +82,7 @@ class TrackDownloader(private val client: OkHttpClient) {
         return if (expected != null && written != expected) {
             Result.Failed(null, IOException("Got $written of $expected bytes"))
         } else {
-            Result.Complete(written)
+            Result.Complete(written, response.header("ETag").takeIf { from == 0L })
         }
     }
 

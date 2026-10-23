@@ -44,6 +44,22 @@ class TrackDownloaderTest {
     }
 
     @Test
+    fun wholeFileCarriesItsEtagForAnOfflineMeasurement() = runTest {
+        server.enqueue(MockResponse.Builder().code(200).addHeader("ETag", "source-one").body("audio").build())
+        assertEquals(TrackDownloader.Result.Complete(5, "source-one"), downloader.download(url(), part))
+    }
+
+    @Test
+    fun resumedBytesCannotClaimAWholeFileEtag() = runTest {
+        part.writeText("a")
+        server.enqueue(
+            MockResponse.Builder().code(206).addHeader("ETag", "new-source")
+                .addHeader("Content-Range", "bytes 1-4/5").body("udio").build(),
+        )
+        assertEquals(TrackDownloader.Result.Complete(5), downloader.download(url(), part))
+    }
+
+    @Test
     fun resumesAPartWithARangeRequest() = runTest {
         part.writeText("012")
         server.enqueue(

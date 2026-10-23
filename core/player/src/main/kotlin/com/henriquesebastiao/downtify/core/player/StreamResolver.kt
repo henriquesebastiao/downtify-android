@@ -7,6 +7,7 @@ import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.ResolvingDataSource
 import com.henriquesebastiao.downtify.core.data.NetworkMonitor
 import com.henriquesebastiao.downtify.core.data.di.ApplicationScope
+import com.henriquesebastiao.downtify.core.data.loudness.LoudnessProfiles
 import com.henriquesebastiao.downtify.core.data.offline.OfflineRepository
 import com.henriquesebastiao.downtify.core.data.session.ServerRepository
 import com.henriquesebastiao.downtify.core.data.settings.SettingsRepository
@@ -40,6 +41,7 @@ class StreamResolver @Inject constructor(
     private val server: ServerRepository,
     private val network: NetworkMonitor,
     private val offline: OfflineRepository,
+    private val loudness: LoudnessProfiles,
     settings: SettingsRepository,
     @ApplicationScope scope: CoroutineScope,
 ) : ResolvingDataSource.Resolver {
@@ -59,6 +61,7 @@ class StreamResolver @Inject constructor(
         offline.localFile(trackId)?.let { file ->
             chosen.put(trackId, StreamQuality.Original)
             local.put(trackId, true)
+            if (loudness.enabled.value) loudness.prepareBlocking(trackId, file, refresh = dataSpec.position == 0L)
             return dataSpec.withUri(Uri.fromFile(file))
         }
         local.remove(trackId)
@@ -68,7 +71,18 @@ class StreamResolver @Inject constructor(
         } else {
             chosen[trackId]!!
         }
-        return dataSpec.withUri(Uri.parse(ServerUrls.stream(session.baseUrl, trackId, quality)))
+        val url = ServerUrls.stream(session.baseUrl, trackId, quality)
+        if (loudness.enabled.value) {
+            val profile = loudness.prepareBlocking(trackId, refresh = dataSpec.position == 0L)
+            // A replaced source cannot reuse audio cached with an older measurement.
+            return dataSpec.buildUpon().setUri(Uri.parse(url))
+                .setKey(url + "|loudness-v1:" + loudness.cacheVersion(trackId, profile)).build()
+        }
+        return dataSpec.withUri(Uri.parse(url))
+    }
+
+    fun prepareNormalization(trackId: String) {
+        loudness.prepareBlocking(trackId, offline.localFile(trackId))
     }
 
     /** What a stream started now would use (shown in Now Playing). */

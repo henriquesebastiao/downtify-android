@@ -19,6 +19,7 @@ data class UserSettings(
     val font: AppFont = AppFont.Default,
     val wifiQuality: StreamQuality = StreamQuality.Original,
     val mobileQuality: StreamQuality = StreamQuality.MobileDefault,
+    val normalizeVolume: Boolean = false,
     val libraryLayout: LibraryLayout = LibraryLayout.Grid,
     val librarySort: LibrarySort = LibrarySort.RecentlyAdded,
     /** Offline copies wait for an unmetered network. */

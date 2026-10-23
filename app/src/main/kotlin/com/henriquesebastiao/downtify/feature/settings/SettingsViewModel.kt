@@ -73,6 +73,7 @@ class SettingsViewModel @Inject constructor(
 
     fun setWifiQuality(value: StreamQuality) = launch { settings.setWifiQuality(value) }
     fun setMobileQuality(value: StreamQuality) = launch { settings.setMobileQuality(value) }
+    fun setNormalizeVolume(value: Boolean) = launch { settings.setNormalizeVolume(value) }
     fun setTheme(value: ThemeMode) = launch { settings.setTheme(value) }
     fun setDynamicColor(value: Boolean) = launch { settings.setDynamicColor(value) }
     fun setAmoled(value: Boolean) = launch { settings.setAmoled(value) }

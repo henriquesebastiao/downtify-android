@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.downtify.android.library)
     alias(libs.plugins.downtify.hilt)
     alias(libs.plugins.room)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -26,4 +27,5 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
 
     testImplementation(libs.okhttp.mockwebserver)
+    testImplementation(libs.robolectric)
 }

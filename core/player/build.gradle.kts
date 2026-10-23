@@ -15,4 +15,5 @@ dependencies {
     implementation(libs.media3.database)
     implementation(libs.kotlinx.coroutines.guava)
     implementation(libs.kotlinx.coroutines.android)
+    testImplementation(libs.robolectric)
 }

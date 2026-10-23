@@ -10,6 +10,7 @@ import com.henriquesebastiao.downtify.core.network.dto.LikeRequest
 import com.henriquesebastiao.downtify.core.network.dto.LikeResponse
 import com.henriquesebastiao.downtify.core.network.dto.LikesDto
 import com.henriquesebastiao.downtify.core.network.dto.ListenRequest
+import com.henriquesebastiao.downtify.core.network.dto.LoudnessDto
 import com.henriquesebastiao.downtify.core.network.dto.LyricsDto
 import com.henriquesebastiao.downtify.core.network.dto.MeResponse
 import com.henriquesebastiao.downtify.core.network.dto.PairRequest
@@ -64,6 +65,9 @@ interface DowntifyApi {
 
     @GET("api/v1/tracks/{id}/lyrics")
     suspend fun lyrics(@Path("id") trackId: String): LyricsDto
+
+    @GET("api/v1/tracks/{id}/loudness")
+    suspend fun loudness(@Path("id") trackId: String): LoudnessDto
 
     @GET("api/me")
     suspend fun me(): MeResponse

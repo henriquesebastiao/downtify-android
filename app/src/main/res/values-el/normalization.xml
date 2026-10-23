@@ -1,0 +1,4 @@
+<resources>
+    <string name="settings_normalize_volume">Normalize volume</string>
+    <string name="settings_normalize_volume_hint">Uses your server’s loudness measurements from the next track. Tracks without a matching measurement keep their original volume.</string>
+</resources>

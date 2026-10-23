@@ -1,0 +1,4 @@
+<resources>
+    <string name="settings_normalize_volume">Normaliser le volume</string>
+    <string name="settings_normalize_volume_hint">Utilise les mesures de volume du serveur dès le prochain morceau. Sans mesure correspondante, le volume d’origine est conservé.</string>
+</resources>
