@@ -60,6 +60,7 @@ import kotlinx.coroutines.withContext
 class PlayerController @Inject constructor(
     @ApplicationContext private val context: Context,
     private val library: LibraryRepository,
+    private val server: com.henriquesebastiao.downtify.core.data.session.ServerRepository,
     private val recents: RecentsRepository,
     private val sessions: SessionStore,
     private val resolver: StreamResolver,
@@ -159,6 +160,7 @@ class PlayerController @Inject constructor(
      * to remember them by.
      */
     fun playStreams(entries: List<StreamEntry>, startIndex: Int, from: PlaybackContext, shuffle: Boolean = false) {
+        if (server.serverInfo.value?.libraryOnly == true) return
         if (entries.isEmpty()) return
         main.launch {
             val player = connect()
@@ -182,6 +184,7 @@ class PlayerController @Inject constructor(
      * resolve in the background while the tapped song already plays.
      */
     fun appendStreams(entries: List<StreamEntry>) {
+        if (server.serverInfo.value?.libraryOnly == true) return
         if (entries.isEmpty()) return
         main.launch {
             val player = connect()

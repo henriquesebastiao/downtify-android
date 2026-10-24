@@ -38,3 +38,7 @@ Server search results carry YouTube Music or Spotify ids; library tracks carry D
 ### Recently played across devices
 
 "Jump back in" on Home is tracked locally (Room `recent_contexts`), per the phase-1 brief. A server endpoint listing a device's (or the user's) recent play contexts — album, playlist, artist, liked songs — would let it follow the user between the web page and the phone. The listen reports (`POST /api/discover/listens`) carry track ids only, not the context they were played from.
+
+## Library-only policy
+
+The companion server change adds optional `library_only: boolean` to `/api/server/info` (default false) and the `music_policy_changed` WebSocket event. Local similar-track song rows use `source: "library"` and `file`, with no external preview or URL. Match the file against the synced library rather than resolving a provider. External music requests return 409 while enabled. This addition requires no API-version or Room migration.

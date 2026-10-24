@@ -9,6 +9,7 @@ data class ServerInfo(
     val apiVersion: Int,
     val requireSignIn: Boolean,
     val capabilities: Capabilities,
+    val libraryOnly: Boolean = false,
 ) {
     /** Whether this app can talk to the server at all. */
     val compatibility: Compatibility

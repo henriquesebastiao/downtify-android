@@ -33,13 +33,17 @@ class CatalogRepository @Inject constructor(
     private val sessions: SessionStore,
     private val apis: ApiFactory,
     private val queue: ServerQueueRepository,
+    private val server: com.henriquesebastiao.downtify.core.data.session.ServerRepository,
 ) {
+    val serverInfo get() = server.serverInfo
+
     private val requested = MutableStateFlow<Map<String, List<String>>>(emptyMap())
 
     /** Albums (by id or link) this phone asked for, with their songs' ids — for "Downloading 4/9". */
     val requestedAlbums: StateFlow<Map<String, List<String>>> = requested.asStateFlow()
 
     suspend fun search(query: String): ServerResult<CatalogSearch> = call { api ->
+        if (server.serverInfo.value?.libraryOnly == true) return@call CatalogSearch(emptyList(), emptyList())
         coroutineScope {
             // Albums are extra: their search may be off for this user, or fail alone.
             val albums = async { runCatching { CatalogJson.albums(api.searchAlbums(query, ALBUM_LIMIT)) }.getOrNull() }
@@ -48,8 +52,9 @@ class CatalogRepository @Inject constructor(
         }
     }
 
-    suspend fun resolve(url: String): ServerResult<ResolvedLink> = call { api ->
-        CatalogJson.resolved(url, api.resolve(url))
+    suspend fun resolve(url: String): ServerResult<ResolvedLink> {
+        if (server.serverInfo.value?.libraryOnly == true) return ServerResult.Failed(409)
+        return call { api -> CatalogJson.resolved(url, api.resolve(url)) }
     }
 
     /**
@@ -58,6 +63,8 @@ class CatalogRepository @Inject constructor(
      * when nothing resolves (the row can't play).
      */
     suspend fun streamVideoId(song: RemoteSong): String? {
+        server.refresh()
+        if (server.serverInfo.value == null || server.serverInfo.value?.libraryOnly == true) return null
         StreamVideo.videoIdOf(song)?.let { return it }
         val artist = song.artists.firstOrNull() ?: return null
         if (song.title.isBlank()) return null
@@ -73,12 +80,13 @@ class CatalogRepository @Inject constructor(
 
     /** Warm the server's stream cache for [videoId] without waiting for it. */
     suspend fun prefetchStream(videoId: String) {
-        if (videoId.isBlank()) return
+        if (videoId.isBlank() || server.serverInfo.value?.libraryOnly == true) return
         call { api -> api.prefetchStream(PrefetchRequestDto(videoId)) }
     }
 
     /** Queues [songs] on the server; a [playlistUrl] keeps them together as that playlist. */
     suspend fun download(songs: List<RemoteSong>, playlistUrl: String? = null): ServerResult<Unit> {
+        if (server.serverInfo.value?.libraryOnly == true) return ServerResult.Failed(409)
         if (songs.isEmpty()) return ServerResult.Ok(Unit)
         val result = call { api ->
             val response = api.downloadBatch(CatalogJson.batch(songs, playlistUrl))

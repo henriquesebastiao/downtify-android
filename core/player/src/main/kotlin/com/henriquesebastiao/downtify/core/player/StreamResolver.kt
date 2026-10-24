@@ -52,6 +52,7 @@ class StreamResolver @Inject constructor(
         // A song that isn't in the library: the server's stream cache has
         // the audio (or downloads it now), with seeking, under the token.
         MediaItems.streamVideoIdOf(dataSpec.uri)?.let { videoId ->
+            if (server.serverInfo.value?.libraryOnly == true) throw IOException("Library-only mode")
             val session = sessions.current ?: throw IOException("Not paired with a server")
             return dataSpec.withUri(Uri.parse(ServerUrls.streamFile(session.baseUrl, videoId)))
         }

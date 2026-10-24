@@ -24,6 +24,7 @@ import okhttp3.WebSocketListener
 /** What the server says on `WS /api/ws` that the app acts on. */
 sealed interface LiveEvent {
     data object Connected : LiveEvent
+    data object MusicPolicyChanged : LiveEvent
 
     /** Tracks were added, removed or moved: sync. */
     data object LibraryChanged : LiveEvent
@@ -113,6 +114,7 @@ class LiveUpdatesClient @Inject constructor(@DefaultClient client: OkHttpClient)
         fun parse(text: String): LiveEvent? {
             val json = runCatching { NetworkJson.parseToJsonElement(text) as? JsonObject }.getOrNull() ?: return null
             return when (json["type"]?.jsonPrimitive?.content) {
+                "music_policy_changed" -> LiveEvent.MusicPolicyChanged
                 "library_changed" -> LiveEvent.LibraryChanged
                 "likes" -> LiveEvent.LikesChanged
                 "queue_reload" -> LiveEvent.QueueReload

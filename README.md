@@ -69,3 +69,7 @@ Conventions for working on the code are in [CLAUDE.md](CLAUDE.md). The server co
 ## License
 
 GPL-3.0 — see [LICENSE](LICENSE).
+
+### Server library-only mode
+
+When the server enables Library-only mode in General settings, the app searches the synced library, uses library-only similar-track results and drops external streams. The server controls the setting; Android keeps its last known value and still plays downloaded library files. Older servers without the field retain their existing behavior.

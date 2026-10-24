@@ -159,9 +159,9 @@ class SearchViewModel @Inject constructor(
         RemoteState(jobs, albums, playing.streamVideoId, lookup, playing.trackId, playing.isPlaying, liked)
     }
 
-    val uiState: StateFlow<SearchUiState> = combine(local, server, remote) { l, s, r ->
+    val uiState: StateFlow<SearchUiState> = combine(local, server, remote, catalog.serverInfo) { l, s, r, info ->
         l.copy(
-            server = s,
+            server = if (info?.libraryOnly == true) ServerResults.Idle else s,
             jobs = r.jobs,
             requestedAlbums = r.albums,
             playingStreamId = r.playing,

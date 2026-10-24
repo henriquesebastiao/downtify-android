@@ -74,6 +74,12 @@ class SyncCoordinator @Inject constructor(
                 if (library.sync(refresh)) server.markConnected() else server.markUnreachable()
             }
         }
+        launch {
+            while (isActive) {
+                delay(15_000L)
+                server.refresh()
+            }
+        }
         val state = server.refresh()
         if (state == ConnectionState.Connected) {
             requestSync()
@@ -97,6 +103,8 @@ class SyncCoordinator @Inject constructor(
                             server.markConnected()
                             serverQueue.refresh()
                         }
+
+                        LiveEvent.MusicPolicyChanged -> server.refresh()
 
                         LiveEvent.LibraryChanged -> requestSync()
 

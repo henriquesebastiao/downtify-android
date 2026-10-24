@@ -24,7 +24,10 @@ class DiscoverRepository @Inject constructor(
     private val sessions: SessionStore,
     private val apis: ApiFactory,
     private val library: LibraryRepository,
+    private val server: com.henriquesebastiao.downtify.core.data.session.ServerRepository,
 ) {
+    val serverInfo get() = server.serverInfo
+
     /** Suggested artists, best first. Empty until the library is synced. */
     suspend fun artists(): ServerResult<DiscoverArtists> {
         val seeds = seeds()

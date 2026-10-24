@@ -24,8 +24,10 @@ data class ServerInfoDto(
     @SerialName("api_version") val apiVersion: Int = 0,
     @SerialName("require_sign_in") val requireSignIn: Boolean = false,
     val capabilities: CapabilitiesDto = CapabilitiesDto(),
+    @SerialName("library_only") val libraryOnly: Boolean = false,
 ) {
-    fun toModel() = ServerInfo(serverId, name, product, version, apiVersion, requireSignIn, capabilities.toModel())
+    fun toModel() =
+        ServerInfo(serverId, name, product, version, apiVersion, requireSignIn, capabilities.toModel(), libraryOnly)
 
     companion object {
         fun from(info: ServerInfo) = ServerInfoDto(
@@ -35,6 +37,7 @@ data class ServerInfoDto(
             version = info.version,
             apiVersion = info.apiVersion,
             requireSignIn = info.requireSignIn,
+            libraryOnly = info.libraryOnly,
             capabilities = info.capabilities.let { c ->
                 CapabilitiesDto(
                     transcoding = TranscodingDto(

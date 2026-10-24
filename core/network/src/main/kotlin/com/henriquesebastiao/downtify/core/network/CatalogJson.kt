@@ -45,6 +45,7 @@ object CatalogJson {
             previewUrl = obj.string("preview_url"),
             year = obj.string("year"),
             raw = obj.toString(),
+            libraryFile = obj.string("file").takeIf { obj.string("source") == "library" }.orEmpty(),
         )
     }
 

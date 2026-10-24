@@ -41,6 +41,8 @@ data class RemoteSong(
     val previewUrl: String,
     val year: String,
     val raw: String,
+    /** Local file identity when the server returned a library-only result. */
+    val libraryFile: String = "",
 ) {
     val artist: String get() = artists.joinToString(", ")
 }

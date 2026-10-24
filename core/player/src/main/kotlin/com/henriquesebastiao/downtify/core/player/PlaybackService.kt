@@ -40,12 +40,14 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 
@@ -79,6 +81,8 @@ class PlaybackService : MediaSessionService() {
     @Inject lateinit var catalog: CatalogRepository
 
     @Inject lateinit var resolver: StreamResolver
+
+    @Inject lateinit var server: com.henriquesebastiao.downtify.core.data.session.ServerRepository
 
     @Inject
     @StreamingClient
@@ -132,6 +136,19 @@ class PlaybackService : MediaSessionService() {
         warmer = TranscodeWarmer(player, resolver, streamingClient, scope).also { it.start() }
         keepLikeButtonCurrent(player)
         stopWhenSignedOut(player)
+        scope.launch {
+            while (isActive) {
+                server.refresh()
+                delay(15_000L)
+            }
+        }
+        server.serverInfo.onEach { info ->
+            if (info?.libraryOnly == true) {
+                for (index in player.mediaItemCount - 1 downTo 0) {
+                    if (MediaItems.streamOf(player.getMediaItemAt(index)) != null) player.removeMediaItem(index)
+                }
+            }
+        }.launchIn(scope)
     }
 
     /** Unpaired (here or from the web): the queue belongs to a server the app can't reach anymore. */
@@ -321,6 +338,7 @@ class PlaybackService : MediaSessionService() {
                 // A stream rebuilt as a library address would point the
                 // resolver at `/api/v1/tracks/stream:…` (404): keep its own.
                 StreamIds.videoIdOf(item.mediaId)?.let { videoId ->
+                    if (server.serverInfo.value?.libraryOnly == true) return@mapNotNull null
                     return@mapNotNull item.buildUpon().setUri(MediaItems.streamUri(videoId)).build()
                 }
                 snapshot?.byId?.get(item.mediaId)?.let { MediaItems.from(it, baseUrl, MediaItems.isQueued(item)) }

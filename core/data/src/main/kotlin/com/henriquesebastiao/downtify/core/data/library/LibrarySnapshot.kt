@@ -21,7 +21,11 @@ class LibrarySnapshot(val tracks: List<Track>) {
      * and artist. Files carry no id to compare against, so this is
      * best-effort: null when the sync hasn't caught up yet.
      */
-    fun findSong(song: RemoteSong): Track? = findTrack(song.title, song.artist)
+    fun findSong(song: RemoteSong): Track? = if (song.libraryFile.isNotBlank()) {
+        tracks.firstOrNull { it.file == song.libraryFile }
+    } else {
+        findTrack(song.title, song.artist)
+    }
 
     /** Same match by plain title and artist (a playing stream, a queue row). */
     fun findTrack(title: String, artist: String): Track? {

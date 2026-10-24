@@ -117,7 +117,20 @@ class SimilarViewModel @Inject constructor(
     )
 
     val uiState: StateFlow<SimilarUiState> = combine(
-        combine(songs, loading, searched, error, ::Basics),
+        combine(songs, loading, searched, error, catalog.serverInfo) { tracks, busy, asked, failure, info ->
+            Basics(
+                if (info?.libraryOnly ==
+                    true
+                ) {
+                    tracks.filter { it.libraryFile.isNotBlank() }
+                } else {
+                    tracks
+                },
+                busy,
+                asked,
+                failure,
+            )
+        },
         combine(library.library, library.likedIds) { snapshot, liked -> snapshot to liked.toSet() },
         combine(loadingMore, hasMore, ::More),
         combine(player.nowPlaying, remotePlayback.resolvingId, queue.jobs) {

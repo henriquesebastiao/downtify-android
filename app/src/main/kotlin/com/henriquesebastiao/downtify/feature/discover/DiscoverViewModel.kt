@@ -25,8 +25,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -100,6 +102,12 @@ class DiscoverViewModel @Inject constructor(
     private var loading: Job? = null
 
     init {
+        viewModelScope.launch {
+            discover.serverInfo.map { it?.libraryOnly == true }.distinctUntilChanged().collect {
+                state.value = DiscoverUiState()
+                load()
+            }
+        }
         load()
     }
 

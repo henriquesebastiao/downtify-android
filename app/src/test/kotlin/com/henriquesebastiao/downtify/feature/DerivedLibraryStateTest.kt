@@ -4,7 +4,9 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModelStore
 import app.cash.turbine.ReceiveTurbine
 import app.cash.turbine.test
+import com.henriquesebastiao.downtify.core.data.ServerResult
 import com.henriquesebastiao.downtify.core.data.catalog.CatalogRepository
+import com.henriquesebastiao.downtify.core.data.catalog.CatalogSearch
 import com.henriquesebastiao.downtify.core.data.catalog.ServerQueueRepository
 import com.henriquesebastiao.downtify.core.data.library.LibraryRepository
 import com.henriquesebastiao.downtify.core.data.library.LibrarySnapshot
@@ -14,7 +16,10 @@ import com.henriquesebastiao.downtify.core.data.settings.LibrarySort
 import com.henriquesebastiao.downtify.core.data.settings.SettingsRepository
 import com.henriquesebastiao.downtify.core.data.settings.UserSettings
 import com.henriquesebastiao.downtify.core.data.sync.SyncCoordinator
+import com.henriquesebastiao.downtify.core.model.Capabilities
 import com.henriquesebastiao.downtify.core.model.Playlist
+import com.henriquesebastiao.downtify.core.model.RemoteSong
+import com.henriquesebastiao.downtify.core.model.ServerInfo
 import com.henriquesebastiao.downtify.core.model.ServerJob
 import com.henriquesebastiao.downtify.core.model.Track
 import com.henriquesebastiao.downtify.core.player.NowPlayingRef
@@ -22,6 +27,8 @@ import com.henriquesebastiao.downtify.core.player.PlayerController
 import com.henriquesebastiao.downtify.core.player.RemotePlayback
 import com.henriquesebastiao.downtify.feature.library.LibraryViewModel
 import com.henriquesebastiao.downtify.feature.search.SearchViewModel
+import com.henriquesebastiao.downtify.feature.search.ServerResults
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
@@ -56,6 +63,7 @@ class DerivedLibraryStateTest {
     private val likes = MutableStateFlow<List<String>>(emptyList())
     private val preferences = MutableStateFlow(UserSettings(librarySort = LibrarySort.Alphabetical))
     private val playing = MutableStateFlow(NowPlayingRef())
+    private val serverInfo = MutableStateFlow<com.henriquesebastiao.downtify.core.model.ServerInfo?>(null)
 
     @Before
     fun setUp() {
@@ -67,6 +75,7 @@ class DerivedLibraryStateTest {
         every { settings.settings } returns preferences
         every { player.nowPlaying } returns playing
         every { queue.jobs } returns MutableStateFlow<Map<String, ServerJob>>(emptyMap())
+        every { catalog.serverInfo } returns serverInfo
         every { catalog.requestedAlbums } returns MutableStateFlow<Map<String, List<String>>>(emptyMap())
         every { remotePlayback.resolvingId } returns MutableStateFlow<String?>(null)
     }
@@ -128,6 +137,32 @@ class DerivedLibraryStateTest {
             snapshot.value = LibrarySnapshot(listOf(track("c")))
             val changed = matching { it.results.songs.map(Track::id) == listOf("c") }
             assertNotSame(original.results, changed.results)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `library only change clears remote results and preserves local search`() = runTest(dispatcher) {
+        snapshot.value = LibrarySnapshot(listOf(track("a").copy(title = "Tune")))
+        serverInfo.value = ServerInfo("test", "Test", "Downtify", "3.7.0", 1, true, Capabilities())
+        coEvery { catalog.search("Tu") } returns
+            ServerResult.Ok(CatalogSearch(listOf(mockk<RemoteSong>()), emptyList()))
+        val model =
+            SearchViewModel(
+                SavedStateHandle(mapOf("query" to "Tu")),
+                repository,
+                player,
+                catalog,
+                queue,
+                remotePlayback,
+            )
+        viewModels.put("subject", model)
+        model.uiState.test {
+            val online = matching { it.server is ServerResults.Found && it.results.songs.size == 1 }
+            serverInfo.value = serverInfo.value?.copy(libraryOnly = true)
+            val local = matching { it.server == ServerResults.Idle }
+            assertSame(online.results, local.results)
+            assertEquals(listOf("a"), local.results.songs.map(Track::id))
             cancelAndIgnoreRemainingEvents()
         }
     }
