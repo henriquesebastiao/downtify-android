@@ -15,7 +15,7 @@ coreKtx = "1.19.1"
 splashscreen = "1.2.0"
 palette = "1.0.0"
 # Kotlin port of material-color-utilities: Now Playing's scheme from the cover. Checked on Maven Central 2026-10-25.
-materialColorUtilities = "5.0.1"
+materialColorUtilities = "6.0.0"
 media3 = "1.11.1"
 room = "2.8.5"
 datastore = "1.2.1"
