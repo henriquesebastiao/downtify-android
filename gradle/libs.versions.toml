@@ -7,7 +7,7 @@ hilt = "2.60.1"
 androidxHilt = "1.4.0"
 composeBom = "2026.09.00"
 # The BOM pins material3 1.4.0. SegmentedListItem (the Expressive grouped list) is only in 1.5.0 betas.
-material3 = "1.5.0-beta01"
+material3 = "1.5.0-beta02"
 activity = "1.13.0"
 navigation = "2.10.2"
 lifecycle = "2.11.0"
