@@ -546,4 +546,9 @@
         <item quantity="one">пазят се %1$d ден след преместването</item>
         <item quantity="other">пазят се %1$d дни след преместването</item>
     </plurals>
+    <string name="settings_normalization_level">Ниво на звука</string>
+    <string name="settings_normalization_normal">Нормално</string>
+    <string name="settings_normalization_louder">По-силно</string>
+    <string name="settings_normalization_maximum">Максимум</string>
+    <string name="settings_normalization_level_hint">Увеличава звука до безопасната граница за всяка песен. Аудиофайловете не се променят.</string>
 </resources>

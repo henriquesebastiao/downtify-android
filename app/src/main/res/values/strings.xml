@@ -554,4 +554,9 @@
         <item quantity="one">kept %1$d day after moving</item>
         <item quantity="other">kept %1$d days after moving</item>
     </plurals>
+    <string name="settings_normalization_level">Playback level</string>
+    <string name="settings_normalization_normal">Normal</string>
+    <string name="settings_normalization_louder">Louder</string>
+    <string name="settings_normalization_maximum">Maximum</string>
+    <string name="settings_normalization_level_hint">Raises playback volume within each track’s safe limit. Your audio files stay unchanged.</string>
 </resources>

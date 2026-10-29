@@ -115,7 +115,11 @@ class PlaybackService : MediaSessionService() {
 
     override fun onCreate() {
         super.onCreate()
-        val normalizer = NormalizationAudioProcessor(loudness::gainDb) { loudness.enabled.value }
+        val normalizer = NormalizationAudioProcessor(
+            gainForTrack = loudness::gainDb,
+            isEnabled = { loudness.enabled.value },
+            gainRevision = { loudness.level.value.ordinal },
+        )
         val renderers = object : DefaultRenderersFactory(this) {
             override fun buildAudioSink(
                 context: Context,

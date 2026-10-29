@@ -546,4 +546,9 @@
         <item quantity="one">taşındıktan sonra %1$d gün saklanır</item>
         <item quantity="other">taşındıktan sonra %1$d gün saklanır</item>
     </plurals>
+    <string name="settings_normalization_level">Çalma ses düzeyi</string>
+    <string name="settings_normalization_normal">Normal</string>
+    <string name="settings_normalization_louder">Daha yüksek</string>
+    <string name="settings_normalization_maximum">Maksimum</string>
+    <string name="settings_normalization_level_hint">Sesi her parçanın güvenli sınırına kadar artırır. Ses dosyaları değişmez.</string>
 </resources>

@@ -560,4 +560,9 @@
         <item quantity="many">gardés %1$d de jours après le déplacement</item>
         <item quantity="other">gardés %1$d jours après le déplacement</item>
     </plurals>
+    <string name="settings_normalization_level">Niveau sonore</string>
+    <string name="settings_normalization_normal">Normal</string>
+    <string name="settings_normalization_louder">Plus fort</string>
+    <string name="settings_normalization_maximum">Maximum</string>
+    <string name="settings_normalization_level_hint">Le volume augmente dans la limite propre à chaque titre. Vos fichiers restent inchangés.</string>
 </resources>

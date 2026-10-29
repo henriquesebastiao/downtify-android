@@ -15,6 +15,7 @@ import com.henriquesebastiao.downtify.core.data.settings.ThemeMode
 import com.henriquesebastiao.downtify.core.data.settings.UserSettings
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyTheme
 import com.henriquesebastiao.downtify.core.model.AppFont
+import com.henriquesebastiao.downtify.core.model.NormalizationLevel
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -37,6 +38,21 @@ class SettingsScreenTest {
         listOf("Playback", "Downloads", "Appearance", "About", "Server").forEach {
             compose.onNodeWithText(it).performScrollTo().assertExists()
         }
+    }
+
+    @Test
+    fun playbackLevelUsesTheAppsThreeChoiceGroupWhenNormalizationIsEnabled() {
+        var level: NormalizationLevel? = null
+        show(
+            state = SettingsUiState(settings = UserSettings(normalizeVolume = true)),
+            actions = SettingsActions(onNormalizationLevel = { level = it }),
+        )
+        compose.onNodeWithText("Playback level").performScrollTo().assertExists()
+        compose.onNodeWithText("Normal").assertIsSelected()
+        compose.onNodeWithText("Louder").performClick()
+        assertEquals(NormalizationLevel.Louder, level)
+        compose.onNodeWithText("Maximum").performClick()
+        assertEquals(NormalizationLevel.Maximum, level)
     }
 
     @Test

@@ -546,4 +546,9 @@
         <item quantity="one">φυλάσσονται %1$d ημέρα μετά τη μετακίνηση</item>
         <item quantity="other">φυλάσσονται %1$d ημέρες μετά τη μετακίνηση</item>
     </plurals>
+    <string name="settings_normalization_level">Επίπεδο ήχου</string>
+    <string name="settings_normalization_normal">Κανονικό</string>
+    <string name="settings_normalization_louder">Πιο δυνατά</string>
+    <string name="settings_normalization_maximum">Μέγιστο</string>
+    <string name="settings_normalization_level_hint">Αυξάνει την ένταση εντός του ασφαλούς ορίου κάθε τραγουδιού. Τα αρχεία ήχου δεν αλλάζουν.</string>
 </resources>
