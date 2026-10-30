@@ -1,8 +1,10 @@
 package com.henriquesebastiao.downtify
 
+import android.app.SearchManager
 import android.content.Intent
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
+import android.provider.MediaStore
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -109,6 +111,19 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIntent(intent: Intent?) {
+        if (intent?.action == MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH) {
+            val query = intent.getStringExtra(SearchManager.QUERY)?.trim()?.takeIf { it.isNotEmpty() } ?: return
+            lifecycleScope.launch {
+                try {
+                    player.playLibrarySearch(query)
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (_: Exception) {
+                    Log.w("PlaybackConnection", "Could not start library search playback")
+                }
+            }
+            return
+        }
         val data = intent?.data ?: return
         if (intent.action == Intent.ACTION_VIEW && data.scheme == "downtify") viewModel.onPairingLink(data.toString())
     }

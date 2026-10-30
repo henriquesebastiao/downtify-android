@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="car_library">Bibliothèque</string>
+    <string name="car_playlists">Playlists</string>
+    <string name="car_favorites">Favoris</string>
+    <string name="car_artists">Artistes</string>
+    <string name="car_albums">Albums</string>
+    <string name="car_tracks">Titres</string>
+    <string name="car_offline">Hors ligne</string>
+    <string name="car_pair">Associez Downtify depuis votre téléphone.</string>
+    <string name="car_loading">Chargement de la bibliothèque. Réessayez.</string>
+    <string name="car_unavailable">Ce morceau est indisponible.</string>
+    <string name="car_choose_result">Plusieurs résultats : choisissez un morceau dans la recherche.</string>
+    <string name="player_like">Ajouter aux titres favoris</string>
+    <string name="player_unlike">Retirer des titres favoris</string>
+</resources>

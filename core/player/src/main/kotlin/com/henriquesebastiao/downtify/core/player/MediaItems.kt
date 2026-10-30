@@ -33,6 +33,21 @@ object MediaItems {
     private const val EXTRA_QUEUED = "downtify.queued"
     private const val EXTRA_HAS_COVER = "downtify.has_cover"
 
+    private const val EXTRA_ORIGINAL_ARTWORK = "downtify.original_artwork"
+
+    fun originalArtwork(item: MediaItem): Uri? =
+        item.mediaMetadata.extras?.getString(EXTRA_ORIGINAL_ARTWORK)?.let(Uri::parse) ?: item.mediaMetadata.artworkUri
+
+    fun withArtwork(item: MediaItem, uri: Uri): MediaItem {
+        val original = originalArtwork(item)
+        val extras = Bundle(item.mediaMetadata.extras ?: Bundle.EMPTY).apply {
+            original?.let { putString(EXTRA_ORIGINAL_ARTWORK, it.toString()) }
+        }
+        return item.buildUpon().setMediaMetadata(
+            item.mediaMetadata.buildUpon().setArtworkUri(uri).setExtras(extras).build(),
+        ).build()
+    }
+
     fun streamUri(videoId: String): Uri =
         Uri.Builder().scheme(SCHEME).authority(STREAM_HOST).appendPath(videoId).build()
 
@@ -251,7 +266,7 @@ object MediaItems {
             videoId = videoId,
             title = item.mediaMetadata.title?.toString().orEmpty(),
             artist = item.mediaMetadata.artist?.toString().orEmpty(),
-            coverUrl = item.mediaMetadata.artworkUri?.toString().orEmpty(),
+            coverUrl = originalArtwork(item)?.toString().orEmpty(),
             raw = extras?.getString(EXTRA_RAW).orEmpty(),
         )
     }
@@ -265,7 +280,7 @@ object MediaItems {
             showId = extras?.getLong(EXTRA_SHOW_ID) ?: 0,
             title = item.mediaMetadata.title?.toString().orEmpty(),
             showName = item.mediaMetadata.artist?.toString().orEmpty(),
-            artworkUrl = item.mediaMetadata.artworkUri?.toString().orEmpty(),
+            artworkUrl = originalArtwork(item)?.toString().orEmpty(),
             file = extras?.getString(EXTRA_FILE).orEmpty(),
         )
     }
