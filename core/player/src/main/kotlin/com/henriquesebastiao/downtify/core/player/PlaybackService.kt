@@ -4,6 +4,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.Process
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -22,21 +23,25 @@ import androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder
 import androidx.media3.session.CacheBitmapLoader
 import androidx.media3.session.CommandButton
 import androidx.media3.session.DefaultMediaNotificationProvider
+import androidx.media3.session.MediaLibraryService
+import androidx.media3.session.MediaLibraryService.MediaLibrarySession
 import androidx.media3.session.MediaSession
-import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import com.henriquesebastiao.downtify.core.data.NetworkMonitor
 import com.henriquesebastiao.downtify.core.data.activity.PlaybackActivityReporter
 import com.henriquesebastiao.downtify.core.data.catalog.CatalogRepository
 import com.henriquesebastiao.downtify.core.data.library.LibraryRepository
 import com.henriquesebastiao.downtify.core.data.listens.ListenReporter
 import com.henriquesebastiao.downtify.core.data.loudness.LoudnessProfiles
+import com.henriquesebastiao.downtify.core.data.offline.OfflineRepository
 import com.henriquesebastiao.downtify.core.data.playback.PlaybackRepository
 import com.henriquesebastiao.downtify.core.data.playback.playbackOwner
 import com.henriquesebastiao.downtify.core.data.podcasts.PodcastsRepository
+import com.henriquesebastiao.downtify.core.data.sync.SyncCoordinator
 import com.henriquesebastiao.downtify.core.model.EpisodeIds
 import com.henriquesebastiao.downtify.core.model.PlayQueue
 import com.henriquesebastiao.downtify.core.model.StreamIds
@@ -61,13 +66,13 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 
 /**
- * ExoPlayer in a [MediaSessionService]: the media notification, lock screen,
+ * ExoPlayer in a [MediaLibraryService]: the media notification, lock screen,
  * Bluetooth and headset buttons, and other controllers all come from the
  * session. Audio focus is handled by ExoPlayer; unplugging headphones pauses.
  */
 @UnstableApi
 @AndroidEntryPoint
-class PlaybackService : MediaSessionService() {
+class PlaybackService : MediaLibraryService() {
 
     @Inject
     @AudioDataSource
@@ -102,7 +107,17 @@ class PlaybackService : MediaSessionService() {
     lateinit var streamingClient: OkHttpClient
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private var session: MediaSession? = null
+
+    @Inject lateinit var offline: OfflineRepository
+
+    @Inject lateinit var network: NetworkMonitor
+
+    @Inject lateinit var artwork: SessionArtworkCache
+
+    @Inject lateinit var syncCoordinator: SyncCoordinator
+
+    private var session: MediaLibrarySession? = null
+    private var artworkTracker: SessionArtworkTracker? = null
     private var listens: ListenTracker? = null
     private var activity: ActivityTracker? = null
     private var episodes: EpisodeProgressTracker? = null
@@ -142,8 +157,8 @@ class PlaybackService : MediaSessionService() {
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .build()
 
-        session = MediaSession.Builder(this, player)
-            .setCallback(SessionCallback())
+        val callback = SessionCallback()
+        session = MediaLibrarySession.Builder(this, player, callback)
             .setBitmapLoader(
                 CacheBitmapLoader(
                     DataSourceBitmapLoader(DataSourceBitmapLoader.DEFAULT_EXECUTOR_SERVICE.get(), artworkDataSource),
@@ -151,6 +166,13 @@ class PlaybackService : MediaSessionService() {
             )
             .apply { launchIntent()?.let(::setSessionActivity) }
             .build()
+
+        callback.observe(checkNotNull(session))
+        syncCoordinator.setMediaServiceActive(true)
+        scope.launch {
+            withContext(Dispatchers.IO) { sessions.ensureLoaded() }
+            artworkTracker = SessionArtworkTracker(player, artwork, sessions, network, scope).also { it.start() }
+        }
 
         setMediaNotificationProvider(
             DefaultMediaNotificationProvider(this).apply { setSmallIcon(R.drawable.ic_notification) },
@@ -207,7 +229,7 @@ class PlaybackService : MediaSessionService() {
         }
     }
 
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? = session
 
     /** Stop when the user swipes the app away while nothing is playing. */
     override fun onTaskRemoved(rootIntent: Intent?) {
@@ -216,6 +238,8 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        syncCoordinator.setMediaServiceActive(false)
+        artworkTracker?.stop()
         readAhead.stop()
         persistence?.stop()
         listens?.stop()
@@ -317,7 +341,30 @@ class PlaybackService : MediaSessionService() {
             .setSlots(CommandButton.SLOT_OVERFLOW)
             .build()
 
-    private inner class SessionCallback : MediaSession.Callback {
+    private inner class SessionCallback : CarBrowser(this@PlaybackService, library, offline, sessions, artwork, scope) {
+        private fun own(controller: MediaSession.ControllerInfo): Boolean =
+            ControllerAccess.isApp(controller, packageName, Process.myUid())
+
+        override fun onSetMediaItems(
+            mediaSession: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            mediaItems: MutableList<MediaItem>,
+            startIndex: Int,
+            startPositionMs: Long,
+        ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> = if (
+            own(controller) && mediaItems.none { it.requestMetadata.searchQuery != null }
+        ) {
+            Futures.transform(
+                onAddMediaItems(mediaSession, controller, mediaItems),
+                { resolved ->
+                    MediaSession.MediaItemsWithStartPosition(checkNotNull(resolved), startIndex, startPositionMs)
+                },
+                com.google.common.util.concurrent.MoreExecutors.directExecutor(),
+            )
+        } else {
+            super.onSetMediaItems(mediaSession, controller, mediaItems, startIndex, startPositionMs)
+        }
+
         override fun onConnectAsync(
             session: MediaSession,
             controller: MediaSession.ControllerInfo,
@@ -343,15 +390,19 @@ class PlaybackService : MediaSessionService() {
         override fun onConnect(
             session: MediaSession,
             controller: MediaSession.ControllerInfo,
-        ): MediaSession.ConnectionResult = MediaSession.ConnectionResult.AcceptedResultBuilder(session)
-            .setAvailableSessionCommands(
-                MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
-                    .add(likeCommand)
-                    .add(addToQueueCommand)
-                    .add(moveInQueueCommand)
-                    .build(),
-            )
-            .build()
+        ): MediaSession.ConnectionResult {
+            if (!ControllerAccess.canConnect(controller, packageName, Process.myUid())) {
+                return MediaSession.ConnectionResult.reject()
+            }
+            val commands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon()
+            if (own(controller)) {
+                commands.add(likeCommand).add(addToQueueCommand).add(moveInQueueCommand)
+            } else {
+                commands.add(likeCommand)
+            }
+            return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+                .setAvailableSessionCommands(commands.build()).build()
+        }
 
         override fun onCustomCommand(
             session: MediaSession,
@@ -359,6 +410,9 @@ class PlaybackService : MediaSessionService() {
             customCommand: SessionCommand,
             args: Bundle,
         ): ListenableFuture<SessionResult> {
+            if (!own(controller) && customCommand.customAction != ACTION_TOGGLE_LIKE) {
+                return Futures.immediateFuture(SessionResult(SessionError.ERROR_PERMISSION_DENIED))
+            }
             if (customCommand.customAction == ACTION_TOGGLE_LIKE) {
                 val id = session.player.currentMediaItem?.mediaId
                 if (id != null && !EpisodeIds.isEpisode(id) && !StreamIds.isStream(id)) {
@@ -397,6 +451,7 @@ class PlaybackService : MediaSessionService() {
             controller: MediaSession.ControllerInfo,
             mediaItems: MutableList<MediaItem>,
         ): ListenableFuture<MutableList<MediaItem>> {
+            if (!own(controller)) return scope.future { carAddItems(mediaItems).toMutableList() }
             val snapshot = library.library.value
             val baseUrl = sessions.current?.baseUrl
             val resolved = mediaItems.mapNotNull { item ->

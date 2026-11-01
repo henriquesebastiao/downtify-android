@@ -17,6 +17,7 @@ import androidx.media3.session.SessionToken
 import com.henriquesebastiao.downtify.core.data.di.ApplicationScope
 import com.henriquesebastiao.downtify.core.data.library.LibraryRepository
 import com.henriquesebastiao.downtify.core.data.library.RecentsRepository
+import com.henriquesebastiao.downtify.core.data.playback.playbackOwner
 import com.henriquesebastiao.downtify.core.model.PlaybackContext
 import com.henriquesebastiao.downtify.core.model.PodcastEpisode
 import com.henriquesebastiao.downtify.core.model.PodcastShow
@@ -140,6 +141,18 @@ class PlayerController @Inject constructor(
                 controller = null
             }
         }
+    }
+
+    /** Voice intents use the same local search resolver as Android Auto. Never search or download online. */
+    suspend fun playLibrarySearch(query: String) {
+        if (query.isBlank()) return
+        val owner = withContext(Dispatchers.IO) { sessions.current?.playbackOwner } ?: return
+        val player = connect()
+        if (sessions.current?.playbackOwner != owner) return
+        val request = MediaItem.RequestMetadata.Builder().setSearchQuery(query).build()
+        player.setMediaItem(MediaItem.Builder().setRequestMetadata(request).build())
+        player.prepare()
+        player.play()
     }
 
     /** Plays [tracks] from [startIndex] as the new queue, remembering where they came from. */

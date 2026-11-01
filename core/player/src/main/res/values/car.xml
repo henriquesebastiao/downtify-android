@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="car_library">Library</string>
+    <string name="car_playlists">Playlists</string>
+    <string name="car_favorites">Favorites</string>
+    <string name="car_artists">Artists</string>
+    <string name="car_albums">Albums</string>
+    <string name="car_tracks">Tracks</string>
+    <string name="car_offline">Offline</string>
+    <string name="car_pair">Connect Downtify on your phone first.</string>
+    <string name="car_loading">Library loading. Please try again.</string>
+    <string name="car_unavailable">This track is unavailable.</string>
+    <string name="car_choose_result">Several matches: choose a track from the search results.</string>
+</resources>

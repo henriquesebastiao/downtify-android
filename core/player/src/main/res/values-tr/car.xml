@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="car_library">Kitaplık</string>
+    <string name="car_playlists">Çalma listeleri</string>
+    <string name="car_favorites">Favoriler</string>
+    <string name="car_artists">Sanatçılar</string>
+    <string name="car_albums">Albümler</string>
+    <string name="car_tracks">Parçalar</string>
+    <string name="car_offline">Çevrimdışı</string>
+    <string name="car_pair">Önce telefonunuzdan Downtify bağlantısını kurun.</string>
+    <string name="car_loading">Kitaplık yükleniyor. Tekrar deneyin.</string>
+    <string name="car_unavailable">Bu parça kullanılamıyor.</string>
+    <string name="car_choose_result">Birden çok sonuç: arama sonuçlarından bir parça seçin.</string>
+    <string name="player_like">Beğenilen parçalara ekle</string>
+    <string name="player_unlike">Beğenilen parçalardan kaldır</string>
+</resources>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="car_library">Βιβλιοθήκη</string>
+    <string name="car_playlists">Λίστες αναπαραγωγής</string>
+    <string name="car_favorites">Αγαπημένα</string>
+    <string name="car_artists">Καλλιτέχνες</string>
+    <string name="car_albums">Άλμπουμ</string>
+    <string name="car_tracks">Τραγούδια</string>
+    <string name="car_offline">Εκτός σύνδεσης</string>
+    <string name="car_pair">Συνδέστε το Downtify από το τηλέφωνό σας.</string>
+    <string name="car_loading">Φόρτωση βιβλιοθήκης. Δοκιμάστε ξανά.</string>
+    <string name="car_unavailable">Το τραγούδι δεν είναι διαθέσιμο.</string>
+    <string name="car_choose_result">Πολλά αποτελέσματα: επιλέξτε ένα τραγούδι από την αναζήτηση.</string>
+    <string name="player_like">Προσθήκη στα αγαπημένα τραγούδια</string>
+    <string name="player_unlike">Αφαίρεση από τα αγαπημένα τραγούδια</string>
+</resources>

@@ -88,6 +88,7 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
     testImplementation(libs.mockk)
+    testImplementation(libs.media3.exoplayer)
     testImplementation(libs.robolectric)
     testImplementation(libs.compose.ui.test.junit4)
     testImplementation(libs.androidx.test.junit)

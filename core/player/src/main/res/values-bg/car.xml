@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="car_library">Библиотека</string>
+    <string name="car_playlists">Плейлисти</string>
+    <string name="car_favorites">Любими</string>
+    <string name="car_artists">Изпълнители</string>
+    <string name="car_albums">Албуми</string>
+    <string name="car_tracks">Песни</string>
+    <string name="car_offline">Офлайн</string>
+    <string name="car_pair">Свържете Downtify от телефона си.</string>
+    <string name="car_loading">Библиотеката се зарежда. Опитайте отново.</string>
+    <string name="car_unavailable">Тази песен не е налична.</string>
+    <string name="car_choose_result">Няколко резултата: изберете песен от търсенето.</string>
+    <string name="player_like">Добавяне в любими песни</string>
+    <string name="player_unlike">Премахване от любими песни</string>
+</resources>

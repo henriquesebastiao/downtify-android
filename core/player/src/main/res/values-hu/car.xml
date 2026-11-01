@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="car_library">Könyvtár</string>
+    <string name="car_playlists">Lejátszási listák</string>
+    <string name="car_favorites">Kedvencek</string>
+    <string name="car_artists">Előadók</string>
+    <string name="car_albums">Albumok</string>
+    <string name="car_tracks">Számok</string>
+    <string name="car_offline">Offline</string>
+    <string name="car_pair">Csatlakoztasd a Downtify alkalmazást a telefonodon.</string>
+    <string name="car_loading">Könyvtár betöltése. Próbáld újra.</string>
+    <string name="car_unavailable">Ez a szám nem érhető el.</string>
+    <string name="car_choose_result">Több találat: válassz számot a keresési eredményekből.</string>
+    <string name="player_like">Hozzáadás a kedvelt számokhoz</string>
+    <string name="player_unlike">Eltávolítás a kedvelt számok közül</string>
+</resources>
