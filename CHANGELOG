@@ -1,5 +1,28 @@
 # Changelog
 
+## [v0.3.0](https://github.com/henriquesebastiao/downtify-android/tree/v0.3.0) (2026-11-01)
+
+[Full Changelog](https://github.com/henriquesebastiao/downtify-android/compare/v0.2.1...v0.3.0)
+
+**Closed issues:**
+
+- Administrator music trash client with capability negotiation [\#27](https://github.com/henriquesebastiao/downtify-android/issues/27)
+
+**Merged pull requests:**
+
+- feat: add peak-protected playback normalization levels [\#31](https://github.com/henriquesebastiao/downtify-android/pull/31) ([QuietForge7294](https://github.com/QuietForge7294))
+- feat: add Android Auto library browsing and local search [\#29](https://github.com/henriquesebastiao/downtify-android/pull/29) ([QuietForge7294](https://github.com/QuietForge7294))
+- feat: add capability-gated administrator music trash client [\#28](https://github.com/henriquesebastiao/downtify-android/pull/28) ([QuietForge7294](https://github.com/QuietForge7294))
+- build\(deps\): bump kotlin from 2.4.20 to 2.4.21 [\#25](https://github.com/henriquesebastiao/downtify-android/pull/25) ([dependabot[bot]](https://github.com/apps/dependabot))
+- build\(deps\): bump io.nlopez.compose.rules:detekt from 0.6.7 to 0.6.8 [\#24](https://github.com/henriquesebastiao/downtify-android/pull/24) ([dependabot[bot]](https://github.com/apps/dependabot))
+- build\(deps\): bump com.diffplug.spotless from 8.10.3 to 8.10.4 [\#23](https://github.com/henriquesebastiao/downtify-android/pull/23) ([dependabot[bot]](https://github.com/apps/dependabot))
+- build\(deps\): bump material3 from 1.5.0-beta01 to 1.5.0-beta02 [\#21](https://github.com/henriquesebastiao/downtify-android/pull/21) ([dependabot[bot]](https://github.com/apps/dependabot))
+- feat: optional measured playback volume normalization [\#17](https://github.com/henriquesebastiao/downtify-android/pull/17) ([QuietForge7294](https://github.com/QuietForge7294))
+
+## [v0.2.1](https://github.com/henriquesebastiao/downtify-android/tree/v0.2.1) (2026-10-27)
+
+[Full Changelog](https://github.com/henriquesebastiao/downtify-android/compare/v0.2.0...v0.2.1)
+
 ## [v0.2.0](https://github.com/henriquesebastiao/downtify-android/tree/v0.2.0) (2026-10-27)
 
 [Full Changelog](https://github.com/henriquesebastiao/downtify-android/compare/v0.1.0...v0.2.0)
