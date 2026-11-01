@@ -79,6 +79,18 @@ class NormalizationAudioProcessorTest {
     }
 
     @Test
+    fun emptyInputBeforeTheFirstSampleProducesNothing() {
+        // Media3's pipeline polls every processor with EMPTY_BUFFER before any audio arrives.
+        start("unknown")
+        processor.queueInput(AudioProcessor.EMPTY_BUFFER)
+        assertEquals(0, processor.output.remaining())
+        start("one")
+        processor.queueInput(AudioProcessor.EMPTY_BUFFER)
+        assertEquals(0, processor.output.remaining())
+        assertArrayEquals(intArrayOf(500), process(1000))
+    }
+
+    @Test
     fun invalidGainNeverProducesInvalidSamplesAndLargeInputCannotWrap() {
         gains["one"] = Double.NaN
         start("one")

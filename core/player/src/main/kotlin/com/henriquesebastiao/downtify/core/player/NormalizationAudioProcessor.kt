@@ -49,6 +49,9 @@ class NormalizationAudioProcessor(
     }
 
     override fun queueInput(inputBuffer: ByteBuffer) {
+        // The pipeline also polls with AudioProcessor.EMPTY_BUFFER, which is this processor's own
+        // output buffer until the first sample: copying it into itself throws.
+        if (!inputBuffer.hasRemaining()) return
         val output = replaceOutputBuffer(inputBuffer.remaining()).order(ByteOrder.LITTLE_ENDIAN)
         val target = target()
         if (multiplier == 1.0 && target == 1.0) {
