@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -19,7 +20,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
@@ -66,6 +69,7 @@ import com.henriquesebastiao.downtify.core.designsystem.component.EmptyState
 import com.henriquesebastiao.downtify.core.designsystem.component.PhonePreviews
 import com.henriquesebastiao.downtify.core.designsystem.component.Tag
 import com.henriquesebastiao.downtify.core.designsystem.component.TagTone
+import com.henriquesebastiao.downtify.core.designsystem.component.VerticalScrollbar
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyShape
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyTheme
 import com.henriquesebastiao.downtify.core.designsystem.theme.ListStyle
@@ -73,12 +77,24 @@ import com.henriquesebastiao.downtify.core.designsystem.theme.Spacing
 import com.henriquesebastiao.downtify.core.model.totalMinutes
 import com.henriquesebastiao.downtify.core.network.ServerUrls
 import com.henriquesebastiao.downtify.feature.trash.LocalMoveToTrash
+import com.henriquesebastiao.downtify.ui.common.LocalBottomBarsInset
 import com.henriquesebastiao.downtify.ui.common.LocalCoverUrls
 import com.henriquesebastiao.downtify.ui.common.PreviewData
 import com.henriquesebastiao.downtify.ui.common.TrackActions
 import com.henriquesebastiao.downtify.ui.common.TrackItem
 import com.henriquesebastiao.downtify.ui.common.plusBottomBars
 import com.henriquesebastiao.downtify.ui.common.songsCount
+
+@Composable
+private fun BoxScope.Scrollbar(state: LazyListState) {
+    VerticalScrollbar(state, scrollbarPlacement())
+}
+
+@Composable
+private fun BoxScope.scrollbarPlacement(): Modifier = Modifier
+    .align(Alignment.TopEnd)
+    .padding(top = Spacing.sm, bottom = Spacing.xl + LocalBottomBarsInset.current)
+
 
 @Composable
 fun CollectionRoute(
@@ -137,7 +153,7 @@ fun CollectionScreen(
     val title = if (state.kind == CollectionKind.Liked) stringResource(R.string.liked_songs) else state.title
     // Captured outside the cover's theme: the header fades into the app's surface, not the cover's.
     val appSurface = MaterialTheme.colorScheme.surface
-
+    val list = rememberLazyListState()
     Scaffold(
         modifier = modifier,
         contentWindowInsets = WindowInsets(0),
@@ -167,7 +183,9 @@ fun CollectionScreen(
         },
     ) { padding ->
         when {
-            state.loading -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+            state.loading -> Box(Modifier
+                .fillMaxSize()
+                .padding(padding), contentAlignment = Alignment.Center) {
                 LoadingIndicator()
             }
 
@@ -178,45 +196,58 @@ fun CollectionScreen(
                 modifier = Modifier.padding(padding),
             )
 
-            else -> LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(bottom = Spacing.xl).plusBottomBars(),
-                verticalArrangement = Arrangement.spacedBy(ListStyle.Separated.gap),
-            ) {
-                item(key = "header") {
-                    CoverTheme(seedUrl) {
-                        Header(state, title, coverUrl, appSurface, onArtist, onPlayOrPause, onShuffle, onToggleOffline)
+            else -> Box(Modifier.fillMaxSize().padding(padding)) {
+                LazyColumn(
+                    state = list,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = Spacing.xl).plusBottomBars(),
+                    verticalArrangement = Arrangement.spacedBy(ListStyle.Separated.gap),
+                ) {
+                    item(key = "header") {
+                        CoverTheme(seedUrl) {
+                            Header(
+                                state,
+                                title,
+                                coverUrl,
+                                appSurface,
+                                onArtist,
+                                onPlayOrPause,
+                                onShuffle,
+                                onToggleOffline,
+                            )
+                        }
                     }
-                }
-                if (state.favoriteError) {
-                    item(key = "favorite-error") {
-                        Text(
-                            stringResource(R.string.playlist_favorite_failed),
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(Spacing.screen),
+                    if (state.favoriteError) {
+                        item(key = "favorite-error") {
+                            Text(
+                                stringResource(R.string.playlist_favorite_failed),
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(Spacing.screen),
+                            )
+                        }
+                    }
+                    itemsIndexed(state.tracks, key = { i, t -> "$i:${t.id}" }) { index, track ->
+                        TrackItem(
+                            track = track,
+                            onClick = { onPlay(index) },
+                            number = if (state.kind == CollectionKind.Album) {
+                                track.trackNumber.takeIf { it > 0 } ?: (index + 1)
+                            } else {
+                                null
+                            },
+                            coverUrl = covers.track(track.id.takeIf { track.hasCover }, ServerUrls.COVER_SMALL),
+                            isCurrent = track.id == state.currentTrackId && state.isCurrentContext,
+                            isPlaying = state.isPlaying,
+                            isLiked = track.id in state.likedIds,
+                            downloaded = track.id in state.offline.downloadedIds,
+                            actions = trackActions,
+                            modifier = Modifier.padding(horizontal = Spacing.screen),
                         )
                     }
+                    // No navigation bar here: the list clears the system's, unless the mini player under it does.
+                    item(key = "system-bar") { Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars)) }
                 }
-                itemsIndexed(state.tracks, key = { i, t -> "$i:${t.id}" }) { index, track ->
-                    TrackItem(
-                        track = track,
-                        onClick = { onPlay(index) },
-                        number = if (state.kind == CollectionKind.Album) {
-                            track.trackNumber.takeIf { it > 0 } ?: (index + 1)
-                        } else {
-                            null
-                        },
-                        coverUrl = covers.track(track.id.takeIf { track.hasCover }, ServerUrls.COVER_SMALL),
-                        isCurrent = track.id == state.currentTrackId && state.isCurrentContext,
-                        isPlaying = state.isPlaying,
-                        isLiked = track.id in state.likedIds,
-                        downloaded = track.id in state.offline.downloadedIds,
-                        actions = trackActions,
-                        modifier = Modifier.padding(horizontal = Spacing.screen),
-                    )
-                }
-                // No navigation bar here: the list clears the system's, unless the mini player under it does.
-                item(key = "system-bar") { Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars)) }
+                Scrollbar(list)
             }
         }
     }
@@ -328,7 +359,9 @@ private fun Actions(
     val scheme = MaterialTheme.colorScheme
     var confirmRemove by remember { mutableStateOf(false) }
     Row(
-        Modifier.fillMaxWidth().padding(bottom = Spacing.sm),
+        Modifier
+            .fillMaxWidth()
+            .padding(bottom = Spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {
@@ -372,10 +405,12 @@ private fun Actions(
             title = { Text(stringResource(R.string.collection_remove_title)) },
             text = { Text(stringResource(R.string.collection_remove_message, title)) },
             confirmButton = {
-                TextButton(onClick = {
-                    confirmRemove = false
-                    onToggleOffline()
-                }) { Text(stringResource(R.string.collection_remove_confirm)) }
+                TextButton(
+                    onClick = {
+                        confirmRemove = false
+                        onToggleOffline()
+                    },
+                ) { Text(stringResource(R.string.collection_remove_confirm)) }
             },
             dismissButton = {
                 TextButton(onClick = { confirmRemove = false }) { Text(stringResource(R.string.action_cancel)) }
