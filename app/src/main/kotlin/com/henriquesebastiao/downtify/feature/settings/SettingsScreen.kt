@@ -74,6 +74,7 @@ import com.henriquesebastiao.downtify.core.designsystem.theme.GoogleSansFlex
 import com.henriquesebastiao.downtify.core.designsystem.theme.Spacing
 import com.henriquesebastiao.downtify.core.designsystem.theme.withDataValues
 import com.henriquesebastiao.downtify.core.model.AppFont
+import com.henriquesebastiao.downtify.core.model.NormalizationLevel
 import com.henriquesebastiao.downtify.core.model.OfflinePlanner
 import com.henriquesebastiao.downtify.core.model.StreamFormat
 import com.henriquesebastiao.downtify.core.model.StreamQuality
@@ -101,6 +102,7 @@ fun SettingsRoute(
             onWifiQuality = viewModel::setWifiQuality,
             onMobileQuality = viewModel::setMobileQuality,
             onNormalizeVolume = viewModel::setNormalizeVolume,
+            onNormalizationLevel = viewModel::setNormalizationLevel,
             onTheme = viewModel::setTheme,
             onDynamicColor = viewModel::setDynamicColor,
             onAmoled = viewModel::setAmoled,
@@ -127,6 +129,7 @@ data class SettingsActions(
     val onWifiQuality: (StreamQuality) -> Unit = {},
     val onMobileQuality: (StreamQuality) -> Unit = {},
     val onNormalizeVolume: (Boolean) -> Unit = {},
+    val onNormalizationLevel: (NormalizationLevel) -> Unit = {},
     val onTheme: (ThemeMode) -> Unit = {},
     val onDynamicColor: (Boolean) -> Unit = {},
     val onAmoled: (Boolean) -> Unit = {},
@@ -387,13 +390,38 @@ private fun playbackRows(
     state: SettingsUiState,
     actions: SettingsActions,
     open: (SettingsDialog) -> Unit,
-): List<GroupedRow> = listOf(
+): List<GroupedRow> = listOfNotNull(
     GroupedRow(
         title = stringResource(R.string.settings_normalize_volume),
         summary = stringResource(R.string.settings_normalize_volume_hint),
         icon = DowntifyIcons.Graphic,
         action = RowAction.Toggle(state.settings.normalizeVolume, actions.onNormalizeVolume),
     ),
+    if (state.settings.normalizeVolume) {
+        GroupedRow(
+            title = stringResource(R.string.settings_normalization_level),
+            summary = stringResource(R.string.settings_normalization_level_hint),
+            action = RowAction.Control {
+                ChoiceGroup(
+                    options = NormalizationLevel.entries,
+                    selected = state.settings.normalizationLevel,
+                    label = { level ->
+                        stringResource(
+                            when (level) {
+                                NormalizationLevel.Normal -> R.string.settings_normalization_normal
+                                NormalizationLevel.Louder -> R.string.settings_normalization_louder
+                                NormalizationLevel.Maximum -> R.string.settings_normalization_maximum
+                            },
+                        )
+                    },
+                    onSelect = actions.onNormalizationLevel,
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                )
+            },
+        )
+    } else {
+        null
+    },
     GroupedRow(
         title = stringResource(R.string.settings_quality_wifi),
         summary = qualitySummary(state.settings.wifiQuality),

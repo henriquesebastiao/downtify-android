@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.henriquesebastiao.downtify.core.model.AppFont
+import com.henriquesebastiao.downtify.core.model.NormalizationLevel
 import com.henriquesebastiao.downtify.core.model.ReadAheadPolicy
 import com.henriquesebastiao.downtify.core.model.StreamQuality
 import java.util.UUID
@@ -31,6 +32,7 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
             wifiQuality = StreamQuality.decode(prefs[WIFI_QUALITY]) ?: defaults.wifiQuality,
             mobileQuality = StreamQuality.decode(prefs[MOBILE_QUALITY]) ?: defaults.mobileQuality,
             normalizeVolume = prefs[NORMALIZE_VOLUME] ?: defaults.normalizeVolume,
+            normalizationLevel = enumOr(prefs[NORMALIZATION_LEVEL], defaults.normalizationLevel),
             libraryLayout = enumOr(prefs[LIBRARY_LAYOUT], defaults.libraryLayout),
             librarySort = sort,
             // Saved only once the user flips it; until then each sort keeps its own order.
@@ -75,6 +77,10 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
 
     suspend fun setNormalizeVolume(value: Boolean) {
         store.edit { it[NORMALIZE_VOLUME] = value }
+    }
+
+    suspend fun setNormalizationLevel(value: NormalizationLevel) {
+        store.edit { it[NORMALIZATION_LEVEL] = value.name }
     }
 
     suspend fun setLibraryLayout(value: LibraryLayout) {
@@ -133,6 +139,7 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
         val WIFI_QUALITY = stringPreferencesKey("wifi_quality")
         val MOBILE_QUALITY = stringPreferencesKey("mobile_quality")
         val NORMALIZE_VOLUME = booleanPreferencesKey("normalize_volume")
+        val NORMALIZATION_LEVEL = stringPreferencesKey("normalization_level")
         val LIBRARY_LAYOUT = stringPreferencesKey("library_layout")
         val LIBRARY_SORT = stringPreferencesKey("library_sort")
         val LIBRARY_SORT_DESCENDING = booleanPreferencesKey("library_sort_descending")

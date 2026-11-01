@@ -5,6 +5,7 @@ import android.util.LruCache
 import com.henriquesebastiao.downtify.core.data.di.ApplicationScope
 import com.henriquesebastiao.downtify.core.data.settings.SettingsRepository
 import com.henriquesebastiao.downtify.core.model.LoudnessProfile
+import com.henriquesebastiao.downtify.core.model.NormalizationLevel
 import com.henriquesebastiao.downtify.core.network.ApiFactory
 import com.henriquesebastiao.downtify.core.network.session.SessionStore
 import com.henriquesebastiao.downtify.core.network.session.cacheOwner
@@ -41,6 +42,8 @@ class LoudnessProfiles @Inject constructor(
     @ApplicationScope scope: CoroutineScope,
 ) {
     val enabled = settings.settings.map { it.normalizeVolume }.stateIn(scope, SharingStarted.Eagerly, false)
+    val level = settings.settings.map { it.normalizationLevel }
+        .stateIn(scope, SharingStarted.Eagerly, NormalizationLevel.Normal)
     private val known = LruCache<String, Known>(CACHE_SIZE)
     private val receipts = File(context.filesDir, "loudness")
     private val json = Json { ignoreUnknownKeys = true }
@@ -58,7 +61,7 @@ class LoudnessProfiles @Inject constructor(
     fun gainDb(trackId: String): Double {
         if (!enabled.value) return 0.0
         val key = key(trackId) ?: return 0.0
-        return known[key]?.profile?.safeGainDb() ?: 0.0
+        return known[key]?.profile?.safeGainDb(level.value) ?: 0.0
     }
 
     /**

@@ -546,4 +546,9 @@
         <item quantity="one">az áthelyezés után %1$d napig megmaradnak</item>
         <item quantity="other">az áthelyezés után %1$d napig megmaradnak</item>
     </plurals>
+    <string name="settings_normalization_level">Hangerőszint</string>
+    <string name="settings_normalization_normal">Normál</string>
+    <string name="settings_normalization_louder">Hangosabb</string>
+    <string name="settings_normalization_maximum">Maximum</string>
+    <string name="settings_normalization_level_hint">A hangerőt az egyes számok biztonságos határáig növeli. A hangfájlok változatlanok maradnak.</string>
 </resources>

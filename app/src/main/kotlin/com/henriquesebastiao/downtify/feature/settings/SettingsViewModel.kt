@@ -9,6 +9,7 @@ import com.henriquesebastiao.downtify.core.data.settings.SettingsRepository
 import com.henriquesebastiao.downtify.core.data.settings.ThemeMode
 import com.henriquesebastiao.downtify.core.data.settings.UserSettings
 import com.henriquesebastiao.downtify.core.model.AppFont
+import com.henriquesebastiao.downtify.core.model.NormalizationLevel
 import com.henriquesebastiao.downtify.core.model.StreamFormat
 import com.henriquesebastiao.downtify.core.model.StreamQuality
 import com.henriquesebastiao.downtify.core.model.Transcoding
@@ -74,6 +75,7 @@ class SettingsViewModel @Inject constructor(
     fun setWifiQuality(value: StreamQuality) = launch { settings.setWifiQuality(value) }
     fun setMobileQuality(value: StreamQuality) = launch { settings.setMobileQuality(value) }
     fun setNormalizeVolume(value: Boolean) = launch { settings.setNormalizeVolume(value) }
+    fun setNormalizationLevel(value: NormalizationLevel) = launch { settings.setNormalizationLevel(value) }
     fun setTheme(value: ThemeMode) = launch { settings.setTheme(value) }
     fun setDynamicColor(value: Boolean) = launch { settings.setDynamicColor(value) }
     fun setAmoled(value: Boolean) = launch { settings.setAmoled(value) }

@@ -9,6 +9,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -20,7 +21,8 @@ import org.robolectric.annotation.Config
 class NormalizationAudioProcessorTest {
     private val gains = mutableMapOf("one" to -6.020599913, "two" to 6.020599913)
     private var enabled = true
-    private val processor = NormalizationAudioProcessor({ gains[it] ?: 0.0 }, { enabled })
+    private var revision = 0
+    private val processor = NormalizationAudioProcessor({ gains[it] ?: 0.0 }, { enabled }, { revision })
 
     private fun metadata(id: String): AudioProcessor.StreamMetadata {
         val timeline = object : Timeline() {
@@ -67,6 +69,28 @@ class NormalizationAudioProcessorTest {
         assertArrayEquals(intArrayOf(500), process(1000))
         start("two")
         assertEquals(3981, process(1000).single())
+    }
+
+    @Test
+    fun changingTheLevelDuringPlaybackRampsTheCurrentStreamWithoutAFlush() {
+        start("one")
+        assertEquals(500, process(1000).single())
+        gains["one"] = 0.0
+        revision++
+        val output = process(*IntArray(1024) { 1000 })
+        assertTrue(output.first() in 501..999)
+        assertEquals(1000, output.last())
+    }
+
+    @Test
+    fun aLevelChangeKeepsBothStereoChannelsAtTheSameGain() {
+        processor.configure(AudioProcessor.AudioFormat(48000, 2, C.ENCODING_PCM_16BIT))
+        processor.flush(metadata("one"))
+        gains["one"] = 0.0
+        revision++
+        val output = process(*IntArray(1024) { 1000 })
+        output.toList().chunked(2).forEach { assertEquals(it[0], it[1]) }
+        assertEquals(1000, output.last())
     }
 
     @Test

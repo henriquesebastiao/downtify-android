@@ -40,6 +40,10 @@ Opening the library does not start music. Android Auto/your receiver chooses the
 - **Theme:** follow system, dark or light, optional wallpaper colors (Android 12+) and **Pure black** for OLED screens in the dark theme.
 - **About** (Settings › About Downtify): version (tap to copy), bug reports, source code, the GPL-3.0 license, the terms and disclaimer, and ways to support the project.
 
+## Playback level
+
+Settings → Playback → loudness normalization offers Normal, Louder and Maximum, with measured peak protection. See [playback level](docs/volume-and-server-pause.md).
+
 ## Requirements
 
 - JDK 17 or newer (the build targets Java 17).

@@ -560,4 +560,9 @@
         <item quantity="many">guardadas por %1$d de dias depois de movidas</item>
         <item quantity="other">guardadas por %1$d dias depois de movidas</item>
     </plurals>
+    <string name="settings_normalization_level">Nível de reprodução</string>
+    <string name="settings_normalization_normal">Normal</string>
+    <string name="settings_normalization_louder">Mais alto</string>
+    <string name="settings_normalization_maximum">Máximo</string>
+    <string name="settings_normalization_level_hint">Aumenta o volume dentro do limite seguro de cada faixa. Os arquivos de áudio permanecem intactos.</string>
 </resources>
