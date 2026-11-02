@@ -13,4 +13,5 @@
     <string name="car_choose_result">Няколко резултата: изберете песен от търсенето.</string>
     <string name="player_like">Добавяне в любими песни</string>
     <string name="player_unlike">Премахване от любими песни</string>
+    <string name="car_refine_search">Твърде много резултати. Уточнете търсенето.</string>
 </resources>

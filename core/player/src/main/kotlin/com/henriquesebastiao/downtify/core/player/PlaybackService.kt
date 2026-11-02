@@ -60,6 +60,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.guava.future
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -130,6 +131,7 @@ class PlaybackService : MediaLibraryService() {
 
     override fun onCreate() {
         super.onCreate()
+        CarDiagnostics.service(true)
         val normalizer = NormalizationAudioProcessor(
             gainForTrack = loudness::gainDb,
             isEnabled = { loudness.enabled.value },
@@ -242,6 +244,7 @@ class PlaybackService : MediaLibraryService() {
     }
 
     override fun onDestroy() {
+        CarDiagnostics.service(false)
         syncCoordinator.setMediaServiceActive(false)
         artworkTracker?.stop()
         readAhead.stop()
@@ -355,26 +358,17 @@ class PlaybackService : MediaLibraryService() {
             mediaItems: MutableList<MediaItem>,
             startIndex: Int,
             startPositionMs: Long,
-        ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> = if (
-            own(controller) && mediaItems.none { it.requestMetadata.searchQuery != null }
-        ) {
-            Futures.transform(
-                onAddMediaItems(mediaSession, controller, mediaItems),
-                { resolved ->
-                    MediaSession.MediaItemsWithStartPosition(checkNotNull(resolved), startIndex, startPositionMs)
-                },
-                com.google.common.util.concurrent.MoreExecutors.directExecutor(),
-            )
-        } else {
-            super.onSetMediaItems(mediaSession, controller, mediaItems, startIndex, startPositionMs)
-        }
-
-        override fun onConnectAsync(
-            session: MediaSession,
-            controller: MediaSession.ControllerInfo,
-        ): ListenableFuture<MediaSession.ConnectionResult> = scope.future {
+        ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> = scope.future {
             persistence?.awaitReady()
-            onConnect(session, controller)
+            if (own(controller) && mediaItems.none { it.requestMetadata.searchQuery != null }) {
+                MediaSession.MediaItemsWithStartPosition(
+                    onAddMediaItems(mediaSession, controller, mediaItems).await(),
+                    startIndex,
+                    startPositionMs,
+                )
+            } else {
+                super.onSetMediaItems(mediaSession, controller, mediaItems, startIndex, startPositionMs).await()
+            }
         }
 
         override fun onPlaybackResumption(

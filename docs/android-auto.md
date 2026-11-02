@@ -52,3 +52,105 @@ Android Auto and the receiver select the media source on connection. Downtify do
 `./gradlew :app:testDebugUnitTest --tests '*CarServiceIntegrationTest'` checks the merged application identity/descriptor, discovery of the exported service, real Media3 browser connection to the actual playback service without an Activity, paused queue restoration, favorites browsing and association revocation. Only storage/network dependencies are faked. This does not emulate Android Auto's source filtering, a separate controller UID, an assistant or an autoradio.
 
 For a real device, record Android, Android Auto and app versions, install source, launcher visibility, whether the phone was locked, and which app was last playing. Capture only the relevant service/Media3 connection errors. Keep raw device logs private: they can contain titles, addresses or identifiers, and must never be pasted into a public issue without review. A DHU check and a real parked-car check remain separate acceptance steps.
+
+
+## Stability follow-up: full-phone freeze report
+
+Launcher visibility is not a playback or stability acceptance test. A full-phone
+freeze was reported over direct USB after enabling Android Auto's unknown-source
+option. A retained input-dispatch ANR from the installed Preview was subsequently
+retrieved. Its exact R8 mapping identifies the main thread waiting in
+MediaBrowserServiceCompat.onGetRoot through Media3 ConditionVariable. This
+establishes a blocked legacy root path in Downtify, but does not establish the
+cause of every reported device-wide freeze; do not recommend repeating the failing setup without diagnostics.
+
+The service now accepts trusted controllers without waiting for queue restoration.
+Its library root is static and immediately available, including when unpaired;
+authentication errors are returned when content is requested. Browsing does not
+prepare audio or seize focus. Storage loading remains off the main thread.
+
+The four primary sections are Playlists, Liked songs, Library and Offline. Library
+contains Artists, Albums and Tracks. Receivers requesting fewer than four root
+items receive a single Collections folder. Large collections use range folders
+with at most 100 children per node; selected playlist rows retain their full
+original queue and position. Searches with more than 100 matches ask for a more
+specific query instead of constructing an unbounded response.
+
+Catalog updates are coalesced, compared against the previous index and sent only
+to subscribed controllers. Unsubscribe/disconnect removes controller state and
+cancels unneeded artwork tasks. The initial subscription notification belongs to
+Media3, avoiding duplicate notifications from the app.
+
+### Diagnostic procedure (development machine / scratch installation)
+
+Keep the owner's unknown-source option disabled during preparation. First record
+OS, Android Auto and app versions, APK certificate, process exit reasons and any
+retained ANR/system logs. Keep raw bugreports private: they can contain credentials,
+network addresses and personal data. Do not reset storage or reinstall Google Play.
+
+For opt-in counters on a diagnostic installation only:
+
+```sh
+adb shell setprop log.tag.DowntifyCar DEBUG
+adb logcat -v threadtime -s DowntifyCar AndroidRuntime ActivityManager
+adb shell dumpsys meminfo com.henriquesebastiao.downtify.preview
+adb shell dumpsys activity exit-info com.henriquesebastiao.downtify.preview
+adb shell setprop log.tag.DowntifyCar INFO
+```
+
+Counters contain service creations/destructions, heap bytes, thread count and
+browse response item counts, never tokens, URLs, media IDs or titles. They are
+disabled by default. They do not replace ANR traces or system diagnostics.
+
+On an emulator/scratch installation, compare minimal catalog, 10,000 tracks without
+artwork, then artwork. Exercise a platform/legacy browser in a separate process,
+repeated bind/unbind, slow storage, cold startup, offline content and revocation.
+Modern same-process Robolectric service tests do not establish this acceptance.
+Stop on an uncontrolled reconnect loop, ANR or device unresponsiveness.
+
+Then require a usable DHU UI and real receiver checks at rest: locked phone,
+all sections, playback, steering buttons, call interruption, ten reconnects,
+an hour without freeze, and reconnect after each last-used player (Downtify and
+Deezer). The phone must remain responsive. Protocol/TLS negotiation alone is not
+a DHU pass. If the official Media3 demo fails too, investigate the host/OS with
+sanitized evidence rather than weakening trust checks or forcing a foreground service.
+
+References: [root and hierarchy contract](https://developer.android.com/training/cars/media/create-media-browser/content-hierarchy),
+[Media3 1.11.1 fixes](https://github.com/androidx/media/blob/1.11.1/RELEASENOTES.md),
+[service churn discussion](https://github.com/androidx/media/issues/3158).
+Media3 1.11.1 already contains #3393; upgrading blindly is not proof of a fix.
+The generic driving-time error is not an incorrect application label proven by
+the report. Do not rename system messages or mark the phone Activity as safe to
+display while driving.
+
+
+The development-only `LegacyCarProbeService` runs in `:legacyCarProbe` and uses
+the Android framework MediaBrowser against the actual PlaybackService. The
+instrumentation test verifies a different PID and 30 root connect/disconnect
+cycles. It uses the app UID: it does not impersonate Android Auto or validate
+Android Auto's external trust identity. Run only on a scratch debug installation:
+
+```sh
+./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.henriquesebastiao.downtify.LegacyCarProcessTest
+```
+
+The debug service is absent from the release manifest. No reset or pairing token
+is needed for the unpaired-root test. It does not open an Activity or start Auto.
+
+
+### Source errors from unusable offline copies
+
+An extractor error can come from the phone's offline copy even when the server's
+original is valid. Offline playback now rejects missing files, a length different
+from the recorded download, and a zero-filled 64-byte prefix. Results are cached
+by file size and modification time. This is a bounded sanity check, not a checksum
+or proof that every audio frame is intact.
+
+At startup, unusable copies lose their completed-download entry; kept collections
+remain selected and the existing worker fetches replacements under the saved
+Wi-Fi/storage constraints. Connected playback can stream while repair is pending.
+New empty or zero-prefixed HTTP downloads fail rather than becoming completed
+copies. Only unusable local/temporary copies are replaced; pairing, settings,
+valid downloads and server originals remain intact. No server deployment or
+application-data reset is required. An unavailable server can still prevent
+playback until the replacement is downloaded.

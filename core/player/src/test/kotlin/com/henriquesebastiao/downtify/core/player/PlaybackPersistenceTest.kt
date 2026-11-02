@@ -31,6 +31,45 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class PlaybackPersistenceTest {
+    @Test fun `a queue edited and cleared while loading cannot be resurrected by late restoration`() = runTest {
+        val session = Session("https://fixture.test", "server", "Test", "device", "fixture")
+        val sessions = mockk<SessionStore>(relaxed = true)
+        every { sessions.current } returns session
+        val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val repository = mockk<PlaybackRepository>(relaxed = true)
+        coEvery { repository.load(session.playbackOwner) } coAnswers {
+            gate.await()
+            PlaybackSnapshot(
+                listOf(SavedPlaybackItem("old", "Old", "Artist")),
+                0,
+                100,
+                false,
+                listOf(0),
+                Player.REPEAT_MODE_OFF,
+                1f,
+            )
+        }
+        val player = ExoPlayer.Builder(RuntimeEnvironment.getApplication()).setLooper(Looper.getMainLooper()).build()
+        val persistence = PlaybackPersistence(player, repository, sessions, backgroundScope)
+        try {
+            persistence.start()
+            kotlinx.coroutines.yield()
+            player.setMediaItem(
+                androidx.media3.common.MediaItem.Builder().setMediaId("new").setUri("https://fixture.test/new").build(),
+            )
+            shadowOf(Looper.getMainLooper()).idle()
+            player.clearMediaItems()
+            shadowOf(Looper.getMainLooper()).idle()
+            gate.complete(Unit)
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { persistence.awaitReady() }
+            assertEquals(0, player.mediaItemCount)
+            assertFalse(player.playWhenReady)
+        } finally {
+            persistence.stop()
+            player.release()
+        }
+    }
+
     @Test
     fun `failed restore must not erase the durable queue during service shutdown`() = runTest {
         val session = Session("https://example.test", "server", "Test", "device", "fixture")
@@ -43,7 +82,7 @@ class PlaybackPersistenceTest {
         val persistence = PlaybackPersistence(player, repository, sessions, backgroundScope)
         try {
             persistence.start()
-            persistence.awaitReady()
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { persistence.awaitReady() }
             persistence.stop()
             verify(exactly = 0) { repository.save(any(), any()) }
         } finally {
@@ -83,7 +122,7 @@ class PlaybackPersistenceTest {
         val persistence = PlaybackPersistence(player, repository, sessions, backgroundScope)
         try {
             persistence.start()
-            persistence.awaitReady()
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { persistence.awaitReady() }
             assertEquals(
                 listOf("a", "a", "b"),
                 (0 until player.mediaItemCount).map {

@@ -75,12 +75,20 @@ class CarBrowserTest {
         scope.cancel()
     }
 
+    @Test fun `root completes immediately even when the library is unavailable and unpaired`() {
+        snapshot.value = null
+        paired.value = null
+        val result = browser.onGetLibraryRoot(session, controller, null)
+        assertTrue(result.isDone)
+        assertEquals(CarLibrary.ROOT, result.get().value!!.mediaId)
+    }
+
     @Test fun `root is browsable and never starts audio`() {
         val root = browser.onGetLibraryRoot(session, controller, null).get(5, TimeUnit.SECONDS)
         assertEquals(CarLibrary.ROOT, root.value!!.mediaId)
         assertFalse(root.value!!.mediaMetadata.isPlayable!!)
         assertEquals(
-            6,
+            4,
             browser.onGetChildren(session, controller, CarLibrary.ROOT, 0, 20, null)
                 .get(5, TimeUnit.SECONDS).value!!.size,
         )
@@ -89,7 +97,7 @@ class CarBrowserTest {
     @Test fun `root announces search and keeps all categories accessible on limited receivers`() {
         val params = LibraryParams.Builder().setExtras(
             Bundle().apply {
-                putInt(MediaConstants.EXTRAS_KEY_ROOT_CHILDREN_LIMIT, 4)
+                putInt(MediaConstants.EXTRAS_KEY_ROOT_CHILDREN_LIMIT, 2)
             },
         ).build()
         val root = browser.onGetLibraryRoot(session, controller, params).get(5, TimeUnit.SECONDS)
@@ -99,7 +107,7 @@ class CarBrowserTest {
         assertEquals(1, children.size)
         val categories = browser.onGetChildren(session, controller, children.single().mediaId, 0, 20, null)
             .get(5, TimeUnit.SECONDS).value!!
-        assertEquals(6, categories.size)
+        assertEquals(4, categories.size)
     }
 
     @Test fun `explicit multi item queue preserves its own order and selected index`() {
@@ -158,8 +166,18 @@ class CarBrowserTest {
     @Test fun `unpaired controller receives an authentication error`() {
         paired.value = null
         val root = browser.onGetLibraryRoot(session, controller, null).get(5, TimeUnit.SECONDS)
-        assertEquals(SessionError.ERROR_SESSION_AUTHENTICATION_EXPIRED, root.resultCode)
-        assertNull(root.value)
+        assertTrue(root.value != null)
+        assertEquals(
+            SessionError.ERROR_SESSION_AUTHENTICATION_EXPIRED,
+            browser.onGetChildren(
+                session,
+                controller,
+                CarLibrary.ROOT,
+                0,
+                100,
+                null,
+            ).get(5, TimeUnit.SECONDS).resultCode,
+        )
     }
 
     @Test fun `voice search resolves one library track without an online search`() {

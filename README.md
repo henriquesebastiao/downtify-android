@@ -116,3 +116,5 @@ These are designs, not code: Downtify implements them in its own components (`:c
 ## License
 
 GPL-3.0 — see [LICENSE](LICENSE).
+
+Android Auto stability: see [the diagnostic and receiver acceptance checklist](docs/android-auto.md#stability-follow-up-full-phone-freeze-report). Launcher visibility and unit tests alone do not validate a full-phone freeze fix.

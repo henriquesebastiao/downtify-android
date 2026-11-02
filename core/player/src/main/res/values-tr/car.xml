@@ -13,4 +13,5 @@
     <string name="car_choose_result">Birden çok sonuç: arama sonuçlarından bir parça seçin.</string>
     <string name="player_like">Beğenilen parçalara ekle</string>
     <string name="player_unlike">Beğenilen parçalardan kaldır</string>
+    <string name="car_refine_search">Çok fazla sonuç. Aramanızı daraltın.</string>
 </resources>

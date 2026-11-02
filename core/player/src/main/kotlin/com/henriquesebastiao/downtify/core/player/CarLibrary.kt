@@ -23,6 +23,7 @@ internal class CarLibrary(
     )
 
     private val children = mutableMapOf<String, List<Entry>>()
+    private val browseChildren = mutableMapOf<String, List<Entry>>()
     private val entries = mutableMapOf<String, Entry>()
     private val positions = mutableMapOf<String, Pair<String, Int>>()
     private val searchable: List<Pair<Entry, String>>
@@ -53,9 +54,25 @@ internal class CarLibrary(
         searchable = (children[ARTISTS].orEmpty() + children[ALBUMS].orEmpty() + children[TRACKS].orEmpty()).map {
             it to normalized("${it.title} ${it.subtitle} ${it.track?.album.orEmpty()}")
         }
+        children.toMap().forEach { (parent, rows) -> group(parent, rows) }
     }
 
-    fun children(parent: String): List<Entry>? = children[parent]
+    /** Hierarchical ranges work with legacy clients that never request another page. */
+    private fun group(parent: String, rows: List<Entry>) {
+        if (rows.size <= MAX_CHILDREN) {
+            browseChildren[parent] = rows
+            return
+        }
+        var span = MAX_CHILDREN
+        while ((rows.size.toLong() + span - 1) / span > MAX_CHILDREN) span *= MAX_CHILDREN
+        browseChildren[parent] = rows.chunked(span).mapIndexed { index, part ->
+            val id = "auto:range:${encode(parent)}:$index"
+            group(id, part)
+            Entry(id, "${part.first().title} \u2013 ${part.last().title}").also { entries[id] = it }
+        }
+    }
+
+    fun children(parent: String): List<Entry>? = browseChildren[parent]
     fun item(id: String): Entry? = entries[id]
 
     /** Only known playable IDs from this association can become playback items. */
@@ -92,6 +109,7 @@ internal class CarLibrary(
     }
 
     companion object {
+        const val MAX_CHILDREN = 100
         const val ROOT = "auto:root"
         const val PLAYLISTS = "auto:playlists"
         const val FAVORITES = "auto:favorites"
