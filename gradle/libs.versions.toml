@@ -13,7 +13,7 @@ navigation = "2.10.2"
 lifecycle = "2.11.0"
 coreKtx = "1.19.1"
 splashscreen = "1.2.0"
-palette = "1.0.0"
+palette = "1.1.0"
 # Kotlin port of material-color-utilities: Now Playing's scheme from the cover. Checked on Maven Central 2026-10-25.
 materialColorUtilities = "5.0.1"
 media3 = "1.11.1"
