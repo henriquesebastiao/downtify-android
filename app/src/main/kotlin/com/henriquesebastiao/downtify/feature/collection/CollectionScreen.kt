@@ -95,7 +95,6 @@ private fun BoxScope.scrollbarPlacement(): Modifier = Modifier
     .align(Alignment.TopEnd)
     .padding(top = Spacing.sm, bottom = Spacing.xl + LocalBottomBarsInset.current)
 
-
 @Composable
 fun CollectionRoute(
     onBack: () -> Unit,
@@ -183,9 +182,12 @@ fun CollectionScreen(
         },
     ) { padding ->
         when {
-            state.loading -> Box(Modifier
-                .fillMaxSize()
-                .padding(padding), contentAlignment = Alignment.Center) {
+            state.loading -> Box(
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center,
+            ) {
                 LoadingIndicator()
             }
 
