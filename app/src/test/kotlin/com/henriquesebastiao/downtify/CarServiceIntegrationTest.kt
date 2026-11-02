@@ -85,7 +85,7 @@ class CarServiceIntegrationTest {
         val controller = connect()
         val root = await(controller.getLibraryRoot(null)).value!!
         val categories = await(controller.getChildren(root.mediaId, 0, 20, null)).value!!
-        assertEquals(6, categories.size)
+        assertEquals(4, categories.size)
         val favorites = categories.single {
             it.mediaMetadata.title.toString() ==
                 context.getString(com.henriquesebastiao.downtify.core.player.R.string.car_favorites)
@@ -114,7 +114,29 @@ class CarServiceIntegrationTest {
         fixture.association.value = null
         pumpUntil { controller.mediaItemCount == 0 }
         assertFalse(controller.playWhenReady)
-        assertTrue(await(controller.getLibraryRoot(null)).resultCode < 0)
+        val root = await(controller.getLibraryRoot(null)).value!!
+        assertTrue(await(controller.getChildren(root.mediaId, 0, 100, null)).resultCode < 0)
+    }
+
+    @Test fun `connection and root never wait for pending queue restoration`() {
+        service.destroy()
+        val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+        fixture.restorationGate = gate
+        service = Robolectric.buildService(PlaybackService::class.java)
+        fixture.inject(service.get())
+        service.create()
+        val component = ComponentName(context, PlaybackService::class.java)
+        shadowOf(context).setComponentNameAndServiceForBindService(
+            component,
+            service.get().onBind(Intent(MediaLibraryService.SERVICE_INTERFACE)),
+        )
+        val controller = connect()
+        assertEquals("auto:root", await(controller.getLibraryRoot(null)).value!!.mediaId)
+        assertFalse(gate.isCompleted)
+        assertEquals(0, controller.mediaItemCount)
+        gate.complete(Unit)
+        pumpUntil { controller.mediaItemCount == 2 }
+        assertFalse(controller.playWhenReady)
     }
 
     private fun connect(): MediaBrowser = await(
@@ -130,7 +152,7 @@ class CarServiceIntegrationTest {
     private fun pumpUntil(done: () -> Boolean) {
         val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10)
         while (!done() && System.nanoTime() < deadline) {
-            shadowOf(Looper.getMainLooper()).idle()
+            shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(10))
             Thread.sleep(10)
         }
         assertTrue("Media3 connection or command did not finish", done())

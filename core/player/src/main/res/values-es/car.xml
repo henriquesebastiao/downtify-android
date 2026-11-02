@@ -13,4 +13,5 @@
     <string name="car_choose_result">Varios resultados: elige una canción en la búsqueda.</string>
     <string name="player_like">Añadir a canciones favoritas</string>
     <string name="player_unlike">Quitar de canciones favoritas</string>
+    <string name="car_refine_search">Demasiados resultados. Precisa la búsqueda.</string>
 </resources>

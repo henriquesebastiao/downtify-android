@@ -21,6 +21,7 @@ import org.robolectric.util.ReflectionHelpers
 /** Fake storage/network only: the service, ExoPlayer and Media3 binder remain real. */
 @UnstableApi
 internal class CarServiceFixture {
+    var restorationGate: kotlinx.coroutines.CompletableDeferred<Unit>? = null
     val association = MutableStateFlow<Session?>(Session("https://fixture.test", "server", "Car", "device", "fixture"))
     val source = mockk<DataSource.Factory>()
     val saved = PlaybackSnapshot(
@@ -50,7 +51,10 @@ internal class CarServiceFixture {
             every { session } returns association
         }
         service.playback = mockk(relaxed = true) {
-            coEvery { load(any()) } returns saved
+            coEvery { load(any()) } coAnswers {
+                restorationGate?.await()
+                saved
+            }
         }
         service.offline = mockk(relaxed = true) {
             every { state } returns MutableStateFlow<OfflineState?>(null)

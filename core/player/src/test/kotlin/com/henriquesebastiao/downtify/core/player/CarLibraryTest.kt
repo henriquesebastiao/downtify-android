@@ -98,6 +98,22 @@ class CarLibraryTest {
         assertNull(next.track(first.id))
     }
 
+    @Test fun `ten thousand tracks remain reachable without pagination and retain full queue order`() {
+        val tracks = (0 until 10_000).map { track("id$it", "Track %05d".format(it), "Artist", "Album") }
+        val index = CarLibrary(LibrarySnapshot(tracks), emptyList(), emptyList(), emptySet())
+        fun walk(parent: String): List<CarLibrary.Entry> {
+            val rows = checkNotNull(index.children(parent))
+            assertTrue(rows.size <= CarLibrary.MAX_CHILDREN)
+            return rows.flatMap { if (it.track == null) walk(it.id) else listOf(it) }
+        }
+        val rows = walk(CarLibrary.TRACKS)
+        assertEquals(tracks.map { it.id }, rows.map { it.track!!.id })
+        val playback = index.playback(rows[5_432].id)!!
+        assertEquals(10_000, playback.first.size)
+        assertEquals(5_432, playback.second)
+        assertEquals(tracks, playback.first)
+    }
+
     private fun track(id: String, title: String, artist: String, album: String) = Track(
         id = id, file = "$id.flac", title = title, artist = artist, artists = listOf(artist), album = album,
         albumArtist = artist, albumId = album, artistId = artist, trackNumber = 1, year = "2026", duration = 120.0,

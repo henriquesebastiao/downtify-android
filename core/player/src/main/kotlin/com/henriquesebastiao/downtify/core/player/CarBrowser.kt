@@ -14,6 +14,7 @@ import androidx.media3.session.MediaLibraryService.MediaLibrarySession
 import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionError
 import com.google.common.collect.ImmutableList
+import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.henriquesebastiao.downtify.core.data.library.LibraryRepository
 import com.henriquesebastiao.downtify.core.data.offline.OfflineRepository
@@ -21,9 +22,11 @@ import com.henriquesebastiao.downtify.core.network.ServerUrls
 import com.henriquesebastiao.downtify.core.network.session.SessionStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.guava.future
 import kotlinx.coroutines.launch
@@ -31,6 +34,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 /** The car browses the existing local feed, not the server search/download API. */
+@OptIn(FlowPreview::class)
 @UnstableApi
 internal open class CarBrowser(
     private val context: Context,
@@ -42,7 +46,7 @@ internal open class CarBrowser(
 ) : MediaLibrarySession.Callback {
     private val indexed = MutableStateFlow<Pair<String?, CarLibrary?>>(null to null)
     private val warmups = mutableMapOf<String, Job>()
-    private val subscriptions = mutableSetOf<String>()
+    private val subscriptions = mutableMapOf<MediaSession.ControllerInfo, MutableSet<String>>()
     private var initialOwner: String? = null
     private val compactRoots = mutableSetOf<MediaSession.ControllerInfo>()
 
@@ -61,12 +65,19 @@ internal open class CarBrowser(
                     withContext(Dispatchers.Default) { CarLibrary(it, playlists, likes, files?.files?.keys.orEmpty()) }
                 }
                 association?.artworkOwner to next
-            }.collect { (association, next) ->
+            }.debounce(250).collect { (association, next) ->
+                val (previousOwner, previous) = indexed.value
                 warmups.values.forEach(Job::cancel)
                 warmups.clear()
                 indexed.value = association to next
-                (CarLibrary.ROOTS + CarLibrary.ROOT + COLLECTIONS + subscriptions).distinct().forEach { parent ->
-                    session.notifyChildrenChanged(parent, childCount(parent), null)
+                subscriptions.forEach { (browser, parents) ->
+                    parents.forEach { parent ->
+                        if (previousOwner != association || previous == null ||
+                            previous.children(parent) != next?.children(parent)
+                        ) {
+                            session.notifyChildrenChanged(browser, parent, childCount(parent), null)
+                        }
+                    }
                 }
             }
         }
@@ -77,23 +88,27 @@ internal open class CarBrowser(
     }
 
     private fun childCount(parent: String): Int = if (parent == CarLibrary.ROOT || parent == COLLECTIONS) {
-        CarLibrary.ROOTS.size
+        4
+    } else if (parent == LIBRARY) {
+        3
     } else {
         current()?.children(parent)?.size ?: 0
     }
 
     private fun root(): MediaItem = folder(CarLibrary.ROOT, context.getString(R.string.car_library))
 
-    private fun roots(): List<MediaItem> = CarLibrary.ROOTS.zip(
-        listOf(
-            R.string.car_playlists,
-            R.string.car_favorites,
-            R.string.car_artists,
-            R.string.car_albums,
-            R.string.car_tracks,
-            R.string.car_offline,
-        ),
-    ).map { (id, title) -> folder(id, context.getString(title)) }
+    private fun roots(): List<MediaItem> = listOf(
+        folder(CarLibrary.PLAYLISTS, context.getString(R.string.car_playlists)),
+        folder(CarLibrary.FAVORITES, context.getString(R.string.car_favorites)),
+        folder(LIBRARY, context.getString(R.string.car_library)),
+        folder(CarLibrary.OFFLINE, context.getString(R.string.car_offline)),
+    )
+
+    private fun libraryRoots(): List<MediaItem> = listOf(
+        folder(CarLibrary.ARTISTS, context.getString(R.string.car_artists)),
+        folder(CarLibrary.ALBUMS, context.getString(R.string.car_albums)),
+        folder(CarLibrary.TRACKS, context.getString(R.string.car_tracks)),
+    )
 
     private fun folder(id: String, title: String): MediaItem = MediaItem.Builder().setMediaId(id)
         .setMediaMetadata(
@@ -105,24 +120,16 @@ internal open class CarBrowser(
         session: MediaLibrarySession,
         browser: MediaSession.ControllerInfo,
         params: LibraryParams?,
-    ): ListenableFuture<LibraryResult<MediaItem>> = scope.future {
-        withContext(Dispatchers.IO) { sessions.ensureLoaded() }
-        if (sessions.current ==
-            null
-        ) {
-            LibraryResult.ofError(authenticationError())
-        } else {
-            val limit = params?.extras?.getInt(MediaConstants.EXTRAS_KEY_ROOT_CHILDREN_LIMIT, Int.MAX_VALUE)
-            if (limit != null && limit in 1 until CarLibrary.ROOTS.size) {
-                compactRoots.add(browser)
-            } else {
-                compactRoots.remove(browser)
-            }
-            val extras = Bundle(params?.extras ?: Bundle.EMPTY).apply {
-                putBoolean("android.media.browse.SEARCH_SUPPORTED", true)
-            }
-            LibraryResult.ofItem(root(), LibraryParams.Builder().setExtras(extras).build())
+    ): ListenableFuture<LibraryResult<MediaItem>> {
+        // Legacy onGetRoot must never wait for Keystore, persistence or networking.
+        val limit = params?.extras?.getInt(MediaConstants.EXTRAS_KEY_ROOT_CHILDREN_LIMIT, 4) ?: 4
+        if (limit in 1..3) compactRoots.add(browser) else compactRoots.remove(browser)
+        val extras = Bundle(params?.extras ?: Bundle.EMPTY).apply {
+            putBoolean("android.media.browse.SEARCH_SUPPORTED", true)
         }
+        return Futures.immediateFuture(
+            LibraryResult.ofItem(root(), LibraryParams.Builder().setExtras(extras).build()),
+        )
     }
 
     override fun onGetChildren(
@@ -133,6 +140,7 @@ internal open class CarBrowser(
         pageSize: Int,
         params: LibraryParams?,
     ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> = scope.future {
+        withContext(Dispatchers.IO) { sessions.ensureLoaded() }
         if (sessions.current == null) return@future LibraryResult.ofError(authenticationError())
         if (page < 0 || pageSize <= 0) return@future LibraryResult.ofError(SessionError.ERROR_BAD_VALUE)
         if (parentId ==
@@ -147,9 +155,10 @@ internal open class CarBrowser(
             }
             return@future LibraryResult.ofItemList(CarLibrary.page(items, page, pageSize), params)
         }
-        if (parentId ==
-            COLLECTIONS
-        ) {
+        if (parentId == LIBRARY) {
+            return@future LibraryResult.ofItemList(CarLibrary.page(libraryRoots(), page, pageSize), params)
+        }
+        if (parentId == COLLECTIONS) {
             return@future LibraryResult.ofItemList(CarLibrary.page(roots(), page, pageSize), params)
         }
         val catalog = awaitIndex() ?: return@future LibraryResult.ofError(loadingError())
@@ -158,6 +167,7 @@ internal open class CarBrowser(
         val expectedOwner = sessions.current?.artworkOwner
         val items = withContext(Dispatchers.Default) { selected.map { item(it) } }
         if (sessions.current?.artworkOwner != expectedOwner) return@future LibraryResult.ofError(authenticationError())
+        CarDiagnostics.response(items.size)
         warm(session, parentId, selected)
         LibraryResult.ofItemList(items, params)
     }
@@ -167,8 +177,15 @@ internal open class CarBrowser(
         browser: MediaSession.ControllerInfo,
         mediaId: String,
     ): ListenableFuture<LibraryResult<MediaItem>> = scope.future {
+        withContext(Dispatchers.IO) { sessions.ensureLoaded() }
         if (sessions.current == null) return@future LibraryResult.ofError(authenticationError())
         if (mediaId == CarLibrary.ROOT) return@future LibraryResult.ofItem(root(), null)
+        if (mediaId ==
+            LIBRARY
+        ) {
+            return@future LibraryResult.ofItem(folder(LIBRARY, context.getString(R.string.car_library)), null)
+        }
+        libraryRoots().firstOrNull { it.mediaId == mediaId }?.let { return@future LibraryResult.ofItem(it, null) }
         if (mediaId == COLLECTIONS) {
             return@future LibraryResult.ofItem(folder(COLLECTIONS, context.getString(R.string.car_library)), null)
         }
@@ -189,13 +206,35 @@ internal open class CarBrowser(
         parentId: String,
         params: LibraryParams?,
     ): ListenableFuture<LibraryResult<Void>> = scope.future {
+        withContext(Dispatchers.IO) { sessions.ensureLoaded() }
         if (sessions.current == null) return@future LibraryResult.ofError(authenticationError())
-        if (parentId != CarLibrary.ROOT && parentId != COLLECTIONS && current()?.children(parentId) == null) {
+        if (parentId !in (CarLibrary.ROOTS + listOf(CarLibrary.ROOT, COLLECTIONS, LIBRARY)) &&
+            current()?.children(parentId) == null
+        ) {
             return@future LibraryResult.ofError(SessionError.ERROR_BAD_VALUE)
         }
-        subscriptions.add(parentId)
-        session.notifyChildrenChanged(browser, parentId, childCount(parentId), params)
+        subscriptions.getOrPut(browser) { mutableSetOf() }.add(parentId)
+        // Media3 sends the initial children notification after accepting the subscription.
         LibraryResult.ofVoid(params)
+    }
+
+    override fun onUnsubscribe(
+        session: MediaLibrarySession,
+        browser: MediaSession.ControllerInfo,
+        parentId: String,
+    ): ListenableFuture<LibraryResult<Void>> {
+        subscriptions[browser]?.remove(parentId)
+        if (subscriptions[browser]?.isEmpty() == true) subscriptions.remove(browser)
+        if (subscriptions.values.none { parentId in it }) warmups.remove(parentId)?.cancel()
+        return Futures.immediateFuture(LibraryResult.ofVoid())
+    }
+
+    override fun onDisconnected(session: MediaSession, controller: MediaSession.ControllerInfo) {
+        subscriptions.remove(controller)?.forEach { parent ->
+            if (subscriptions.values.none { parent in it }) warmups.remove(parent)?.cancel()
+        }
+        compactRoots.remove(controller)
+        super.onDisconnected(session, controller)
     }
 
     override fun onSearch(
@@ -204,9 +243,11 @@ internal open class CarBrowser(
         query: String,
         params: LibraryParams?,
     ): ListenableFuture<LibraryResult<Void>> = scope.future {
+        withContext(Dispatchers.IO) { sessions.ensureLoaded() }
         if (sessions.current == null) return@future LibraryResult.ofError(authenticationError())
         val catalog = awaitIndex() ?: return@future LibraryResult.ofError(loadingError())
         val count = withContext(Dispatchers.Default) { catalog.search(query).size }
+        if (count > CarLibrary.MAX_CHILDREN) return@future LibraryResult.ofError(searchError())
         session.notifySearchResultChanged(browser, query, count, params)
         LibraryResult.ofVoid(params)
     }
@@ -219,12 +260,14 @@ internal open class CarBrowser(
         pageSize: Int,
         params: LibraryParams?,
     ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> = scope.future {
+        withContext(Dispatchers.IO) { sessions.ensureLoaded() }
         if (sessions.current == null) return@future LibraryResult.ofError(authenticationError())
         if (page < 0 || pageSize <= 0) return@future LibraryResult.ofError(SessionError.ERROR_BAD_VALUE)
         val catalog = awaitIndex() ?: return@future LibraryResult.ofError(loadingError())
         val expectedOwner = sessions.current?.artworkOwner
-        val items =
-            withContext(Dispatchers.Default) { CarLibrary.page(catalog.search(query), page, pageSize).map { item(it) } }
+        val results = withContext(Dispatchers.Default) { catalog.search(query) }
+        if (results.size > CarLibrary.MAX_CHILDREN) return@future LibraryResult.ofError(searchError())
+        val items = withContext(Dispatchers.Default) { CarLibrary.page(results, page, pageSize).map { item(it) } }
         if (sessions.current?.artworkOwner != expectedOwner) return@future LibraryResult.ofError(authenticationError())
         LibraryResult.ofItemList(items, params)
     }
@@ -237,6 +280,7 @@ internal open class CarBrowser(
         startIndex: Int,
         startPositionMs: Long,
     ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> = scope.future {
+        withContext(Dispatchers.IO) { sessions.ensureLoaded() }
         val catalog = awaitIndex() ?: throw IllegalArgumentException(context.getString(R.string.car_loading))
         val expectedOwner = sessions.current?.artworkOwner
         if (mediaItems.size > 1) {
@@ -319,10 +363,13 @@ internal open class CarBrowser(
 
     private fun authenticationError(): SessionError =
         SessionError(SessionError.ERROR_SESSION_AUTHENTICATION_EXPIRED, context.getString(R.string.car_pair))
+    private fun searchError(): SessionError =
+        SessionError(SessionError.ERROR_BAD_VALUE, context.getString(R.string.car_refine_search))
     private fun loadingError(): SessionError =
         SessionError(SessionError.ERROR_IO, context.getString(R.string.car_loading))
 
     private companion object {
+        const val LIBRARY = "auto:library"
         const val COLLECTIONS = "auto:collections"
     }
 }

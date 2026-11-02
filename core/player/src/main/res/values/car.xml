@@ -11,4 +11,5 @@
     <string name="car_loading">Library loading. Please try again.</string>
     <string name="car_unavailable">This track is unavailable.</string>
     <string name="car_choose_result">Several matches: choose a track from the search results.</string>
+    <string name="car_refine_search">Too many matches. Refine your search.</string>
 </resources>
