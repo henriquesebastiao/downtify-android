@@ -136,3 +136,21 @@ Android Auto's external trust identity. Run only on a scratch debug installation
 
 The debug service is absent from the release manifest. No reset or pairing token
 is needed for the unpaired-root test. It does not open an Activity or start Auto.
+
+
+### Source errors from unusable offline copies
+
+An extractor error can come from the phone's offline copy even when the server's
+original is valid. Offline playback now rejects missing files, a length different
+from the recorded download, and a zero-filled 64-byte prefix. Results are cached
+by file size and modification time. This is a bounded sanity check, not a checksum
+or proof that every audio frame is intact.
+
+At startup, unusable copies lose their completed-download entry; kept collections
+remain selected and the existing worker fetches replacements under the saved
+Wi-Fi/storage constraints. Connected playback can stream while repair is pending.
+New empty or zero-prefixed HTTP downloads fail rather than becoming completed
+copies. Only unusable local/temporary copies are replaced; pairing, settings,
+valid downloads and server originals remain intact. No server deployment or
+application-data reset is required. An unavailable server can still prevent
+playback until the replacement is downloaded.

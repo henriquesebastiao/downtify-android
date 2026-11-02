@@ -15,8 +15,11 @@ import javax.inject.Singleton
 @Singleton
 class OfflineStorage @Inject constructor(@ApplicationContext context: Context) {
     private val dir = File(context.filesDir, "offline")
+    private val health = OfflineFileHealth()
 
     fun file(fileName: String): File = File(dir, fileName)
+
+    fun usable(fileName: String, bytes: Long): Boolean = health.usable(file(fileName), bytes)
 
     fun partFile(trackId: String): File = File(ensureDir(), "$trackId$PART")
 

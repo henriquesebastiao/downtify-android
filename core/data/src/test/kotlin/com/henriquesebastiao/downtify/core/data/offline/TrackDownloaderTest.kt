@@ -8,6 +8,7 @@ import mockwebserver3.MockWebServer
 import okhttp3.OkHttpClient
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -112,6 +113,24 @@ class TrackDownloaderTest {
 
         assertEquals(TrackDownloader.Result.Failed(503), result)
         assertEquals("012", part.readText())
+    }
+
+    @Test
+    fun rejectsAndRestartsAZeroFilledDownload() = runTest {
+        server.enqueue(MockResponse.Builder().code(200).body("\u0000".repeat(4096)).build())
+        assertTrue(downloader.download(url(), part) is TrackDownloader.Result.Failed)
+        assertFalse(part.exists())
+        server.enqueue(MockResponse.Builder().code(200).body("fLaCaudio").build())
+        assertEquals(TrackDownloader.Result.Complete(9), downloader.download(url(), part))
+        assertNull(server.takeRequest().headers["Range"])
+        assertNull(server.takeRequest().headers["Range"])
+    }
+
+    @Test
+    fun rejectsAnEmptySuccessfulResponse() = runTest {
+        server.enqueue(MockResponse.Builder().code(200).body("").build())
+        assertTrue(downloader.download(url(), part) is TrackDownloader.Result.Failed)
+        assertFalse(part.exists())
     }
 
     @Test
