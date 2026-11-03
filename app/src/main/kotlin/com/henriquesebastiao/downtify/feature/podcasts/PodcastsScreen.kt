@@ -1,5 +1,6 @@
 package com.henriquesebastiao.downtify.feature.podcasts
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
@@ -7,33 +8,34 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.henriquesebastiao.downtify.R
 import com.henriquesebastiao.downtify.core.designsystem.component.DowntifyIcons
 import com.henriquesebastiao.downtify.core.designsystem.component.EmptyState
+import com.henriquesebastiao.downtify.core.designsystem.component.PageHeader
+import com.henriquesebastiao.downtify.core.designsystem.component.PhonePreviews
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyTheme
+import com.henriquesebastiao.downtify.core.designsystem.theme.ListStyle
 import com.henriquesebastiao.downtify.core.designsystem.theme.Spacing
 import com.henriquesebastiao.downtify.core.model.PodcastShow
-import com.henriquesebastiao.downtify.ui.common.CoverRow
+import com.henriquesebastiao.downtify.ui.common.CoverItem
 import com.henriquesebastiao.downtify.ui.common.LoadError
+import com.henriquesebastiao.downtify.ui.common.plusBottomBars
 
 @Composable
 fun PodcastsRoute(
@@ -47,7 +49,7 @@ fun PodcastsRoute(
 }
 
 /** The shows the server follows, newest subscription first as the server lists them. */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun PodcastsScreen(
     state: PodcastsUiState,
@@ -56,20 +58,16 @@ fun PodcastsScreen(
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     Scaffold(
-        modifier = modifier,
+        modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         contentWindowInsets = WindowInsets(0),
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.podcasts_title)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            painterResource(DowntifyIcons.Back),
-                            contentDescription = stringResource(R.string.action_back),
-                        )
-                    }
-                },
+            PageHeader(
+                title = stringResource(R.string.podcasts_title),
+                onBack = onBack,
+                backLabel = stringResource(R.string.action_back),
+                scrollBehavior = scrollBehavior,
             )
         },
     ) { padding ->
@@ -80,7 +78,7 @@ fun PodcastsScreen(
         ) {
             when {
                 state.loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                    LoadingIndicator()
                 }
 
                 state.shows.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -90,6 +88,7 @@ fun PodcastsScreen(
                             icon = DowntifyIcons.Podcasts,
                             title = stringResource(R.string.podcasts_empty_title),
                             body = stringResource(R.string.podcasts_empty_body),
+                            hero = true,
                         )
                     } else {
                         EmptyState(
@@ -101,11 +100,12 @@ fun PodcastsScreen(
                 }
 
                 else -> LazyColumn(
-                    contentPadding = PaddingValues(bottom = Spacing.xl),
+                    contentPadding = PaddingValues(horizontal = Spacing.screen, vertical = Spacing.sm).plusBottomBars(),
+                    verticalArrangement = Arrangement.spacedBy(ListStyle.Separated.gap),
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     items(state.shows, key = { it.id }) { show ->
-                        CoverRow(
+                        CoverItem(
                             title = show.name,
                             subtitle = subtitle(show),
                             coverUrl = show.artworkUrl.ifBlank { null },
@@ -130,7 +130,7 @@ internal fun errorTitle(error: LoadError): Int = when (error) {
     LoadError.Failed -> R.string.load_error_failed
 }
 
-@PreviewLightDark
+@PhonePreviews
 @Composable
 private fun PodcastsPreview() {
     DowntifyTheme {
@@ -149,7 +149,7 @@ private fun PodcastsPreview() {
     }
 }
 
-@PreviewLightDark
+@PhonePreviews
 @Composable
 private fun PodcastsEmptyPreview() {
     DowntifyTheme { PodcastsScreen(PodcastsUiState(loading = false), onBack = {}, onShow = {}, onRefresh = {}) }

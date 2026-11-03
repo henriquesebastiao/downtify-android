@@ -30,9 +30,14 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/** The connect screen's steps: an address, then a pairing code (typed or scanned). */
+/**
+ * The connect screen's steps: an address, then the account's username and password —
+ * or a pairing code (typed or scanned), the way in when the server can't take a password
+ * (sign-in turned off, or a server from before app sign-in) or the user prefers it.
+ */
 sealed interface ConnectStep {
     data object Address : ConnectStep
+    data class SignIn(val baseUrl: String, val info: ServerInfo) : ConnectStep
     data class Pair(val baseUrl: String, val info: ServerInfo) : ConnectStep
 }
 
@@ -42,6 +47,9 @@ sealed interface ConnectError {
     data object NotDowntify : ConnectError
     data class TooNew(val version: String) : ConnectError
     data object WrongCode : ConnectError
+    data object WrongPassword : ConnectError
+    data object SignInOff : ConnectError
+    data class SignInFailed(val status: Int) : ConnectError
     data class TooManyAttempts(val secondsLeft: Int) : ConnectError
     data class PairFailed(val status: Int) : ConnectError
     data object OtherServer : ConnectError
@@ -52,6 +60,8 @@ data class ConnectUiState(
     val step: ConnectStep = ConnectStep.Address,
     val address: String = "",
     val code: String = "",
+    val username: String = "",
+    val password: String = "",
     val discovered: List<DiscoveredServer> = emptyList(),
     val searching: Boolean = true,
     val busy: Boolean = false,
@@ -63,6 +73,8 @@ data class ConnectUiState(
 ) {
     val canConnect: Boolean get() = address.isNotBlank() && !busy
     val canPair: Boolean get() = code.count { it.isLetterOrDigit() } >= PAIR_CODE_LENGTH && !busy &&
+        error !is ConnectError.TooManyAttempts
+    val canSignIn: Boolean get() = username.isNotBlank() && password.isNotEmpty() && !busy &&
         error !is ConnectError.TooManyAttempts
 
     companion object {
@@ -86,6 +98,12 @@ class ConnectViewModel @Inject constructor(private val server: ServerRepository,
         private set
     var code by mutableStateOf("")
         private set
+    var username by mutableStateOf("")
+        private set
+
+    // Only in memory, and only until it's sent: the token is what the phone keeps.
+    var password by mutableStateOf("")
+        private set
     private var countdown: Job? = null
 
     val uiState: StateFlow<ConnectUiState> = combine(
@@ -103,11 +121,12 @@ class ConnectViewModel @Inject constructor(private val server: ServerRepository,
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), ConnectUiState())
 
     init {
-        // This view model outlives a pairing (it's scoped to the activity): after a
-        // sign-out, start over from the address — kept — instead of the old code.
+        // This view model outlives a sign-in (it's scoped to the activity): after a
+        // sign-out, start over from the address and username — kept — instead of the old code.
         viewModelScope.launch {
             server.signOutReason.filterNotNull().collect {
                 code = ""
+                password = ""
                 form.value = ConnectUiState()
             }
         }
@@ -128,7 +147,7 @@ class ConnectViewModel @Inject constructor(private val server: ServerRepository,
 
     fun onPickDiscovered(server: DiscoveredServer) = onAddressChange(server.baseUrl)
 
-    /** Checks the address with `GET /api/server/info`, then asks for the code. */
+    /** Checks the address with `GET /api/server/info`, then asks for a password, or a code when it can't take one. */
     fun connect() {
         val input = address
         form.update { it.copy(busy = true, error = null) }
@@ -136,7 +155,13 @@ class ConnectViewModel @Inject constructor(private val server: ServerRepository,
             val error = when (val result = server.probe(input)) {
                 is ServerProbe.Result.Found -> {
                     code = ""
-                    form.update { it.copy(busy = false, step = ConnectStep.Pair(result.baseUrl, result.info)) }
+                    password = ""
+                    val next = if (result.info.capabilities.passwordSignIn) {
+                        ConnectStep.SignIn(result.baseUrl, result.info)
+                    } else {
+                        ConnectStep.Pair(result.baseUrl, result.info)
+                    }
+                    form.update { it.copy(busy = false, step = next) }
                     return@launch
                 }
 
@@ -164,8 +189,39 @@ class ConnectViewModel @Inject constructor(private val server: ServerRepository,
         pairWith(step.baseUrl, step.info, code)
     }
 
+    fun onUsernameChange(value: String) {
+        username = value
+        form.update { it.copy(error = null) }
+    }
+
+    fun onPasswordChange(value: String) {
+        password = value
+        form.update { it.copy(error = null) }
+    }
+
+    fun signIn() {
+        val step = form.value.step as? ConnectStep.SignIn ?: return
+        obtainToken { server.signIn(step.baseUrl, step.info, username, password) }
+    }
+
+    /** From the sign-in step to the pairing code, for the same server. */
+    fun usePairingCode() {
+        val step = form.value.step as? ConnectStep.SignIn ?: return
+        code = ""
+        // The server limits wrong passwords and wrong codes apart: a wait for one isn't one for the other.
+        form.update { it.copy(step = ConnectStep.Pair(step.baseUrl, step.info), error = null) }
+    }
+
+    /** From the pairing code back to the password, when the server takes one. */
+    fun usePassword() {
+        val step = form.value.step as? ConnectStep.Pair ?: return
+        if (!step.info.capabilities.passwordSignIn) return
+        form.update { it.copy(step = ConnectStep.SignIn(step.baseUrl, step.info), error = null) }
+    }
+
     fun backToAddress() {
         code = ""
+        password = ""
         form.update { it.copy(step = ConnectStep.Address, error = null) }
     }
 
@@ -214,14 +270,26 @@ class ConnectViewModel @Inject constructor(private val server: ServerRepository,
         }
     }
 
-    private fun pairWith(baseUrl: String, info: ServerInfo, code: String) {
+    private fun pairWith(baseUrl: String, info: ServerInfo, code: String) =
+        obtainToken { server.pair(baseUrl, info, code) }
+
+    /** Runs a sign-in or a pairing and shows how it went. */
+    private fun obtainToken(call: suspend () -> PairingClient.Result) {
+        val signingIn = form.value.step is ConnectStep.SignIn
         form.update { it.copy(busy = true, error = null) }
         viewModelScope.launch {
-            val error = when (val result = server.pair(baseUrl, info, code)) {
+            val error = when (val result = call()) {
                 // The app switches to Home as soon as the session is saved.
-                is PairingClient.Result.Paired -> null
+                is PairingClient.Result.Paired -> {
+                    password = ""
+                    null
+                }
 
                 PairingClient.Result.WrongCode -> ConnectError.WrongCode
+
+                PairingClient.Result.WrongPassword -> ConnectError.WrongPassword
+
+                PairingClient.Result.SignInOff -> ConnectError.SignInOff
 
                 is PairingClient.Result.TooManyAttempts -> {
                     startCountdown(result.retryAfterSeconds.toInt())
@@ -230,7 +298,8 @@ class ConnectViewModel @Inject constructor(private val server: ServerRepository,
 
                 PairingClient.Result.Unreachable -> ConnectError.Unreachable
 
-                is PairingClient.Result.Failed -> ConnectError.PairFailed(result.status)
+                is PairingClient.Result.Failed ->
+                    if (signingIn) ConnectError.SignInFailed(result.status) else ConnectError.PairFailed(result.status)
             }
             form.update { it.copy(busy = false, error = error) }
         }

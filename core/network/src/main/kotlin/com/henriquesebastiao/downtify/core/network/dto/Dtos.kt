@@ -48,6 +48,7 @@ data class ServerInfoDto(
                     discover = c.discover,
                     lyrics = c.lyrics,
                     librarySync = c.librarySync,
+                    passwordSignIn = c.passwordSignIn,
                 )
             },
         )
@@ -63,8 +64,19 @@ data class CapabilitiesDto(
     val discover: Boolean = false,
     val lyrics: Boolean = false,
     @SerialName("library_sync") val librarySync: Boolean = false,
+    /** Missing on servers older than `POST /api/auth/token`, and false while sign-in is turned off. */
+    @SerialName("password_sign_in") val passwordSignIn: Boolean = false,
 ) {
-    fun toModel() = Capabilities(transcoding.toModel(), signedUrls, pairing, podcasts, discover, lyrics, librarySync)
+    fun toModel() = Capabilities(
+        transcoding.toModel(),
+        signedUrls,
+        pairing,
+        podcasts,
+        discover,
+        lyrics,
+        librarySync,
+        passwordSignIn,
+    )
 }
 
 @Serializable
@@ -83,12 +95,22 @@ data class PairRequest(
     val platform: String = "android",
 )
 
+/** `POST /api/auth/token`: sign in with the account's password instead of a pairing code. */
+@Serializable
+data class SignInRequest(
+    val username: String,
+    val password: String,
+    @SerialName("device_name") val deviceName: String,
+    val platform: String = "android",
+)
+
+/** `POST /api/auth/pair` and `POST /api/auth/token`. */
 @Serializable
 data class PairResponse(
     val token: String,
     val device: DeviceDto,
     val server: PairedServerDto = PairedServerDto(),
-    /** Who showed the code (servers with accounts, 3.2+); the device belongs to them. */
+    /** Who showed the code or signed in (servers with accounts, 3.2+); the device belongs to them. */
     val user: UserDto? = null,
 )
 
@@ -202,9 +224,17 @@ data class PlaylistDto(
     val count: Int = 0,
     val cover: String = "",
     @SerialName("track_ids") val trackIds: List<String> = emptyList(),
+    val favorite: Boolean? = null,
+    @SerialName("display_name") val displayName: String = "",
 ) {
-    fun toModel() = Playlist(name, liked, cover, trackIds)
+    fun toModel() = Playlist(name, liked, cover, trackIds, favorite == true, displayName, favorite != null)
 }
+
+@Serializable
+data class PlaylistFavoriteRequest(val name: String, val favorite: Boolean)
+
+@Serializable
+data class PlaylistFavoriteResponse(val name: String = "", val favorite: Boolean = false)
 
 @Serializable
 data class LikesDto(@SerialName("track_ids") val trackIds: List<String> = emptyList())

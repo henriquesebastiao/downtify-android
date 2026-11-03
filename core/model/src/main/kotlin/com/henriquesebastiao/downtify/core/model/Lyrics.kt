@@ -1,9 +1,15 @@
 package com.henriquesebastiao.downtify.core.model
 
+import java.util.Locale
+import kotlin.math.abs
+
 /** A track's lyrics: time-synced lines when an LRC is available, else plain text. */
 data class Lyrics(val synced: List<LyricLine>, val plain: String) {
     val isEmpty: Boolean get() = synced.isEmpty() && plain.isBlank()
     val isSynced: Boolean get() = synced.isNotEmpty()
+
+    /** The words without their times: the plain text, or the synced lines when there is none. */
+    val text: String get() = plain.ifBlank { synced.joinToString("\n") { it.text } }.trim()
 
     companion object {
         val Empty = Lyrics(emptyList(), "")
@@ -11,6 +17,36 @@ data class Lyrics(val synced: List<LyricLine>, val plain: String) {
 }
 
 data class LyricLine(val timeMs: Long, val text: String)
+
+/**
+ * Moving synced lyrics against the audio, for an LRC timed to another cut of the song (a live
+ * take, a video's longer intro): with a positive offset every line comes that much later.
+ */
+object LyricsTiming {
+    /** One press of the earlier / later buttons. */
+    const val STEP_MS = 250L
+
+    /** As far as the lyrics move either way. */
+    const val MAX_MS = 15_000L
+
+    fun clamp(offsetMs: Long): Long = offsetMs.coerceIn(-MAX_MS, MAX_MS)
+
+    /** [lines] [offsetMs] later (earlier when negative). */
+    fun shift(lines: List<LyricLine>, offsetMs: Long): List<LyricLine> =
+        if (offsetMs == 0L) lines else lines.map { it.copy(timeMs = it.timeMs + offsetMs) }
+
+    /** The offset in seconds, signed, with two decimals written [locale]'s way: "+0,25", "-1,50", "0,00". */
+    fun seconds(offsetMs: Long, locale: Locale): String {
+        val sign = when {
+            offsetMs > 0 -> "+"
+            offsetMs < 0 -> "-"
+            else -> ""
+        }
+        return sign + String.format(locale, "%.2f", abs(offsetMs) / MS_PER_SECOND)
+    }
+
+    private const val MS_PER_SECOND = 1000.0
+}
 
 /** Parses LRC text: `[mm:ss.xx] line`, several stamps per line, and an `[offset:±ms]` tag. */
 object LrcParser {
@@ -54,6 +90,10 @@ object LrcParser {
         }
         return found
     }
+
+    /** How long after [positionMs] the next line starts, or null when the one being sung is the last. */
+    fun nextLineInMs(lines: List<LyricLine>, positionMs: Long): Long? =
+        lines.getOrNull(activeIndex(lines, positionMs) + 1)?.let { it.timeMs - positionMs }
 
     private fun toMillis(match: MatchResult): Long {
         val (min, sec, frac) = match.destructured

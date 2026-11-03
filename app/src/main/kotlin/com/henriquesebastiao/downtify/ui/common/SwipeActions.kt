@@ -18,6 +18,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
@@ -32,7 +34,12 @@ import kotlinx.coroutines.launch
  * springs back once the swipe passes the threshold; nothing is dismissed.
  */
 @Composable
-fun SwipeToQueue(onAddToQueue: () -> Unit, modifier: Modifier = Modifier, content: @Composable RowScope.() -> Unit) {
+fun SwipeToQueue(
+    onAddToQueue: () -> Unit,
+    modifier: Modifier = Modifier,
+    shape: Shape = RectangleShape,
+    content: @Composable RowScope.() -> Unit,
+) {
     SwipeAction(
         direction = SwipeToDismissBoxValue.StartToEnd,
         icon = DowntifyIcons.AddToQueue,
@@ -41,6 +48,7 @@ fun SwipeToQueue(onAddToQueue: () -> Unit, modifier: Modifier = Modifier, conten
         contentColor = MaterialTheme.colorScheme.onPrimary,
         resetAfter = true,
         onSwiped = onAddToQueue,
+        shape = shape,
         modifier = modifier,
         content = content,
     )
@@ -48,7 +56,12 @@ fun SwipeToQueue(onAddToQueue: () -> Unit, modifier: Modifier = Modifier, conten
 
 /** Swipe a queue row to the left to take it out of the queue. */
 @Composable
-fun SwipeToRemove(onRemove: () -> Unit, modifier: Modifier = Modifier, content: @Composable RowScope.() -> Unit) {
+fun SwipeToRemove(
+    onRemove: () -> Unit,
+    modifier: Modifier = Modifier,
+    shape: Shape = RectangleShape,
+    content: @Composable RowScope.() -> Unit,
+) {
     SwipeAction(
         direction = SwipeToDismissBoxValue.EndToStart,
         icon = DowntifyIcons.Delete,
@@ -57,6 +70,7 @@ fun SwipeToRemove(onRemove: () -> Unit, modifier: Modifier = Modifier, content: 
         contentColor = MaterialTheme.colorScheme.onErrorContainer,
         resetAfter = false,
         onSwiped = onRemove,
+        shape = shape,
         modifier = modifier,
         content = content,
     )
@@ -71,6 +85,7 @@ private fun SwipeAction(
     contentColor: Color,
     resetAfter: Boolean,
     onSwiped: () -> Unit,
+    shape: Shape,
     modifier: Modifier = Modifier,
     content: @Composable RowScope.() -> Unit,
 ) {
@@ -84,7 +99,8 @@ private fun SwipeAction(
             // Only while this direction is being swiped: settling back shows nothing.
             if (state.dismissDirection == direction) {
                 Row(
-                    Modifier.fillMaxSize().background(containerColor).padding(horizontal = Spacing.xl),
+                    // Behind a card the color takes the card's corners.
+                    Modifier.fillMaxSize().background(containerColor, shape).padding(horizontal = Spacing.xl),
                     horizontalArrangement = if (startToEnd) Arrangement.Start else Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {

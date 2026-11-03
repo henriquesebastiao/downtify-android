@@ -11,12 +11,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -34,7 +36,6 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyTheme
@@ -46,7 +47,7 @@ fun DowntifyLogo(modifier: Modifier = Modifier, size: Dp = 32.dp) {
     Image(painter = painterResource(DowntifyIcons.Logo), contentDescription = null, modifier = modifier.size(size))
 }
 
-/** A section title (titleLarge, Sora) with an optional text action ("See all"). */
+/** A section title (titleLarge) with an optional text action ("See all"). */
 @Composable
 fun SectionHeader(
     title: String,
@@ -69,38 +70,54 @@ fun SectionHeader(
     }
 }
 
-/** A centered message for an empty list or an error, with an optional action. */
+/**
+ * A centered message for an empty list or an error, with an optional action. [hero] is for a
+ * screen that is nothing but this message (an empty library): a big icon in primary, a headline.
+ */
 @Composable
 fun EmptyState(
     icon: Int,
     title: String,
     modifier: Modifier = Modifier,
     body: String? = null,
+    hero: Boolean = false,
     action: (@Composable () -> Unit)? = null,
 ) {
     Column(
-        modifier = modifier.fillMaxWidth().padding(horizontal = Spacing.xxl, vertical = Spacing.xxl),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = if (hero) Spacing.xl else Spacing.xxl, vertical = if (hero) 48.dp else Spacing.xxl),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
         Icon(
             painter = painterResource(icon),
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(48.dp),
+            tint = if (hero) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(if (hero) 88.dp else 48.dp),
         )
-        Text(title, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
+        Text(
+            title,
+            style = if (hero) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.titleMedium,
+            textAlign = TextAlign.Center,
+        )
         if (body != null) {
             Text(
                 body,
-                style = MaterialTheme.typography.bodyMedium,
+                style = if (hero) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
+                modifier = if (hero) Modifier.widthIn(max = HERO_BODY_WIDTH) else Modifier,
             )
         }
-        action?.invoke()
+        if (action != null) {
+            if (hero) Spacer(Modifier.height(Spacing.md))
+            action()
+        }
     }
 }
+
+private val HERO_BODY_WIDTH = 320.dp
 
 /** Three bouncing bars: the row that's playing. Still when [animate] is false (paused). */
 @Composable
@@ -131,27 +148,6 @@ fun PlayingBars(
                     .fillMaxHeight(h)
                     .background(color, RoundedCornerShape(2.dp)),
             )
-        }
-    }
-}
-
-/** A small pill: "Connected", a source label. */
-@Composable
-fun StatusPill(
-    text: String,
-    modifier: Modifier = Modifier,
-    container: Color = MaterialTheme.colorScheme.primaryContainer,
-    content: Color = MaterialTheme.colorScheme.onPrimaryContainer,
-    dot: Color? = MaterialTheme.colorScheme.primary,
-) {
-    Surface(color = container, contentColor = content, shape = RoundedCornerShape(50), modifier = modifier) {
-        Row(
-            Modifier.height(28.dp).padding(horizontal = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            if (dot != null) Box(Modifier.size(6.dp).background(dot, RoundedCornerShape(50)))
-            Text(text, style = MaterialTheme.typography.labelMedium)
         }
     }
 }
@@ -189,7 +185,7 @@ private val YouTubeDark = Color(0x24FF4848) to Color(0xFFFF7A7A)
 private val YouTubeLight = Color(0x1FFF0000) to Color(0xFFB3261E)
 private const val DARK_LUMINANCE = 0.5f
 
-@PreviewLightDark
+@PhonePreviews
 @Composable
 private fun ComponentsPreview() {
     DowntifyTheme {
@@ -204,7 +200,6 @@ private fun ComponentsPreview() {
                 ) {
                     DowntifyLogo(size = 40.dp)
                     PlayingBars(animate = false)
-                    StatusPill("Connected")
                 }
                 SectionHeader("Recently added", actionLabel = "See all", onAction = {})
                 EmptyState(

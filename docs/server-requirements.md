@@ -38,3 +38,7 @@ Server search results carry YouTube Music or Spotify ids; library tracks carry D
 ### Recently played across devices
 
 "Jump back in" on Home is tracked locally (Room `recent_contexts`), per the phase-1 brief. A server endpoint listing a device's (or the user's) recent play contexts — album, playlist, artist, liked songs — would let it follow the user between the web page and the phone. The listen reports (`POST /api/discover/listens`) carry track ids only, not the context they were played from.
+
+### Lyrics timing that follows the user
+
+An `.lrc` from LRCLIB or NetEase is sometimes timed to another cut of the song than the file the server downloaded (a live take, a video with a longer intro), so its lines come early or late by the same amount all through the song, in the web player as in the app. The app lets the user move a track's synced lyrics earlier or later (Room `lyrics_offsets`, per track, on that phone). Saving that offset on the server — say `PUT /api/v1/tracks/{id}/lyrics/offset` writing an `[offset:]` tag into the sidecar — would fix it once for the web page and every device. The web's LRC parser (`frontend/src/lib/lrc.js`) ignores `[offset:]` today; the app's (`LrcParser`) applies it.

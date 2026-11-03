@@ -7,6 +7,9 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface TrackDao {
+    @Query("SELECT id FROM tracks")
+    suspend fun allIds(): List<String>
+
     @Query("SELECT * FROM tracks")
     fun observeAll(): Flow<List<TrackEntity>>
 
@@ -66,6 +69,21 @@ interface LikeDao {
 
     @Query("SELECT MIN(position) FROM likes")
     suspend fun minPosition(): Int?
+}
+
+@Dao
+interface LyricsOffsetDao {
+    @Query("SELECT offsetMs FROM lyrics_offsets WHERE trackId = :trackId")
+    fun observe(trackId: String): Flow<Long?>
+
+    @Query("SELECT offsetMs FROM lyrics_offsets WHERE trackId = :trackId")
+    suspend fun get(trackId: String): Long?
+
+    @Upsert
+    suspend fun upsert(entity: LyricsOffsetEntity)
+
+    @Query("DELETE FROM lyrics_offsets WHERE trackId = :trackId")
+    suspend fun delete(trackId: String)
 }
 
 @Dao

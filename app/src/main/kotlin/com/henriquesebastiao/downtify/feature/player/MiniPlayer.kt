@@ -1,185 +1,80 @@
 package com.henriquesebastiao.downtify.feature.player
 
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.basicMarquee
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.PreviewLightDark
-import androidx.compose.ui.unit.dp
 import com.henriquesebastiao.downtify.R
-import com.henriquesebastiao.downtify.core.designsystem.component.CoverArt
+import com.henriquesebastiao.downtify.core.designsystem.component.CoverTheme
 import com.henriquesebastiao.downtify.core.designsystem.component.DowntifyIcons
-import com.henriquesebastiao.downtify.core.designsystem.component.rememberCoverColors
+import com.henriquesebastiao.downtify.core.designsystem.component.MiniPlayerButton
+import com.henriquesebastiao.downtify.core.designsystem.component.MiniPlayerCard
+import com.henriquesebastiao.downtify.core.designsystem.component.PhonePreviews
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyTheme
 import com.henriquesebastiao.downtify.core.designsystem.theme.Spacing
-import com.henriquesebastiao.downtify.core.model.ServerJob
-import com.henriquesebastiao.downtify.core.model.ServerJobStatus
-import com.henriquesebastiao.downtify.core.network.ServerUrls
 import com.henriquesebastiao.downtify.core.player.PlayerState
-import com.henriquesebastiao.downtify.ui.common.LocalCoverUrls
+import com.henriquesebastiao.downtify.core.player.PlayingStream
 import com.henriquesebastiao.downtify.ui.common.PreviewData
 
 /**
- * Sits above the navigation bar while something is loaded; tapping it opens Now Playing.
- *
- * [hasLibraryCopy] is true when the playing stream has since been downloaded: the stream keeps
- * playing, but the download button goes away so the mini player looks exactly like a library
- * track's (no download, no spinner, no check).
+ * Sits above the navigation bar while something is loaded, in the cover's colors; tapping it
+ * opens Now Playing. Its buttons are the transport only, as on Now Playing: previous, play/pause
+ * and next, or an episode's skips back and forward. Saving a stream to the server lives on Now
+ * Playing. [attached] joins it to the floating bar right under it. [modifier] is the card's (the
+ * caller sets its margins), [coverModifier] its cover's.
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MiniPlayer(
     state: PlayerState,
     onOpen: () -> Unit,
     onTogglePlay: () -> Unit,
     modifier: Modifier = Modifier,
-    onSimilar: (artist: String, title: String) -> Unit = { _, _ -> },
-    downloadJob: ServerJob? = null,
-    onDownloadStream: () -> Unit = {},
-    hasLibraryCopy: Boolean = false,
+    onPrevious: () -> Unit = {},
+    onNext: () -> Unit = {},
+    onSkipBack: () -> Unit = {},
+    onSkipForward: () -> Unit = {},
+    attached: Boolean = false,
+    coverModifier: Modifier = Modifier,
 ) {
     val track = state.track
     val episode = state.episode
     val stream = state.stream
     if (track == null && episode == null && stream == null) return
-    val similarArtist = track?.displayArtist ?: stream?.artist.orEmpty()
-    val similarTitle = track?.displayTitle ?: stream?.title.orEmpty()
-    val canSimilar = episode == null && similarArtist.isNotBlank() && similarTitle.isNotBlank()
-    val coverUrl = episode?.artworkUrl?.ifBlank { null }
-        ?: stream?.coverUrl?.ifBlank { null }
-        ?: track?.let { LocalCoverUrls.current.track(it.id.takeIf { _ -> it.hasCover }, ServerUrls.COVER_SMALL) }
-    val colors = rememberCoverColors(coverUrl)
-    Surface(
-        color = colors.surface,
-        contentColor = colors.onSurface,
-        shape = MaterialTheme.shapes.large,
-        shadowElevation = 6.dp,
-        modifier = modifier.padding(horizontal = Spacing.sm, vertical = Spacing.xs).fillMaxWidth().height(64.dp),
-    ) {
-        Box {
-            Row(
-                // Fill the card: without a height the row wraps its 48 dp content and sits at the top.
-                Modifier.fillMaxSize().padding(start = Spacing.sm, end = Spacing.xs),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
-            ) {
-                Row(
-                    Modifier
-                        .weight(1f)
-                        .clickable(
-                            onClickLabel = stringResource(R.string.player_open),
-                            role = Role.Button,
-                            onClick = onOpen,
-                        ),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(Spacing.md),
-                ) {
-                    CoverArt(url = coverUrl, contentDescription = null, modifier = Modifier.size(48.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            track?.displayTitle ?: stream?.title ?: episode?.title.orEmpty(),
-                            style = MaterialTheme.typography.titleSmall,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.basicMarquee(),
-                        )
-                        Text(
-                            track?.displayArtist ?: stream?.artist ?: episode?.showName.orEmpty(),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.basicMarquee(),
-                        )
-                    }
-                }
-                if (canSimilar) {
-                    IconButton(onClick = { onSimilar(similarArtist, similarTitle) }) {
-                        Icon(
-                            painterResource(DowntifyIcons.Explore),
-                            contentDescription = stringResource(R.string.search_similar, similarTitle),
-                        )
-                    }
-                }
-                if (stream != null && !hasLibraryCopy && downloadJob?.status != ServerJobStatus.Done) {
-                    MiniStreamDownloadButton(job = downloadJob, title = stream.title, onDownload = onDownloadStream)
-                }
-                IconButton(onClick = onTogglePlay) {
-                    Icon(
-                        painterResource(if (state.isPlaying) DowntifyIcons.Pause else DowntifyIcons.Play),
-                        contentDescription = stringResource(
-                            if (state.isPlaying) R.string.player_pause else R.string.player_play,
-                        ),
-                    )
-                }
-            }
-            LinearProgressIndicator(
-                progress = { state.progress },
-                color = colors.onSurface,
-                trackColor = colors.onSurface.copy(alpha = 0.18f),
-                strokeCap = StrokeCap.Round,
-                gapSize = 0.dp,
-                drawStopIndicator = {},
-                modifier = Modifier.align(
-                    Alignment.BottomCenter,
-                ).padding(horizontal = Spacing.md).fillMaxWidth().height(2.dp),
-            )
-        }
-    }
-}
-
-/**
- * Download the playing stream, a spinner while the server works on it.
- * Once the server finished ([ServerJobStatus.Done]) there is nothing to show: the mini player
- * looks exactly like a library track's. Never called in that case (see the caller).
- */
-@Composable
-private fun MiniStreamDownloadButton(job: ServerJob?, title: String, onDownload: () -> Unit) {
-    val active = job?.status == ServerJobStatus.Queued || job?.status == ServerJobStatus.Downloading
-    if (active) {
-        val label = stringResource(R.string.search_job_downloading)
-        Box(
-            Modifier.size(48.dp).semantics { contentDescription = label },
-            contentAlignment = Alignment.Center,
+    val coverUrl = playingCoverUrl(state)
+    CoverTheme(coverUrl) {
+        MiniPlayerCard(
+            title = track?.displayTitle ?: stream?.title ?: episode?.title.orEmpty(),
+            subtitle = track?.displayArtist ?: stream?.artist ?: episode?.showName.orEmpty(),
+            coverUrl = coverUrl,
+            onOpen = onOpen,
+            openLabel = stringResource(R.string.player_open),
+            attached = attached,
+            coverModifier = coverModifier,
+            modifier = modifier,
         ) {
-            CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(24.dp))
-        }
-    } else if (job?.status != ServerJobStatus.Done) {
-        IconButton(onClick = onDownload) {
-            Icon(
-                painterResource(DowntifyIcons.Downloads),
-                contentDescription = stringResource(R.string.search_download_to_server, title),
+            if (episode != null) {
+                MiniPlayerButton(DowntifyIcons.SkipBack, stringResource(R.string.player_skip_back), onSkipBack)
+            } else {
+                MiniPlayerButton(DowntifyIcons.Previous, stringResource(R.string.player_previous), onPrevious)
+            }
+            MiniPlayerButton(
+                if (state.isPlaying) DowntifyIcons.Pause else DowntifyIcons.Play,
+                stringResource(if (state.isPlaying) R.string.player_pause else R.string.player_play),
+                onTogglePlay,
+                main = true,
+                playing = state.isPlaying,
             )
+            if (episode != null) {
+                MiniPlayerButton(DowntifyIcons.SkipForward, stringResource(R.string.player_skip_forward), onSkipForward)
+            } else {
+                MiniPlayerButton(DowntifyIcons.Next, stringResource(R.string.player_next), onNext)
+            }
         }
     }
 }
 
-@PreviewLightDark
+@PhonePreviews
 @Composable
 private fun MiniPlayerPreview() {
     DowntifyTheme {
@@ -193,6 +88,23 @@ private fun MiniPlayerPreview() {
                 ),
                 onOpen = {},
                 onTogglePlay = {},
+                modifier = Modifier.padding(Spacing.screen),
+            )
+        }
+    }
+}
+
+@PhonePreviews
+@Composable
+private fun MiniPlayerStreamPreview() {
+    DowntifyTheme {
+        Surface {
+            MiniPlayer(
+                state = PlayerState(stream = PlayingStream("id", "A stream with a long title", "Artist", "", "{}")),
+                onOpen = {},
+                onTogglePlay = {},
+                attached = true,
+                modifier = Modifier.padding(Spacing.screen),
             )
         }
     }

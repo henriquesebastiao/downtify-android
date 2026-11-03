@@ -14,6 +14,9 @@ data class Session(
     override fun toString(): String = "Session(baseUrl=$baseUrl, serverId=$serverId, deviceId=$deviceId, token=***)"
 }
 
+/** Whose cached audio this is: one server and one pairing (the read-ahead cache and its receipts). */
+val Session.cacheOwner: String get() = "${serverId.ifBlank { baseUrl }}\u0000$deviceId"
+
 /** Why the app is back at the connect screen. */
 enum class SignOutReason {
     /** The user unpaired or changed server. */

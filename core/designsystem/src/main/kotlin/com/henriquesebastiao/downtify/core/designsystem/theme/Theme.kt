@@ -3,27 +3,34 @@ package com.henriquesebastiao.downtify.core.designsystem.theme
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialExpressiveTheme
+import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import com.henriquesebastiao.downtify.core.model.AppFont
 
 /**
- * Downtify's Material 3 theme. The brand scheme is the default; [dynamicColor]
- * (Material You wallpaper colors, Android 12+) is opt-in from Settings, and so is
- * [amoled] (true black surfaces in the dark theme) and the [font].
+ * Downtify's Material 3 Expressive theme, with its spring motion. The brand scheme is the default;
+ * [dynamicColor] (Material You wallpaper colors, Android 12+) is opt-in from Settings, and so is
+ * [amoled] (true black surfaces in the dark theme), the [font] and whether the navigation bar
+ * floats ([floatingNavBar], read through [LocalFloatingNavBar]).
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun DowntifyTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = false,
     amoled: Boolean = false,
     font: AppFont = AppFont.Default,
+    floatingNavBar: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     val colors = when {
@@ -37,13 +44,19 @@ fun DowntifyTheme(
         else -> DowntifyLightColors
     }.let { if (darkTheme && amoled) it.amoled() else it }
     val typography = remember(font) { downtifyTypography(font) }
-    MaterialTheme(
-        colorScheme = colors,
-        typography = typography,
-        shapes = DowntifyShapes,
-        content = content,
-    )
+    CompositionLocalProvider(LocalFloatingNavBar provides floatingNavBar) {
+        MaterialExpressiveTheme(
+            colorScheme = colors,
+            motionScheme = MotionScheme.expressive(),
+            shapes = DowntifyShapes,
+            typography = typography,
+            content = content,
+        )
+    }
 }
+
+/** Whether the navigation bar floats as a pill over the content (the default) or spans the screen's width. */
+val LocalFloatingNavBar = staticCompositionLocalOf { true }
 
 /**
  * [this] with true black behind everything, for OLED screens: black pixels are off. The raised

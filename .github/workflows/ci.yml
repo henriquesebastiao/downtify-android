@@ -1,0 +1,56 @@
+name: CI
+
+# Lint and test every push to main and every pull request into it: the checks CLAUDE.md asks of
+# every change ("Testing and quality"), short of building the APKs (the release workflow does that).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# A new push to a pull request cancels its run in progress; every push to main gets its own result.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    name: Lint and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          # Only main writes the Gradle cache; pull requests read it.
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      # The quick checks first, so a formatting slip fails in a minute.
+      - name: Formatting (Spotless) and static analysis (detekt)
+        run: ./gradlew spotlessCheck detekt --stacktrace
+
+      - name: Android lint
+        run: ./gradlew lint --stacktrace
+
+      - name: Unit tests
+        run: ./gradlew testDebugUnitTest :core:model:test --stacktrace
+
+      - name: Keep the reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: reports
+          path: |
+            **/build/reports/
+            **/build/test-results/
+          retention-days: 14

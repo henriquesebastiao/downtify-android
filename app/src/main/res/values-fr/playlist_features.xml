@@ -1,0 +1,6 @@
+<resources>
+    <string name="favorite_playlists">Playlists favorites</string>
+    <string name="playlist_add_favorite">Ajouter la playlist aux favoris</string>
+    <string name="playlist_remove_favorite">Retirer la playlist des favoris</string>
+    <string name="playlist_favorite_failed">Impossible de modifier le favori. Vérifiez la connexion au serveur et réessayez.</string>
+</resources>

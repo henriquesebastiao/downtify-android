@@ -15,6 +15,7 @@ import com.henriquesebastiao.downtify.core.data.db.OfflineFileEntity
 import com.henriquesebastiao.downtify.core.data.di.ApplicationScope
 import com.henriquesebastiao.downtify.core.data.library.LibraryRepository
 import com.henriquesebastiao.downtify.core.data.library.LibrarySnapshot
+import com.henriquesebastiao.downtify.core.data.loudness.LoudnessProfiles
 import com.henriquesebastiao.downtify.core.data.settings.SettingsRepository
 import com.henriquesebastiao.downtify.core.model.OfflineCollection
 import com.henriquesebastiao.downtify.core.model.OfflineFile
@@ -101,6 +102,7 @@ class OfflineRepository @Inject constructor(
     private val settings: SettingsRepository,
     private val storage: OfflineStorage,
     private val sessions: SessionStore,
+    private val loudness: LoudnessProfiles,
     @StreamingClient client: OkHttpClient,
     @ApplicationScope private val scope: CoroutineScope,
 ) {
@@ -154,7 +156,7 @@ class OfflineRepository @Inject constructor(
     /** Starts keeping the phone in step. Called once, from the Application. */
     fun start() {
         scope.launch {
-            dropMissingFiles()
+            dropInvalidFiles()
             state.filterNotNull().collect { reconcile(it) }
         }
     }
@@ -162,7 +164,7 @@ class OfflineRepository @Inject constructor(
     /** The offline copy of [trackId], when there's a complete one. Safe from any thread. */
     fun localFile(trackId: String): File? {
         val file = state.value?.files?.get(trackId) ?: return null
-        return storage.file(file.fileName).takeIf { it.isFile }
+        return storage.file(file.fileName).takeIf { storage.usable(file.fileName, file.bytes) }
     }
 
     suspend fun setKept(type: PlaybackContextType, refId: String, keep: Boolean) {
@@ -208,7 +210,9 @@ class OfflineRepository @Inject constructor(
         }
         return when (result) {
             is TrackDownloader.Result.Complete -> {
-                commit(track, part, result.bytes)
+                commit(track, part, result.bytes)?.let { file ->
+                    loudness.bindDownloaded(track.id, file, result.etag, result.bytes)
+                }
                 Step.Handled(track.id)
             }
 
@@ -232,16 +236,18 @@ class OfflineRepository @Inject constructor(
         data object OutOfSpace : Step
     }
 
-    private suspend fun commit(track: Track, part: File, bytes: Long) {
+    private suspend fun commit(track: Track, part: File, bytes: Long): File? {
         // Removed while it downloaded: don't keep it.
         if (track.id !in state.filterNotNull().first().plan.keep) {
             part.delete()
-            return
+            return null
         }
         val name = storage.fileName(track)
-        if (storage.commit(part, name) != null) {
+        val file = storage.commit(part, name)
+        if (file != null) {
             dao.upsertFile(OfflineFileEntity(track.id, name, bytes, System.currentTimeMillis()))
         }
+        return file
     }
 
     private suspend fun reconcile(state: OfflineState) {
@@ -289,9 +295,11 @@ class OfflineRepository @Inject constructor(
         WorkManager.getInstance(context).enqueueUniqueWork(WORK_NAME, policy, request)
     }
 
-    /** Rows whose file vanished (cleared storage, a crash mid-rename) would look downloaded forever. */
-    private suspend fun dropMissingFiles() {
-        val missing = dao.files().filterNot { withContext(Dispatchers.IO) { storage.file(it.fileName).isFile } }
+    /** Invalid copies must not look downloaded forever: the kept collection schedules their repair. */
+    private suspend fun dropInvalidFiles() {
+        val missing = withContext(Dispatchers.IO) {
+            dao.files().filterNot { storage.usable(it.fileName, it.bytes) }
+        }
         if (missing.isNotEmpty()) dao.deleteFiles(missing.map { it.trackId })
     }
 

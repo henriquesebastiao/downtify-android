@@ -1,40 +1,44 @@
 [versions]
 # Checked against Google Maven / Maven Central on 2026-09-27.
-agp = "9.4.1"
-kotlin = "2.4.20"
-ksp = "2.3.12"
+agp = "9.5.0"
+kotlin = "2.4.21"
+ksp = "2.3.13"
 hilt = "2.60.1"
 androidxHilt = "1.4.0"
 composeBom = "2026.09.00"
 # The BOM pins material3 1.4.0. SegmentedListItem (the Expressive grouped list) is only in 1.5.0 betas.
-material3 = "1.5.0-beta01"
+material3 = "1.5.0-beta02"
 activity = "1.13.0"
 navigation = "2.10.2"
 lifecycle = "2.11.0"
 coreKtx = "1.19.1"
 splashscreen = "1.2.0"
-palette = "1.0.0"
+palette = "1.1.0"
+# Kotlin port of material-color-utilities: Now Playing's scheme from the cover. Checked on Maven Central 2026-10-25.
+materialColorUtilities = "5.0.1"
 media3 = "1.11.1"
 room = "2.8.5"
 datastore = "1.2.1"
 work = "2.12.0"
 camera = "1.6.2"
 mlkitBarcode = "17.3.0"
-okhttp = "5.5.0"
+okhttp = "5.5.1"
 retrofit = "3.0.0"
 serialization = "1.11.0"
 coroutines = "1.11.0"
 coil = "3.6.3"
 tink = "1.23.0"
 detekt = "1.23.8"
-spotless = "8.10.3"
+spotless = "8.10.4"
 ktlint = "1.8.0"
-composeRules = "0.6.7"
+composeRules = "0.6.8"
 junit = "4.13.2"
 turbine = "1.2.1"
 mockk = "1.14.11"
 robolectric = "4.17"
 androidxTestJunit = "1.3.0"
+material3Version = "1.4.0"
+foundationLayout = "1.12.1"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
@@ -45,6 +49,7 @@ androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-ru
 androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
 androidx-lifecycle-process = { module = "androidx.lifecycle:lifecycle-process", version.ref = "lifecycle" }
 androidx-palette = { module = "androidx.palette:palette-ktx", version.ref = "palette" }
+material-color-utilities = { module = "com.materialkolor:material-color-utilities", version.ref = "materialColorUtilities" }
 
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
 compose-ui = { module = "androidx.compose.ui:ui" }
@@ -111,6 +116,8 @@ android-gradle-plugin = { module = "com.android.tools.build:gradle", version.ref
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 compose-gradle-plugin = { module = "org.jetbrains.kotlin:compose-compiler-gradle-plugin", version.ref = "kotlin" }
 ksp-gradle-plugin = { module = "com.google.devtools.ksp:com.google.devtools.ksp.gradle.plugin", version.ref = "ksp" }
+androidx-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3Version" }
+androidx-foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout", version.ref = "foundationLayout" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -38,7 +38,7 @@ style:
   ForbiddenComment:
     active: false
   UnusedPrivateMember:
-    ignoreAnnotated: ['Preview', 'PreviewLightDark']
+    ignoreAnnotated: ['Preview', 'PreviewLightDark', 'PhonePreviews']
   ReturnCount:
     # Parsers return null early for each malformed part; that reads better than nesting.
     max: 6
@@ -52,7 +52,7 @@ Compose:
     active: true
   CompositionLocalAllowlist:
     active: true
-    allowedCompositionLocals: LocalDowntifyColors,LocalCoverColors
+    allowedCompositionLocals: LocalDowntifyColors,LocalFloatingNavBar
   PreviewPublic:
     active: false
   ModifierNotUsedAtRoot:

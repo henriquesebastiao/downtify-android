@@ -33,6 +33,9 @@ class ApiFactory @Inject constructor(@DefaultClient private val client: OkHttpCl
     /** Web routes the server answers only when it's done: [createWeb] would time out first. */
     fun createWebPatient(baseUrl: String): WebApi = retrofit(baseUrl, patient = true).create(WebApi::class.java)
 
+    /** The music trash endpoints ([TrashApi]). */
+    fun createTrash(baseUrl: String): TrashApi = retrofit(baseUrl).create(TrashApi::class.java)
+
     private fun retrofit(baseUrl: String, patient: Boolean = false): Retrofit {
         val slot = if (patient) cachedPatient else cached
         slot?.let { (url, retrofit) -> if (url == baseUrl) return retrofit }

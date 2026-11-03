@@ -21,6 +21,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 
 /** One service-owned checkpoint observer; polling never enumerates or serializes the queue. */
 @UnstableApi
@@ -39,14 +40,21 @@ internal class PlaybackPersistence(
     private var observing = false
 
     fun start() {
+        var queueTouched = false
+        val edits = object : Player.Listener {
+            override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
+                queueTouched = true
+            }
+        }
+        player.addListener(edits)
         scope.launch {
             try {
                 withContext(Dispatchers.IO) { sessions.ensureLoaded() }
                 val paired = sessions.current ?: return@launch
                 owner = paired.playbackOwner
-                val state = repository.load(paired.playbackOwner)
+                val state = withTimeout(RESTORE_TIMEOUT_MS) { repository.load(paired.playbackOwner) }
                 if (sessions.current?.playbackOwner != paired.playbackOwner) return@launch
-                if (state != null && player.mediaItemCount == 0) {
+                if (state != null && !queueTouched && player.mediaItemCount == 0) {
                     player.setMediaItems(
                         state.items.map {
                             MediaItems.restored(it, paired.baseUrl)
@@ -74,12 +82,13 @@ internal class PlaybackPersistence(
             } catch (error: SQLiteException) {
                 Log.w("PlaybackPersistence", "Could not restore playback", error)
             } finally {
+                player.removeListener(edits)
                 ready.complete(Unit)
             }
         }
     }
 
-    suspend fun awaitReady() = ready.await()
+    suspend fun awaitReady() = withTimeout(RESTORE_TIMEOUT_MS) { ready.await() }
 
     fun stop() {
         if (observing) checkpoint()
@@ -128,6 +137,7 @@ internal class PlaybackPersistence(
     }
 
     private companion object {
+        const val RESTORE_TIMEOUT_MS = 5_000L
         const val CHECKPOINT_MS = 5_000L
     }
 }

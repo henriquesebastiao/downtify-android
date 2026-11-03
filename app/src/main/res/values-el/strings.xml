@@ -6,40 +6,55 @@
     <string name="nav_search">Αναζήτηση</string>
     <string name="nav_library">Βιβλιοθήκη</string>
     <string name="nav_downloads">Λήψεις</string>
+    <string name="nav_trash">Κάδος</string>
     <string name="action_back">Πίσω</string>
     <string name="action_settings">Ρυθμίσεις</string>
-    <string name="action_more">Περισσότερες επιλογές</string>
+    <string name="action_open_menu">Άνοιγμα μενού</string>
     <string name="action_retry">Δοκιμή ξανά</string>
     <string name="action_cancel">Ακύρωση</string>
 
     <!-- Connect -->
     <string name="connect_title_line1">Η μουσική σου,</string>
     <string name="connect_title_line2">από τον δικό σου διακομιστή.</string>
-    <string name="connect_body">Συνδέσου στο Downtify που τρέχεις στο σπίτι. Όλα αναπαράγονται από εκεί και παραμένουν δικά σου.</string>
     <string name="connect_address_label">Διεύθυνση διακομιστή</string>
-    <string name="connect_address_hint">Η ίδια διεύθυνση με την οποία ανοίγεις το Downtify σε πρόγραμμα περιήγησης.</string>
+    <string name="connect_address_hint">Αυτή που ανοίγεις στο πρόγραμμα περιήγησης.</string>
     <string name="connect_found">Βρέθηκαν σε αυτό το δίκτυο</string>
     <string name="connect_searching">Αναζήτηση διακομιστών…</string>
-    <string name="connect_none_found">Δεν βρέθηκε κανένας. Πληκτρολόγησε τη διεύθυνση — το προεπιλεγμένο δίκτυο του Docker δεν ανακοινώνει τον διακομιστή.</string>
-    <string name="connect_server_subtitle">%1$s · Downtify %2$s</string>
+    <string name="connect_none_found">Δεν βρέθηκε ακόμη διακομιστής σε αυτό το δίκτυο.</string>
+    <string name="connect_server_subtitle">%1$s · Downtify\u00A0%2$s</string>
     <string name="connect_action">Σύνδεση</string>
-    <string name="connect_scan">Σάρωσε τον κωδικό από Ρυθμίσεις › Εφαρμογές</string>
-    <string name="connect_cleartext_warning">Αυτή η διεύθυνση δεν ανήκει στο οικιακό σου δίκτυο και δεν χρησιμοποιεί HTTPS: το κλειδί του τηλεφώνου θα ταξίδευε αδιαμόρφωτο. Βάλε το Downtify πίσω από αντίστροφο διακομιστή μεσολάβησης HTTPS για να το χρησιμοποιείς από έξω.</string>
-    <string name="connect_revoked">Αυτό το τηλέφωνο αποσυνδέθηκε από τον διακομιστή. Σύνδεσέ το ξανά για να συνεχίσεις να ακούς.</string>
+    <string name="connect_step">Βήμα %1$d από %2$d</string>
+    <string name="connect_scan">Σάρωση QR αντιστοίχισης</string>
+    <string name="connect_cleartext_warning">Εκτός οικιακού δικτύου και χωρίς HTTPS: το κλειδί του τηλεφώνου θα ταξίδευε χωρίς κρυπτογράφηση.</string>
+    <string name="connect_revoked">Το τηλέφωνο αποσυνδέθηκε από τον διακομιστή. Συνδέσου ξανά για να συνεχίσεις.</string>
     <string name="connect_error_invalid">Αυτό δεν μοιάζει με διεύθυνση. Δοκίμασε http://192.168.1.20:8000.</string>
     <string name="connect_error_unreachable">Δεν είναι δυνατή η πρόσβαση σε διακομιστή σε αυτή τη διεύθυνση. Έλεγξέ την και δες αν το τηλέφωνο είναι στο ίδιο δίκτυο.</string>
     <string name="connect_error_not_downtify">Κάτι απάντησε, αλλά δεν είναι Downtify.</string>
     <string name="connect_error_too_new">Αυτός ο διακομιστής (Downtify %1$s) είναι νεότερος από ό,τι καταλαβαίνει η εφαρμογή. Ενημέρωσε την εφαρμογή.</string>
 
+    <string name="sign_in_title">Σύνδεση στο %1$s</string>
+    <string name="sign_in_body">Ο λογαριασμός της σελίδας ιστού.</string>
+    <string name="sign_in_username">Όνομα χρήστη</string>
+    <string name="sign_in_password">Κωδικός</string>
+    <string name="sign_in_show_password">Εμφάνιση κωδικού</string>
+    <string name="sign_in_hide_password">Απόκρυψη κωδικού</string>
+    <string name="sign_in_action">Σύνδεση</string>
+    <string name="sign_in_use_code">Αντιστοίχιση με κωδικό</string>
+    <string name="sign_in_use_password">Σύνδεση με τον κωδικό σου</string>
+    <string name="sign_in_error_wrong">Λάθος όνομα χρήστη ή κωδικός.</string>
+    <string name="sign_in_error_off">Η σύνδεση είναι απενεργοποιημένη σε αυτόν τον διακομιστή. Χρησιμοποίησε κωδικό αντιστοίχισης.</string>
+    <string name="sign_in_error_failed">Ο διακομιστής δεν μπόρεσε να συνδέσει αυτό το τηλέφωνο (σφάλμα %1$d).</string>
+    <string name="sign_in_cleartext_warning">Εκτός οικιακού δικτύου και χωρίς HTTPS: ο κωδικός σου θα ταξίδευε χωρίς κρυπτογράφηση.</string>
+
     <string name="pair_title">Αντιστοίχιση με %1$s</string>
-    <string name="pair_body">Στη σελίδα ιστού άνοιξε Ρυθμίσεις › Εφαρμογές και πάτα Αντιστοίχιση τηλεφώνου. Σάρωσε τον κωδικό QR ή πληκτρολόγησε τον κωδικό που εμφανίζεται από κάτω.</string>
+    <string name="pair_body">Από Ρυθμίσεις › Εφαρμογές στη σελίδα ιστού.</string>
     <string name="pair_code_label">Κωδικός αντιστοίχισης</string>
     <string name="pair_code_placeholder">XXXX-XXXX</string>
     <string name="pair_action">Αντιστοίχιση</string>
     <string name="pair_scan">Σάρωση κωδικού QR</string>
     <string name="pair_other_server">Χρήση άλλου διακομιστή</string>
     <string name="pair_error_wrong_code">Ο κωδικός είναι λάθος, έχει λήξει ή έχει ήδη χρησιμοποιηθεί. Οι κωδικοί ισχύουν μία φορά, για πέντε λεπτά.</string>
-    <string name="pair_error_too_many">Πάρα πολλές προσπάθειες. Δοκίμασε ξανά σε %1$d δ.</string>
+    <string name="pair_error_too_many">Πάρα πολλές προσπάθειες. Δοκίμασε ξανά σε %1$d\u00A0δ.</string>
     <string name="pair_error_unreachable">Δεν είναι δυνατή η πρόσβαση στον διακομιστή. Έλεγξε τη σύνδεση και δοκίμασε ξανά.</string>
     <string name="pair_error_failed">Ο διακομιστής δεν μπόρεσε να αντιστοιχίσει αυτό το τηλέφωνο (σφάλμα %1$d).</string>
     <string name="pair_error_other_server">Αυτός ο κωδικός είναι για διαφορετικό διακομιστή από αυτόν σε εκείνη τη διεύθυνση.</string>
@@ -47,17 +62,14 @@
     <string name="scan_title">Σάρωση κωδικού αντιστοίχισης</string>
     <string name="scan_hint">Στόχευσε την κάμερα στον κωδικό QR στις Ρυθμίσεις › Εφαρμογές › Αντιστοίχιση τηλεφώνου.</string>
     <string name="scan_close">Κλείσιμο σαρωτή</string>
-    <string name="connect_local_network_denied">Η πρόσβαση στο τοπικό δίκτυο είναι απενεργοποιημένη, οπότε το Downtify φτάνει μόνο σε διακομιστή που επιλέγεις από τη λίστα. Για να πληκτρολογήσεις διεύθυνση, επίτρεψέ το στις ρυθμίσεις της εφαρμογής.</string>
+    <string name="connect_local_network_denied">Η πρόσβαση στο τοπικό δίκτυο είναι απενεργοποιημένη. Για να πληκτρολογήσεις διεύθυνση, επίτρεψέ το στις ρυθμίσεις της εφαρμογής.</string>
     <string name="scan_permission_denied">Η πρόσβαση στην κάμερα είναι απενεργοποιημένη. Πληκτρολόγησε τον κωδικό ή επίτρεψε την κάμερα στις ρυθμίσεις του τηλεφώνου.</string>
     <string name="scan_not_downtify">Αυτός ο κωδικός QR δεν είναι κωδικός αντιστοίχισης Downtify.</string>
 
     <!-- Home -->
-    <string name="home_good_morning">Καλημέρα</string>
-    <string name="home_good_afternoon">Καλό απόγευμα</string>
-    <string name="home_good_evening">Καλησπέρα</string>
     <string name="home_streaming_from">Αναπαραγωγή από %1$s</string>
     <string name="home_unreachable">Δεν είναι δυνατή η πρόσβαση στο %1$s · εμφανίζεται η συγχρονισμένη βιβλιοθήκη σου</string>
-    <string name="home_different_server">Άλλος διακομιστής απαντά σε αυτή τη διεύθυνση · αντιστοίχισε ξανά στις Ρυθμίσεις</string>
+    <string name="home_different_server">Άλλος διακομιστής απαντά σε αυτή τη διεύθυνση · συνδέσου ξανά στις Ρυθμίσεις</string>
     <string name="home_syncing">Συγχρονισμός με %1$s…</string>
     <string name="home_jump_back_in">Συνέχισε από εκεί που έμεινες</string>
     <string name="home_recently_added">Προστέθηκαν πρόσφατα</string>
@@ -73,9 +85,14 @@
     <string name="library_artists">Καλλιτέχνες</string>
     <string name="library_playlists">Λίστες αναπαραγωγής</string>
     <string name="library_songs">Τραγούδια</string>
+    <string name="library_sort">Ταξινόμηση κατά: %1$s</string>
     <string name="library_sort_recent">Προστέθηκαν πρόσφατα</string>
     <string name="library_sort_alpha">Αλφαβητικά</string>
     <string name="library_sort_artist">Καλλιτέχνης</string>
+    <string name="library_sort_by">Ταξινόμηση κατά</string>
+    <string name="library_sort_order">Σειρά</string>
+    <string name="library_sort_ascending">Αύξουσα</string>
+    <string name="library_sort_descending">Φθίνουσα</string>
     <string name="library_show_list">Εμφάνιση ως λίστα</string>
     <string name="library_show_grid">Εμφάνιση ως πλέγμα</string>
     <string name="library_empty_albums">Δεν υπάρχουν άλμπουμ ακόμα</string>
@@ -94,7 +111,7 @@
         <item quantity="one">%d άλμπουμ</item>
         <item quantity="other">%d άλμπουμ</item>
     </plurals>
-    <string name="minutes_short">%d λ.</string>
+    <string name="minutes_short">%d\u00A0λ.</string>
     <string name="unknown_artist">Άγνωστος καλλιτέχνης</string>
     <string name="unknown_album">Άγνωστο άλμπουμ</string>
 
@@ -293,27 +310,30 @@
     <string name="settings_change_server">Αλλαγή διακομιστή</string>
     <string name="settings_open_web">Ρυθμίσεις διακομιστή</string>
     <string name="settings_playback">Αναπαραγωγή</string>
+    <string name="settings_normalize_volume">Κανονικοποίηση έντασης</string>
+    <string name="settings_normalize_volume_hint">Παίζει τα τραγούδια σε παρόμοια ένταση με τις μετρήσεις του διακομιστή, από το επόμενο τραγούδι. Τα τραγούδια χωρίς μέτρηση κρατούν την αρχική τους ένταση.</string>
     <string name="settings_quality_wifi">Ποιότητα ροής μέσω Wi-Fi</string>
     <string name="settings_quality_mobile">Ποιότητα ροής με δεδομένα κινητής</string>
     <string name="settings_quality_no_transcoding">Ο διακομιστής δεν μπορεί να κάνει μετατροπή κωδικοποίησης (χωρίς ffmpeg): τα αρχεία παίζουν όπως είναι.</string>
     <string name="settings_quality_original">Αρχική · όπως λήφθηκε</string>
-    <string name="settings_quality_transcoded">%1$s · %2$d kbps · μετατροπή από τον διακομιστή</string>
-    <string name="settings_quality_label">%1$s · %2$d kbps</string>
+    <string name="settings_quality_transcoded">%1$s · %2$d\u00A0kbps · μετατροπή από τον διακομιστή</string>
+    <string name="settings_quality_label">%1$s · %2$d\u00A0kbps</string>
     <string name="settings_appearance">Εμφάνιση</string>
     <string name="settings_theme">Θέμα</string>
-    <string name="settings_theme_system">Ακολούθηση συστήματος</string>
+    <string name="settings_theme_system">Σύστημα</string>
     <string name="settings_theme_dark">Σκούρο</string>
     <string name="settings_theme_light">Φωτεινό</string>
+    <string name="settings_theme_body">Το «Σύστημα» ακολουθεί τη φωτεινή ή σκοτεινή λειτουργία της συσκευής.</string>
     <string name="settings_dynamic_color">Χρήση χρωμάτων ταπετσαρίας</string>
     <string name="settings_dynamic_color_body">Material You αντί για το πράσινο του Downtify</string>
     <string name="settings_about">Σχετικά</string>
     <string name="settings_app_version">Downtify για Android %1$s</string>
     <string name="settings_server_api">Έκδοση API διακομιστή %1$d</string>
-    <string name="settings_unpair">Κατάργηση αντιστοίχισης αυτού του τηλεφώνου</string>
+    <string name="settings_unpair">Αποσύνδεση</string>
     <string name="settings_unpair_body">Λήθη του κλειδιού αυτού του διακομιστή στο τηλέφωνο</string>
-    <string name="settings_unpair_title">Κατάργηση αντιστοίχισης αυτού του τηλεφώνου;</string>
-    <string name="settings_unpair_message">Το τηλέφωνο ξεχνά το κλειδί του και επιστρέφει στην οθόνη σύνδεσης. Για να το αφαιρέσεις και από τον διακομιστή, άνοιξε Ρυθμίσεις › Εφαρμογές › Αντιστοιχισμένες εφαρμογές στη σελίδα ιστού. Η συγχρονισμένη βιβλιοθήκη σου παραμένει μέχρι να αντιστοιχίσεις με άλλον διακομιστή.</string>
-    <string name="settings_unpair_confirm">Κατάργηση</string>
+    <string name="settings_unpair_title">Αποσύνδεση από αυτόν τον διακομιστή;</string>
+    <string name="settings_unpair_message">Το τηλέφωνο ξεχνά το κλειδί του και επιστρέφει στην οθόνη σύνδεσης. Για να το αφαιρέσεις και από τον διακομιστή, άνοιξε Ρυθμίσεις › Εφαρμογές › Αντιστοιχισμένες εφαρμογές στη σελίδα ιστού. Η συγχρονισμένη βιβλιοθήκη σου παραμένει μέχρι να συνδεθείς σε άλλον διακομιστή.</string>
+    <string name="settings_unpair_confirm">Αποσύνδεση</string>
 
     <!-- Player -->
     <string name="player_play">Αναπαραγωγή</string>
@@ -347,18 +367,25 @@
     <string name="player_playing_from_album">Αναπαραγωγή από άλμπουμ</string>
     <string name="player_playing_from_artist">Αναπαραγωγή από καλλιτέχνη</string>
     <string name="player_playing_from_playlist">Αναπαραγωγή από λίστα αναπαραγωγής</string>
-    <string name="player_playing_from_library">Αναπαραγωγή από τη βιβλιοθήκη σου</string>
-    <string name="player_source_original">Αναπαραγωγή από %1$s · %2$s · Αρχική ποιότητα</string>
-    <string name="player_source_transcoded">Αναπαραγωγή από %1$s · %2$s %3$d kbps</string>
+    <string name="player_now_playing">Παίζει τώρα</string>
+    <string name="player_source_original_quality">Αναπαραγωγή από %1$s · Αρχική ποιότητα</string>
+    <string name="player_sample_rate">%1$s\u00A0kHz</string>
+    <string name="player_bitrate">%1$d\u00A0kbps</string>
     <string name="player_source_unknown">Αναπαραγωγή από %1$s</string>
     <string name="player_playing_from_podcast">Podcast</string>
-    <string name="player_go_to_show">Μετάβαση στο podcast</string>
     <string name="player_skip_back">Πίσω 10 δευτερόλεπτα</string>
     <string name="player_skip_forward">Εμπρός 30 δευτερόλεπτα</string>
     <string name="player_speed">Ταχύτητα αναπαραγωγής %1$s. Πάτα για αλλαγή</string>
-    <string name="player_source_phone">Αναπαραγωγή από αυτό το τηλέφωνο · %1$s</string>
+    <string name="player_source_this_phone">Αναπαραγωγή από αυτό το τηλέφωνο</string>
     <string name="player_lyrics_none">Δεν υπάρχουν στίχοι για αυτό το τραγούδι.</string>
     <string name="player_lyrics_loading">Φόρτωση στίχων…</string>
+    <string name="player_lyrics_synced">Συγχρονισμένοι</string>
+    <string name="player_lyrics_static">Στατικοί</string>
+    <string name="player_lyrics_timing">Ρύθμιση συγχρονισμού</string>
+    <string name="player_lyrics_earlier">Στίχοι νωρίτερα</string>
+    <string name="player_lyrics_later">Στίχοι αργότερα</string>
+    <string name="player_lyrics_timing_reset">Επαναφορά συγχρονισμού</string>
+    <string name="player_lyrics_offset">%1$s\u00A0δ</string>
     <string name="player_error_network">Δεν είναι δυνατή η πρόσβαση στον διακομιστή για να παιχτεί αυτό το τραγούδι.</string>
     <string name="player_error_not_found">Αυτό το τραγούδι δεν υπάρχει πια στον διακομιστή.</string>
     <string name="player_error_old_server">Ο διακομιστής είναι πολύ παλιός για ροή — ενημέρωσε το Downtify στον διακομιστή.</string>
@@ -372,8 +399,10 @@
     <string name="settings_language_summary">%1$s · ορίζεται στις ρυθμίσεις γλώσσας εφαρμογών του Android</string>
     <string name="settings_amoled">Καθαρό μαύρο</string>
     <string name="settings_amoled_body">Αληθινό μαύρο στο σκούρο θέμα. Εξοικονομεί μπαταρία σε οθόνες OLED.</string>
+    <string name="settings_floating_nav_bar">Αιωρούμενη γραμμή πλοήγησης</string>
+    <string name="settings_floating_nav_bar_body">Στο τηλέφωνο, η γραμμή γίνεται στρογγυλεμένη κάψουλα αντί να καλύπτει όλο το πλάτος της οθόνης</string>
     <string name="settings_font">Γραμματοσειρά</string>
-    <string name="settings_font_downtify">Downtify</string>
+    <string name="settings_font_downtify">Κλασικό Downtify</string>
     <string name="settings_font_system">Γραμματοσειρά συστήματος</string>
     <string name="settings_about_entry">Σχετικά με το Downtify</string>
 
@@ -442,4 +471,84 @@
     <string name="license_limitation_warranty_body">Το λογισμικό παρέχεται χωρίς καμία εγγύηση.</string>
     <string name="license_full_text">Πλήρες κείμενο της άδειας</string>
     <string name="license_text_unavailable">Το κείμενο της άδειας δεν μπόρεσε να φορτωθεί.</string>
+    <string name="settings_read_ahead">Προφόρτωση επόμενων τραγουδιών</string>
+    <string name="settings_read_ahead_off">Ανενεργό</string>
+    <string name="settings_read_ahead_count">Τραγούδια εκ των προτέρων: %1$d</string>
+    <string name="settings_stream_cache">Προσωρινή κρυφή μνήμη ήχου</string>
+    <string name="settings_stream_cache_size">%1$d\u00A0MB</string>
+    <string name="settings_stream_cache_body">Χώρος για πρόσφατο και προφορτωμένο ήχο. Οι λήψεις εκτός σύνδεσης είναι ξεχωριστές. Τα μεγάλα τραγούδια μπορεί να υπερβούν το όριο· μόνο τα πλήρη τραγούδια θεωρούνται έτοιμα.</string>
+    <string name="settings_read_ahead_mobile">Προφόρτωση με δεδομένα κινητής</string>
+    <string name="settings_read_ahead_mobile_body">Να επιτρέπεται επιπλέον χρήση δεδομένων για τα επόμενα τραγούδια.</string>
+    <string name="settings_cache_apply">Εφαρμογή</string>
+    <string name="player_buffer_ready">Προσωρινή μνήμη εκτός σύνδεσης: %1$d/%2$d</string>
+
+    <!-- Music trash (admins, when the server has it on) -->
+    <string name="trash_title">Κάδος</string>
+    <string name="trash_move">Μετακίνηση στον κάδο</string>
+    <string name="trash_checking">Έλεγχος αρχείων…</string>
+    <string name="trash_checking_body">Ο διακομιστής ελέγχει ακριβώς ποια αρχεία θα μετακινηθούν. Μπορεί να πάρει λίγο χρόνο.</string>
+    <string name="trash_failed">Δεν ολοκληρώθηκε</string>
+    <string name="trash_admin_only">Μόνο οι διαχειριστές μπορούν να το δουν αυτό</string>
+    <string name="trash_admin_only_body">Ζήτησε από έναν διαχειριστή αυτού του διακομιστή να επαναφέρει ένα κομμάτι.</string>
+    <string name="trash_tab_trash">Στον κάδο</string>
+    <string name="trash_tab_kept_out">Εκτός λήψεων</string>
+    <string name="trash_search">Αναζήτηση στον κάδο</string>
+    <string name="trash_empty">Ο κάδος είναι άδειος</string>
+    <string name="trash_empty_body">Τα κομμάτια που μετακινούνται στον κάδο εμφανίζονται εδώ μέχρι να λήξουν.</string>
+    <string name="trash_no_match">Τίποτα στον κάδο δεν ταιριάζει</string>
+    <string name="trash_show_more">Εμφάνιση περισσότερων</string>
+    <string name="trash_kept_out_body">Κομμάτια των οποίων ο χρόνος στον κάδο έληξε. Οι αυτόματες λήψεις τα παραλείπουν μέχρι να τα επιτρέψεις ξανά.</string>
+    <string name="trash_kept_out_empty">Τίποτα δεν είναι εκτός λήψεων</string>
+    <string name="trash_allow">Επίτρεψε λήψεις</string>
+    <string name="trash_allow_title">Να επιτραπεί ξανά η λήψη του «%1$s»;</string>
+    <string name="trash_allow_body">Οι αυτόματες λήψεις μπορεί να το κατεβάσουν ξανά. Τίποτα δεν κατεβαίνει τώρα.</string>
+    <string name="trash_kept_until">Φυλάσσεται έως %1$s</string>
+    <string name="trash_restore">Επαναφορά</string>
+    <string name="trash_error_admin">Μόνο ένας διαχειριστής μπορεί να χρησιμοποιήσει τον κάδο.</string>
+    <string name="trash_error_changed">Ένα αρχείο άλλαξε μετά τον έλεγχο. Δεν χάθηκε τίποτα· επίλεξε ξανά το κομμάτι.</string>
+    <string name="trash_error_missing">Λείπει ένα αρχείο. Έλεγξε τον χώρο αποθήκευσης του διακομιστή και δοκίμασε ξανά.</string>
+    <string name="trash_error_collision">Υπάρχει ήδη άλλο αρχείο στη θέση του. Δεν αντικαταστάθηκε τίποτα· το κομμάτι μένει στον κάδο.</string>
+    <string name="trash_error_playing">Κάποιος ακούει αυτό το κομμάτι. Βάλ’ το σε παύση πρώτα.</string>
+    <string name="trash_error_upgrade">Η αναβάθμιση της βιβλιοθήκης τρέχει. Περίμενε ή βάλ’ την σε παύση πρώτα.</string>
+    <string name="trash_error_confirmation">Ο έλεγχος έληξε. Επίλεξε ξανά τα κομμάτια.</string>
+    <string name="trash_error_identity">Τα tags αυτού του κομματιού δεν αρκούν για να μείνει εκτός αυτόματων λήψεων. Δεν μετακινήθηκε τίποτα.</string>
+    <string name="trash_error_busy">Κάτι είναι ακόμη καθ’ οδόν. Περίμενε να τελειώσει.</string>
+    <string name="trash_error_expired">Ο χρόνος του στον κάδο έληξε.</string>
+    <string name="trash_error_folder">Ο φάκελος αυτού του κομματιού δεν καλύπτεται από τον κάδο.</string>
+    <string name="trash_error_storage">Ο χώρος αποθήκευσης του διακομιστή δεν είναι έτοιμος. Δεν μετακινήθηκε τίποτα· έλεγξέ τον και δοκίμασε ξανά.</string>
+    <string name="trash_error_off">Ο κάδος είναι απενεργοποιημένος σε αυτόν τον διακομιστή.</string>
+    <string name="trash_error">Ο κάδος δεν απάντησε. Δεν μετακινήθηκε ούτε διαγράφηκε τίποτα.</string>
+    <string name="trash_state_pending">Αναμονή μετακίνησης</string>
+    <string name="trash_state_moving">Μετακινείται</string>
+    <string name="trash_state_trashed">Στον κάδο</string>
+    <string name="trash_state_restoring">Επαναφέρεται</string>
+    <string name="trash_state_restored">Επανήλθε</string>
+    <string name="trash_state_expired">Έληξε</string>
+    <string name="trash_state_error">Σταμάτησε — τα αρχεία κρατήθηκαν</string>
+    <string name="trash_state_unknown">Ενημερώνεται</string>
+    <plurals name="trash_moving">
+        <item quantity="one">Μετακίνηση %1$d κομματιού στον κάδο</item>
+        <item quantity="other">Μετακίνηση %1$d κομματιών στον κάδο</item>
+    </plurals>
+    <plurals name="trash_confirm_title">
+        <item quantity="one">Μετακίνηση %1$d κομματιού στον κάδο;</item>
+        <item quantity="other">Μετακίνηση %1$d κομματιών στον κάδο;</item>
+    </plurals>
+    <plurals name="trash_confirm_body">
+        <item quantity="one">Μετακινούνται μόνο αυτά τα αρχεία, μαζί με τους στίχους τους. Βγαίνουν από τη βιβλιοθήκη για όλους και μπορούν να επανέλθουν για %1$d ημέρα.</item>
+        <item quantity="other">Μετακινούνται μόνο αυτά τα αρχεία, μαζί με τους στίχους τους. Βγαίνουν από τη βιβλιοθήκη για όλους και μπορούν να επανέλθουν για %1$d ημέρες.</item>
+    </plurals>
+    <plurals name="trash_summary">
+        <item quantity="one">%1$d κομμάτι · %2$s</item>
+        <item quantity="other">%1$d κομμάτια · %2$s</item>
+    </plurals>
+    <plurals name="trash_kept_days">
+        <item quantity="one">φυλάσσονται %1$d ημέρα μετά τη μετακίνηση</item>
+        <item quantity="other">φυλάσσονται %1$d ημέρες μετά τη μετακίνηση</item>
+    </plurals>
+    <string name="settings_normalization_level">Επίπεδο ήχου</string>
+    <string name="settings_normalization_normal">Κανονικό</string>
+    <string name="settings_normalization_louder">Πιο δυνατά</string>
+    <string name="settings_normalization_maximum">Μέγιστο</string>
+    <string name="settings_normalization_level_hint">Αυξάνει την ένταση εντός του ασφαλούς ορίου κάθε τραγουδιού. Τα αρχεία ήχου δεν αλλάζουν.</string>
 </resources>

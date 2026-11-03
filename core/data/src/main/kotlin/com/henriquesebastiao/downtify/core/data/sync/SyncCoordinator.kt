@@ -3,7 +3,6 @@ package com.henriquesebastiao.downtify.core.data.sync
 import android.util.Log
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ProcessLifecycleOwner
-import androidx.lifecycle.repeatOnLifecycle
 import com.henriquesebastiao.downtify.core.data.catalog.ServerQueueRepository
 import com.henriquesebastiao.downtify.core.data.di.ApplicationScope
 import com.henriquesebastiao.downtify.core.data.library.LibraryRepository
@@ -22,8 +21,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.distinctUntilChangedBy
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -47,6 +51,12 @@ class SyncCoordinator @Inject constructor(
 ) {
     private val syncRequests = SyncRequests()
     private var started = false
+    private val mediaServiceActive = MutableStateFlow(false)
+
+    /** One shared sync loop while the phone UI or the single media service is active. */
+    fun setMediaServiceActive(active: Boolean) {
+        mediaServiceActive.value = active
+    }
 
     fun start() {
         if (started) return
@@ -54,9 +64,16 @@ class SyncCoordinator @Inject constructor(
         scope.launch {
             withContext(Dispatchers.IO) { server.ensureLoaded() }
             withContext(Dispatchers.Main) {
-                ProcessLifecycleOwner.get().lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                    server.session.distinctUntilChangedBy { it?.token }.collectLatest { session ->
-                        if (session != null) withContext(Dispatchers.Default) { whilePaired(session) }
+                syncVisibility(
+                    ProcessLifecycleOwner.get().lifecycle.currentStateFlow.map {
+                        it.isAtLeast(Lifecycle.State.STARTED)
+                    },
+                    mediaServiceActive,
+                ).collectLatest { active ->
+                    if (active) {
+                        server.session.distinctUntilChangedBy { it?.token }.collectLatest { session ->
+                            if (session != null) withContext(Dispatchers.Default) { whilePaired(session) }
+                        }
                     }
                 }
             }
@@ -123,3 +140,6 @@ class SyncCoordinator @Inject constructor(
         const val MAX_BACKOFF_MS = 120_000L
     }
 }
+
+internal fun syncVisibility(foreground: Flow<Boolean>, mediaService: Flow<Boolean>): Flow<Boolean> =
+    combine(foreground, mediaService) { phone, media -> phone || media }.distinctUntilChanged()

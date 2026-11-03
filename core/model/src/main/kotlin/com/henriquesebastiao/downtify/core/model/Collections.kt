@@ -31,4 +31,9 @@ data class Playlist(
     /** Server path for `GET /playlist-cover?file=`, or blank. */
     val cover: String,
     val trackIds: List<String>,
-)
+    val favorite: Boolean = false,
+    val displayName: String = "",
+    val favoriteSupported: Boolean = false,
+) {
+    val title: String get() = displayName.ifBlank { name }
+}

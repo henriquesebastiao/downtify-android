@@ -1,6 +1,5 @@
 package com.henriquesebastiao.downtify.feature.downloads
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,25 +15,21 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.selection.toggleable
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.WavyProgressIndicatorDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -42,26 +37,44 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.text
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.henriquesebastiao.downtify.R
 import com.henriquesebastiao.downtify.core.data.offline.DownloadActivity
-import com.henriquesebastiao.downtify.core.designsystem.component.CoverArt
+import com.henriquesebastiao.downtify.core.designsystem.component.Artwork
+import com.henriquesebastiao.downtify.core.designsystem.component.ArtworkTone
+import com.henriquesebastiao.downtify.core.designsystem.component.ChoiceGroup
+import com.henriquesebastiao.downtify.core.designsystem.component.CircleButton
 import com.henriquesebastiao.downtify.core.designsystem.component.DowntifyIcons
 import com.henriquesebastiao.downtify.core.designsystem.component.EmptyState
+import com.henriquesebastiao.downtify.core.designsystem.component.MediaListItem
+import com.henriquesebastiao.downtify.core.designsystem.component.PageHeader
+import com.henriquesebastiao.downtify.core.designsystem.component.PhonePreviews
+import com.henriquesebastiao.downtify.core.designsystem.component.SectionCard
+import com.henriquesebastiao.downtify.core.designsystem.component.SectionTone
+import com.henriquesebastiao.downtify.core.designsystem.component.Tag
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyTheme
+import com.henriquesebastiao.downtify.core.designsystem.theme.ListStyle
 import com.henriquesebastiao.downtify.core.designsystem.theme.Spacing
+import com.henriquesebastiao.downtify.core.designsystem.theme.withDataValues
 import com.henriquesebastiao.downtify.core.model.OfflinePlanner
 import com.henriquesebastiao.downtify.core.model.OfflineProgress
 import com.henriquesebastiao.downtify.core.model.PlaybackContextType
@@ -69,10 +82,15 @@ import com.henriquesebastiao.downtify.core.model.ServerJob
 import com.henriquesebastiao.downtify.core.model.ServerJobStatus
 import com.henriquesebastiao.downtify.core.model.ServerQueueSummary
 import com.henriquesebastiao.downtify.core.model.formatBytes
+import com.henriquesebastiao.downtify.ui.common.GroupedList
+import com.henriquesebastiao.downtify.ui.common.GroupedRow
 import com.henriquesebastiao.downtify.ui.common.LocalCoverUrls
+import com.henriquesebastiao.downtify.ui.common.RowAction
+import com.henriquesebastiao.downtify.ui.common.plusBottomBars
 
 @Composable
 fun DownloadsRoute(
+    onBack: () -> Unit,
     onOpen: (DownloadItem) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: DownloadsViewModel = hiltViewModel(),
@@ -84,11 +102,15 @@ fun DownloadsRoute(
         onOpen = onOpen,
         onRemove = viewModel::remove,
         onTab = viewModel::selectTab,
+        onBack = onBack,
         modifier = modifier,
     )
 }
 
-/** What's kept on the phone: the storage it takes, Liked songs, and each album or playlist. */
+/**
+ * What's kept on the phone: the storage it takes, Liked songs, and each album or playlist. Opened
+ * from the side menu, above Home.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DownloadsScreen(
@@ -98,19 +120,25 @@ fun DownloadsScreen(
     onRemove: (DownloadItem) -> Unit,
     modifier: Modifier = Modifier,
     onTab: (DownloadsTab) -> Unit = {},
+    onBack: () -> Unit = {},
 ) {
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     Scaffold(
-        modifier = modifier,
+        modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         contentWindowInsets = WindowInsets(0),
         topBar = {
-            TopAppBar(title = {
-                Text(stringResource(R.string.downloads_title), style = MaterialTheme.typography.headlineMedium)
-            })
+            PageHeader(
+                title = stringResource(R.string.downloads_title),
+                onBack = onBack,
+                backLabel = stringResource(R.string.action_back),
+                scrollBehavior = scrollBehavior,
+            )
         },
     ) { padding ->
         if (state.loading) return@Scaffold
         LazyColumn(
-            contentPadding = PaddingValues(bottom = Spacing.xl),
+            contentPadding = PaddingValues(bottom = Spacing.xl).plusBottomBars(),
+            verticalArrangement = Arrangement.spacedBy(ListStyle.Separated.gap),
             modifier = Modifier.fillMaxSize().padding(padding),
         ) {
             item(key = "tabs") { Tabs(state.tab, onTab) }
@@ -118,10 +146,24 @@ fun DownloadsScreen(
                 serverTab(state)
                 return@LazyColumn
             }
-            item(key = "storage") {
-                StorageCard(state, Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.xs))
+            item(key = "storage") { StorageCard(state, Modifier.padding(horizontal = Spacing.screen)) }
+            item(key = "liked") {
+                val body = if (state.wifiOnly) {
+                    R.string.downloads_keep_liked_body_wifi
+                } else {
+                    R.string.downloads_keep_liked_body
+                }
+                GroupedList(
+                    listOf(
+                        GroupedRow(
+                            title = stringResource(R.string.downloads_keep_liked),
+                            action = RowAction.Toggle(state.keepLiked, onKeepLiked),
+                            summary = stringResource(body),
+                            icon = DowntifyIcons.Favorite,
+                        ),
+                    ),
+                )
             }
-            item(key = "liked") { KeepLikedRow(state, onKeepLiked) }
             val collections = state.items
             if (collections.isEmpty()) {
                 item(key = "empty") {
@@ -129,18 +171,11 @@ fun DownloadsScreen(
                         icon = DowntifyIcons.Downloads,
                         title = stringResource(R.string.downloads_empty_title),
                         body = stringResource(R.string.downloads_empty_body),
-                        modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.xl),
+                        hero = true,
                     )
                 }
             } else {
-                item(key = "header") {
-                    Text(
-                        stringResource(R.string.downloads_on_phone),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = Spacing.lg, top = Spacing.lg, bottom = Spacing.xs),
-                    )
-                }
+                item(key = "header") { SectionTitle(stringResource(R.string.downloads_on_phone)) }
                 items(collections, key = { "${it.type}:${it.refId}" }) { item ->
                     DownloadRow(item, state, onOpen = { onOpen(item) }, onRemove = { onRemove(item) })
                 }
@@ -152,55 +187,57 @@ fun DownloadsScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/** Phone or server: two views of one screen, read as tabs. */
 @Composable
 private fun Tabs(selected: DownloadsTab, onTab: (DownloadsTab) -> Unit) {
-    SingleChoiceSegmentedButtonRow(
-        Modifier.fillMaxWidth().padding(horizontal = Spacing.lg, vertical = Spacing.sm),
-    ) {
-        DownloadsTab.entries.forEachIndexed { index, tab ->
-            SegmentedButton(
-                selected = tab == selected,
-                onClick = { onTab(tab) },
-                shape = SegmentedButtonDefaults.itemShape(index, DownloadsTab.entries.size),
-            ) {
-                Text(
-                    stringResource(
-                        if (tab == DownloadsTab.Phone) R.string.downloads_tab_phone else R.string.downloads_tab_server,
-                    ),
-                )
-            }
-        }
-    }
+    ChoiceGroup(
+        options = DownloadsTab.entries,
+        selected = selected,
+        label = {
+            stringResource(
+                if (it ==
+                    DownloadsTab.Phone
+                ) {
+                    R.string.downloads_tab_phone
+                } else {
+                    R.string.downloads_tab_server
+                },
+            )
+        },
+        onSelect = onTab,
+        role = Role.Tab,
+        modifier = Modifier.padding(horizontal = Spacing.screen, vertical = Spacing.sm),
+    )
+}
+
+@Composable
+private fun SectionTitle(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier
+            .padding(start = Spacing.screen + Spacing.xs, end = Spacing.screen, top = Spacing.md)
+            .semantics { heading() },
+    )
 }
 
 /** "The server is downloading 13 songs · Harbor Nights · 4 of 9" — opens the server's side. */
 @Composable
 private fun ServerCard(state: DownloadsUiState, onClick: () -> Unit) {
     val summary = state.serverSummary
-    Card(
+    SectionCard(
+        tone = SectionTone.Secondary,
         onClick = onClick,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-        ),
-        shape = MaterialTheme.shapes.large,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.lg, vertical = Spacing.md),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.screen, vertical = Spacing.sm),
     ) {
-        Row(
-            Modifier.heightIn(min = 64.dp).padding(start = Spacing.lg, end = Spacing.sm),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(Spacing.md),
-        ) {
-            Icon(
-                painterResource(DowntifyIcons.Server),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-            )
-            Column(Modifier.weight(1f).padding(vertical = Spacing.md)) {
+        // The sentence wraps whole: as a card title it lost its end beside the icon and the chevron.
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
+            Icon(painterResource(DowntifyIcons.Server), contentDescription = null)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
                 Text(
                     pluralStringResource(R.plurals.downloads_server_card, summary.active, summary.active),
-                    style = MaterialTheme.typography.titleSmall,
+                    style = MaterialTheme.typography.titleMedium,
                 )
                 if (summary.currentAlbum.isNotBlank() && summary.currentAlbumTotal > 1) {
                     Text(
@@ -210,7 +247,7 @@ private fun ServerCard(state: DownloadsUiState, onClick: () -> Unit) {
                             summary.currentAlbumDone,
                             summary.currentAlbumTotal,
                         ),
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodyMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -228,82 +265,78 @@ private fun LazyListScope.serverTab(state: DownloadsUiState) {
                 icon = DowntifyIcons.Server,
                 title = stringResource(R.string.downloads_server_empty_title),
                 body = stringResource(R.string.downloads_server_empty_body),
-                modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.xl),
+                hero = true,
             )
         }
         return
     }
     if (state.serverSummary.active > 0) {
         item(key = "server-summary") {
-            Text(
+            SectionTitle(
                 pluralStringResource(
                     R.plurals.downloads_server_card,
                     state.serverSummary.active,
                     state.serverSummary.active,
                 ),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = Spacing.lg, top = Spacing.md, bottom = Spacing.xs),
             )
         }
     }
     items(state.serverJobs, key = { "job:${it.songId}" }) { job -> ServerJobRow(job) }
 }
 
+/** A song the server is fetching: its progress as a wavy bar (a long wait), its place in line. */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ServerJobRow(job: ServerJob) {
-    ListItem(
-        headlineContent = { Text(job.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        supportingContent = {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 2.dp)) {
-                if (job.status == ServerJobStatus.Downloading) {
-                    LinearProgressIndicator(
-                        progress = { job.progress / PERCENT },
-                        strokeCap = StrokeCap.Round,
-                        modifier = Modifier.fillMaxWidth().padding(end = Spacing.sm),
-                    )
-                }
-                Text(
-                    listOf(job.artist, jobStatus(job)).filter { it.isNotBlank() }.joinToString(" · "),
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    color = if (job.status ==
-                        ServerJobStatus.Error
-                    ) {
-                        MaterialTheme.colorScheme.error
-                    } else {
-                        Color.Unspecified
-                    },
+    MediaListItem(
+        title = job.title,
+        subtitle = listOf(job.artist, jobStatus(job)).filter { it.isNotBlank() }.joinToString(" · "),
+        subtitleLines = 2,
+        onClick = {},
+        leading = {
+            Artwork(url = job.coverUrl.ifBlank { null }, contentDescription = null, modifier = Modifier.size(COVER))
+        },
+        extra = if (job.status == ServerJobStatus.Downloading) {
+            {
+                LinearWavyProgressIndicator(
+                    progress = { job.progress / PERCENT },
+                    modifier = Modifier.fillMaxWidth().padding(top = Spacing.xs, end = Spacing.sm),
                 )
             }
+        } else {
+            null
         },
-        leadingContent = {
-            CoverArt(url = job.coverUrl.ifBlank { null }, contentDescription = null, modifier = Modifier.size(56.dp))
+        supportingLeading = if (job.status == ServerJobStatus.Error) {
+            {
+                Icon(
+                    painterResource(DowntifyIcons.Error),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(end = 6.dp).size(16.dp),
+                )
+            }
+        } else {
+            null
         },
-        trailingContent = when {
+        trailing = when {
             job.status == ServerJobStatus.Done -> {
                 {
                     Icon(
                         painterResource(DowntifyIcons.CheckCircle),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(end = Spacing.sm),
                     )
                 }
             }
 
             job.status.isActive && job.position != null -> {
-                {
-                    Text(
-                        "#${job.position}",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                { Tag("#${job.position}", small = true) }
             }
 
             else -> null
         },
-        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        modifier = Modifier.padding(horizontal = Spacing.screen),
     )
 }
 
@@ -322,103 +355,65 @@ private fun jobStatus(job: ServerJob): String = when (job.status) {
     }
 }
 
-private const val PERCENT = 100f
-
+/** How much of the phone the offline copies take: the screen's one hero card, its values in tabular figures. */
 @Composable
 private fun StorageCard(state: DownloadsUiState, modifier: Modifier = Modifier) {
     val unlimited = state.limitBytes == OfflinePlanner.UNLIMITED
     val capacity = if (unlimited) state.usedBytes + state.freeBytes else state.limitBytes
     val fraction = if (capacity > 0) (state.usedBytes.toFloat() / capacity).coerceIn(0f, 1f) else 0f
     val a11y = stringResource(R.string.downloads_storage_a11y)
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        shape = MaterialTheme.shapes.large,
-        modifier = modifier.fillMaxWidth(),
-    ) {
-        Column(Modifier.padding(Spacing.lg), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(
-                    stringResource(R.string.downloads_used, formatBytes(state.usedBytes)),
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.weight(1f),
-                )
-                Text(
-                    if (unlimited) {
-                        stringResource(R.string.downloads_no_limit)
-                    } else {
-                        stringResource(R.string.downloads_of_limit, formatBytes(state.limitBytes))
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            LinearProgressIndicator(
-                progress = { fraction },
-                strokeCap = StrokeCap.Round,
-                modifier = Modifier.fillMaxWidth().height(8.dp).semantics { contentDescription = a11y },
+    val used = formatBytes(state.usedBytes)
+    val limit = formatBytes(state.limitBytes)
+    val free = formatBytes(state.freeBytes)
+    val scheme = MaterialTheme.colorScheme
+    SectionCard(tone = SectionTone.Primary, hero = true, modifier = modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+            Text(
+                withDataValues(stringResource(R.string.downloads_used, used), used),
+                style = MaterialTheme.typography.headlineMediumEmphasized,
             )
             Text(
-                pluralStringResource(
-                    R.plurals.downloads_storage_body,
-                    state.songCount,
-                    state.songCount,
-                    formatBytes(state.freeBytes),
-                ),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                if (unlimited) {
+                    AnnotatedString(stringResource(R.string.downloads_no_limit))
+                } else {
+                    withDataValues(stringResource(R.string.downloads_of_limit, limit), limit)
+                },
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.alpha(MUTED_ALPHA),
             )
         }
+        LinearProgressIndicator(
+            progress = { fraction },
+            color = scheme.primary,
+            trackColor = scheme.onPrimaryContainer.copy(alpha = TRACK_ALPHA),
+            strokeCap = StrokeCap.Round,
+            modifier = Modifier.fillMaxWidth().height(8.dp).semantics { contentDescription = a11y },
+        )
+        Text(
+            withDataValues(
+                pluralStringResource(R.plurals.downloads_storage_body, state.songCount, state.songCount, free),
+                free,
+            ),
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.alpha(MUTED_ALPHA),
+        )
     }
 }
 
-@Composable
-private fun KeepLikedRow(state: DownloadsUiState, onKeepLiked: (Boolean) -> Unit) {
-    ListItem(
-        headlineContent = { Text(stringResource(R.string.downloads_keep_liked)) },
-        supportingContent = {
-            Text(
-                stringResource(
-                    if (state.wifiOnly) R.string.downloads_keep_liked_body_wifi else R.string.downloads_keep_liked_body,
-                ),
-            )
-        },
-        trailingContent = { Switch(checked = state.keepLiked, onCheckedChange = null) },
-        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-        modifier = Modifier.toggleable(value = state.keepLiked, role = Role.Switch, onValueChange = onKeepLiked),
-    )
-}
-
+/** An album, playlist or Liked songs kept here: its status whole, its download as a wavy bar. */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun DownloadRow(item: DownloadItem, state: DownloadsUiState, onOpen: () -> Unit, onRemove: () -> Unit) {
     val title = if (item.type == PlaybackContextType.Liked) stringResource(R.string.liked_songs) else item.title
     val p = item.progress
     val inProgress = p.total > 0 && !p.isComplete && p.overLimit == 0
-    ListItem(
-        headlineContent = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        supportingContent = {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 2.dp)) {
-                if (inProgress) {
-                    LinearProgressIndicator(
-                        progress = { p.downloaded.toFloat() / p.total },
-                        strokeCap = StrokeCap.Round,
-                        modifier = Modifier.fillMaxWidth().padding(end = Spacing.sm),
-                    )
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (p.isComplete) {
-                        Icon(
-                            painterResource(DowntifyIcons.CheckCircle),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(end = 6.dp).size(14.dp),
-                        )
-                    }
-                    Text(statusText(item, state), maxLines = 2, overflow = TextOverflow.Ellipsis)
-                }
-            }
-        },
-        leadingContent = {
-            CoverArt(
+    MediaListItem(
+        title = title,
+        subtitle = statusText(item, state),
+        subtitleLines = 2,
+        onClick = onOpen,
+        leading = {
+            Artwork(
                 url = LocalCoverUrls.current.track(item.coverTrackId),
                 contentDescription = null,
                 placeholderIcon = when (item.type) {
@@ -426,12 +421,37 @@ private fun DownloadRow(item: DownloadItem, state: DownloadsUiState, onOpen: () 
                     PlaybackContextType.Playlist -> DowntifyIcons.Playlist
                     else -> DowntifyIcons.Album
                 },
-                modifier = Modifier.size(56.dp),
+                tone = if (item.type == PlaybackContextType.Liked) ArtworkTone.Primary else ArtworkTone.Neutral,
+                modifier = Modifier.size(COVER),
             )
         },
-        trailingContent = { RowMenu(title, onRemove) },
-        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-        modifier = Modifier.clickable(onClick = onOpen),
+        supportingLeading = if (p.isComplete) {
+            {
+                Icon(
+                    painterResource(DowntifyIcons.CheckCircle),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(end = 6.dp).size(16.dp),
+                )
+            }
+        } else {
+            null
+        },
+        extra = if (inProgress) {
+            {
+                // The wave means work under way: waiting for Wi-Fi or a connection, the bar lies flat.
+                val moving = state.activity == DownloadActivity.Downloading
+                LinearWavyProgressIndicator(
+                    progress = { p.downloaded.toFloat() / p.total },
+                    amplitude = { if (moving) WavyProgressIndicatorDefaults.indicatorAmplitude(it) else 0f },
+                    modifier = Modifier.fillMaxWidth().padding(top = Spacing.xs, end = Spacing.sm),
+                )
+            }
+        } else {
+            null
+        },
+        trailing = { RowMenu(title, onRemove) },
+        modifier = Modifier.padding(horizontal = Spacing.screen),
     )
 }
 
@@ -439,13 +459,7 @@ private fun DownloadRow(item: DownloadItem, state: DownloadsUiState, onOpen: () 
 private fun RowMenu(title: String, onRemove: () -> Unit) {
     var open by remember { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { open = true }) {
-            Icon(
-                painterResource(DowntifyIcons.MoreVert),
-                contentDescription = stringResource(R.string.downloads_options, title),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        CircleButton(DowntifyIcons.MoreVert, stringResource(R.string.downloads_options, title), { open = true })
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.downloads_remove)) },
@@ -458,6 +472,11 @@ private fun RowMenu(title: String, onRemove: () -> Unit) {
         }
     }
 }
+
+private val COVER = 64.dp
+private const val PERCENT = 100f
+private const val MUTED_ALPHA = 0.8f
+private const val TRACK_ALPHA = 0.18f
 
 @Composable
 private fun statusText(item: DownloadItem, state: DownloadsUiState): String {
@@ -517,7 +536,7 @@ private val previewState = DownloadsUiState(
     ),
 )
 
-@PreviewLightDark
+@PhonePreviews
 @Composable
 private fun DownloadsPreview() {
     DowntifyTheme {
@@ -525,7 +544,7 @@ private fun DownloadsPreview() {
     }
 }
 
-@PreviewLightDark
+@PhonePreviews
 @Composable
 private fun DownloadsServerPreview() {
     val jobs = listOf(
@@ -547,7 +566,7 @@ private fun DownloadsServerPreview() {
     }
 }
 
-@PreviewLightDark
+@PhonePreviews
 @Composable
 private fun DownloadsEmptyPreview() {
     DowntifyTheme {

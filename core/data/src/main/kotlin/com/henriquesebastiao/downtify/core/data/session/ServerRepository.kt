@@ -47,7 +47,7 @@ enum class ConnectionState {
     DifferentServer,
 }
 
-/** The paired server: pairing, forgetting it, and what it currently says about itself. */
+/** The paired server: signing in or pairing, forgetting it, and what it currently says about itself. */
 @Singleton
 class ServerRepository @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -81,12 +81,19 @@ class ServerRepository @Inject constructor(
 
     suspend fun check(baseUrl: String): ServerProbe.Result = probe.check(baseUrl)
 
+    /** Signs in to the server at [baseUrl] (already checked: [info]) with the account's password. */
+    suspend fun signIn(baseUrl: String, info: ServerInfo, username: String, password: String): PairingClient.Result =
+        adopt(info, pairing.signIn(baseUrl, username, password, deviceName()))
+
+    /** Pairs with the server at [baseUrl] (already checked: [info]) with a code from its web page. */
+    suspend fun pair(baseUrl: String, info: ServerInfo, code: String): PairingClient.Result =
+        adopt(info, pairing.pair(baseUrl, code, deviceName()))
+
     /**
-     * Pairs with the server at [baseUrl] (already checked: [info]). Pairing with a
-     * different server than the local library came from clears the library first.
+     * Keeps the token a sign-in or a pairing got. Starting over with a different
+     * server than the local library came from clears the library first.
      */
-    suspend fun pair(baseUrl: String, info: ServerInfo, code: String): PairingClient.Result {
-        val result = pairing.pair(baseUrl, code, deviceName())
+    private suspend fun adopt(info: ServerInfo, result: PairingClient.Result): PairingClient.Result {
         if (result is PairingClient.Result.Paired) {
             val session = result.session.copy(
                 serverId = result.session.serverId.ifEmpty { info.serverId },

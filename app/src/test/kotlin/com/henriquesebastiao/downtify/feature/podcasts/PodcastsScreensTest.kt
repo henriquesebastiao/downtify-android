@@ -95,8 +95,9 @@ class PodcastsScreensTest {
             }
         }
         compose.onNodeWithText("The Sweetest Thing").assertIsDisplayed()
-        compose.onNodeWithText("Resume at 12:34", substring = true).assertIsDisplayed()
-        compose.onNodeWithText("Played", substring = true).assertIsDisplayed()
+        // In words on their own line; the date and length keep the data line to themselves.
+        compose.onNodeWithText("Resume at 12:34").assertIsDisplayed()
+        compose.onNodeWithText("Played").assertIsDisplayed()
     }
 
     @Test

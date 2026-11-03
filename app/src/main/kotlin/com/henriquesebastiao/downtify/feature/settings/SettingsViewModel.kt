@@ -9,6 +9,7 @@ import com.henriquesebastiao.downtify.core.data.settings.SettingsRepository
 import com.henriquesebastiao.downtify.core.data.settings.ThemeMode
 import com.henriquesebastiao.downtify.core.data.settings.UserSettings
 import com.henriquesebastiao.downtify.core.model.AppFont
+import com.henriquesebastiao.downtify.core.model.NormalizationLevel
 import com.henriquesebastiao.downtify.core.model.StreamFormat
 import com.henriquesebastiao.downtify.core.model.StreamQuality
 import com.henriquesebastiao.downtify.core.model.Transcoding
@@ -73,12 +74,18 @@ class SettingsViewModel @Inject constructor(
 
     fun setWifiQuality(value: StreamQuality) = launch { settings.setWifiQuality(value) }
     fun setMobileQuality(value: StreamQuality) = launch { settings.setMobileQuality(value) }
+    fun setNormalizeVolume(value: Boolean) = launch { settings.setNormalizeVolume(value) }
+    fun setNormalizationLevel(value: NormalizationLevel) = launch { settings.setNormalizationLevel(value) }
     fun setTheme(value: ThemeMode) = launch { settings.setTheme(value) }
     fun setDynamicColor(value: Boolean) = launch { settings.setDynamicColor(value) }
     fun setAmoled(value: Boolean) = launch { settings.setAmoled(value) }
     fun setFont(value: AppFont) = launch { settings.setFont(value) }
+    fun setFloatingNavBar(value: Boolean) = launch { settings.setFloatingNavBar(value) }
     fun setDownloadWifiOnly(value: Boolean) = launch { settings.setDownloadWifiOnly(value) }
     fun setOfflineLimit(bytes: Long) = launch { settings.setOfflineLimit(bytes) }
+    fun setReadAhead(tracks: Int) = launch { settings.setReadAhead(tracks) }
+    fun setStreamCacheMb(mb: Int) = launch { settings.setStreamCacheMb(mb) }
+    fun setReadAheadMobile(enabled: Boolean) = launch { settings.setReadAheadMobile(enabled) }
     fun unpair() = launch { server.unpair() }
 
     private fun launch(block: suspend () -> Unit) {

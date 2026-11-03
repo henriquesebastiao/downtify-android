@@ -10,8 +10,8 @@ android {
 
     defaultConfig {
         applicationId = "com.henriquesebastiao.downtify"
-        versionCode = 4
-        versionName = "0.1.0"
+        versionCode = 7
+        versionName = "0.3.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -88,6 +88,7 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
     testImplementation(libs.mockk)
+    testImplementation(libs.media3.exoplayer)
     testImplementation(libs.robolectric)
     testImplementation(libs.compose.ui.test.junit4)
     testImplementation(libs.androidx.test.junit)

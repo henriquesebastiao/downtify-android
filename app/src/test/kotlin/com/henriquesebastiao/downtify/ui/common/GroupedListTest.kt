@@ -1,11 +1,16 @@
 package com.henriquesebastiao.downtify.ui.common
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyTheme
+import com.henriquesebastiao.downtify.core.designsystem.theme.ListStyle
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -69,5 +74,26 @@ class GroupedListTest {
             }
         }
         listOf("One", "Two", "Three").forEach { compose.onNodeWithText(it).assertExists() }
+    }
+
+    @Test
+    fun eachStyleKeepsItsGapBetweenRows() {
+        val styles = listOf(ListStyle.Segmented, ListStyle.Separated, ListStyle.Compact)
+        var style by mutableStateOf(styles.first())
+        compose.setContent {
+            DowntifyTheme {
+                GroupedList(
+                    listOf(GroupedRow("One", RowAction.Click({})), GroupedRow("Two", RowAction.Click({}))),
+                    style = style,
+                )
+            }
+        }
+        styles.forEach { current ->
+            style = current
+            compose.waitForIdle()
+            val rows = compose.onAllNodes(hasClickAction()).fetchSemanticsNodes().map { it.boundsInRoot }
+            val gap = with(compose.density) { (rows[1].top - rows[0].bottom).toDp() }
+            assertEquals(current.gap.value, gap.value, 0.5f)
+        }
     }
 }

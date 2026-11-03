@@ -1,13 +1,16 @@
 package com.henriquesebastiao.downtify.feature.player
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
@@ -20,8 +23,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -37,8 +38,10 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
@@ -47,19 +50,20 @@ import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.henriquesebastiao.downtify.R
-import com.henriquesebastiao.downtify.core.designsystem.component.CoverArt
-import com.henriquesebastiao.downtify.core.designsystem.component.CoverColors
+import com.henriquesebastiao.downtify.core.designsystem.component.Artwork
+import com.henriquesebastiao.downtify.core.designsystem.component.CircleButton
+import com.henriquesebastiao.downtify.core.designsystem.component.CoverTheme
 import com.henriquesebastiao.downtify.core.designsystem.component.DowntifyIcons
+import com.henriquesebastiao.downtify.core.designsystem.component.MediaListItem
+import com.henriquesebastiao.downtify.core.designsystem.component.PhonePreviews
 import com.henriquesebastiao.downtify.core.designsystem.component.PlayingBars
-import com.henriquesebastiao.downtify.core.designsystem.component.rememberCoverColors
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyTheme
+import com.henriquesebastiao.downtify.core.designsystem.theme.ListStyle
 import com.henriquesebastiao.downtify.core.designsystem.theme.Spacing
 import com.henriquesebastiao.downtify.core.model.EpisodeIds
 import com.henriquesebastiao.downtify.core.model.PlayQueue
@@ -98,74 +102,93 @@ fun QueueScreen(
     modifier: Modifier = Modifier,
 ) {
     val now = nowPlayingRow(state) ?: return
-    val colors = rememberCoverColors(now.artworkUrl)
     val listState = rememberLazyListState()
     val reorder = rememberQueueReorder(state.upNext, state.currentIndex, listState, actions.onMove)
     val entries = reorder.entries
     val queued = entries.takeWhile { it.queued }
     val rest = entries.drop(queued.size)
 
-    Surface(color = colors.surface, contentColor = colors.onSurface, modifier = modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxSize().safeDrawingPadding()) {
-            TopBar(state.context, colors, actions.onClose)
-            LazyColumn(state = listState, modifier = Modifier.weight(1f).fillMaxWidth()) {
-                item(key = "now-header") { QueueHeader(stringResource(R.string.player_queue_now_playing)) }
-                item(key = "now") {
-                    QueueRow(
-                        title = now.title,
-                        artist = now.artist,
-                        artworkUrl = now.artworkUrl,
-                        colors = colors,
-                        current = true,
-                        isPlaying = state.isPlaying,
-                        onClick = controls.onTogglePlay,
-                    )
-                }
-                if (queued.isNotEmpty()) {
-                    item(key = "queued-header") {
-                        QueueHeader(
-                            stringResource(R.string.player_queue_next_in_queue),
-                            actionLabel = stringResource(R.string.player_queue_clear),
-                            onAction = actions.onClearQueued,
-                            colors = colors,
+    CoverTheme(now.artworkUrl) {
+        val scheme = MaterialTheme.colorScheme
+        // Opaque, so a row sliding away under a swipe shows the swipe's color beside it, not the row below.
+        val rowColor = playerTint().compositeOver(scheme.primaryContainer)
+        Surface(
+            color = scheme.primaryContainer,
+            contentColor = scheme.onPrimaryContainer,
+            modifier = modifier.fillMaxSize(),
+        ) {
+            Column(Modifier.fillMaxSize().safeDrawingPadding()) {
+                TopBar(state.context, actions.onClose)
+                LazyColumn(
+                    state = listState,
+                    contentPadding = PaddingValues(horizontal = Spacing.screen, vertical = Spacing.sm),
+                    verticalArrangement = Arrangement.spacedBy(ListStyle.Separated.gap),
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                ) {
+                    item(key = "now-header") { QueueHeader(stringResource(R.string.player_queue_now_playing)) }
+                    item(key = "now") {
+                        QueueRow(
+                            title = now.title,
+                            artist = now.artist,
+                            artworkUrl = now.artworkUrl,
+                            current = true,
+                            onClick = controls.onTogglePlay,
+                            containerColor = rowColor,
+                            trailing = { PlayingBars(animate = state.isPlaying) },
                         )
                     }
-                    entries(queued, colors, actions, reorder)
-                }
-                if (rest.isNotEmpty()) {
-                    item(key = "rest-header") { QueueHeader(nextFromLabel(state.context)) }
-                    entries(rest, colors, actions, reorder)
-                }
-                if (entries.isEmpty()) {
-                    item(key = "empty") {
-                        Text(
-                            stringResource(R.string.player_queue_empty),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = colors.onSurfaceVariant,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth().padding(Spacing.xl),
-                        )
+                    if (queued.isNotEmpty()) {
+                        item(key = "queued-header") {
+                            QueueHeader(
+                                stringResource(R.string.player_queue_next_in_queue),
+                                actionLabel = stringResource(R.string.player_queue_clear),
+                                onAction = actions.onClearQueued,
+                            )
+                        }
+                        entries(queued, actions, reorder, rowColor)
                     }
+                    if (rest.isNotEmpty()) {
+                        item(key = "rest-header") { QueueHeader(nextFromLabel(state.context)) }
+                        entries(rest, actions, reorder, rowColor)
+                    }
+                    if (entries.isEmpty()) {
+                        item(key = "empty") {
+                            Text(
+                                stringResource(R.string.player_queue_empty),
+                                style = MaterialTheme.typography.bodyLarge,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth().padding(Spacing.xl).alpha(MUTED_ALPHA),
+                            )
+                        }
+                    }
+                }
+                Column(
+                    Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.sm),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+                ) {
+                    TrackTransport(state, controls, compact = true, isLiked = null)
                 }
             }
-            Box(Modifier.padding(horizontal = Spacing.lg)) { Controls(state, colors, controls) }
         }
     }
 }
 
 private fun LazyListScope.entries(
     entries: List<QueueEntry>,
-    colors: CoverColors,
     actions: QueueActions,
     reorder: QueueReorder,
+    rowColor: Color,
 ) {
     items(entries, key = ::entryKey) { entry ->
         val key = entryKey(entry)
         val dragging = reorder.draggingKey == key
         val moveUp = stringResource(R.string.player_queue_move_up)
         val moveDown = stringResource(R.string.player_queue_move_down)
+        val shape = ListStyle.Separated.shapeOf(0, 1)
         SwipeToRemove(
             onRemove = { actions.onRemove(entry.index) },
+            shape = shape,
             modifier = reorderableModifier(dragging, reorder)
                 .semantics {
                     customActions = listOf(
@@ -178,22 +201,17 @@ private fun LazyListScope.entries(
                 title = entry.title,
                 artist = entry.artist,
                 artworkUrl = artworkOf(entry),
-                colors = colors,
                 current = false,
-                isPlaying = false,
                 onClick = { actions.onSkipTo(entry.index) },
-                containerColor = colors.surface,
+                containerColor = rowColor,
                 trailing = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { actions.onRemove(entry.index) }) {
-                            Icon(
-                                painterResource(DowntifyIcons.Close),
-                                contentDescription = stringResource(R.string.player_queue_remove),
-                                tint = colors.onSurfaceVariant,
-                            )
-                        }
-                        DragHandle(key, colors, reorder)
+                    IconButton(onClick = { actions.onRemove(entry.index) }) {
+                        Icon(
+                            painterResource(DowntifyIcons.Close),
+                            contentDescription = stringResource(R.string.player_queue_remove),
+                        )
                     }
+                    DragHandle(key, reorder)
                 },
             )
         }
@@ -202,13 +220,15 @@ private fun LazyListScope.entries(
 
 /** The dragged row floats over the others, which slide out of its way. */
 private fun LazyItemScope.reorderableModifier(dragging: Boolean, reorder: QueueReorder): Modifier = if (dragging) {
-    Modifier.zIndex(1f).graphicsLayer { translationY = reorder.dragOffset }.shadow(8.dp)
+    Modifier.zIndex(1f).graphicsLayer {
+        translationY = reorder.dragOffset
+    }.shadow(8.dp, ListStyle.Separated.shapeOf(0, 1))
 } else {
     Modifier.animateItem()
 }
 
 @Composable
-private fun DragHandle(key: String, colors: CoverColors, reorder: QueueReorder) {
+private fun DragHandle(key: String, reorder: QueueReorder) {
     Box(
         Modifier
             .size(48.dp)
@@ -228,7 +248,6 @@ private fun DragHandle(key: String, colors: CoverColors, reorder: QueueReorder) 
         Icon(
             painterResource(DowntifyIcons.DragHandle),
             contentDescription = stringResource(R.string.player_queue_reorder),
-            tint = colors.onSurfaceVariant,
         )
     }
 }
@@ -416,31 +435,33 @@ private fun nextFromLabel(context: PlaybackContext?): String {
 }
 
 @Composable
-private fun TopBar(context: PlaybackContext?, colors: CoverColors, onClose: () -> Unit) {
+private fun TopBar(context: PlaybackContext?, onClose: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = Spacing.xs, vertical = Spacing.xs),
+        Modifier.fillMaxWidth().height(64.dp).padding(horizontal = Spacing.lg),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {
-        IconButton(onClick = onClose) {
-            Icon(
-                painterResource(DowntifyIcons.Collapse),
-                contentDescription = stringResource(R.string.player_queue_close),
-            )
-        }
+        CircleButton(
+            DowntifyIcons.Collapse,
+            stringResource(R.string.player_queue_close),
+            onClose,
+            containerColor = playerTint(),
+            contentColor = playerContent(),
+        )
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 stringResource(R.string.player_queue),
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.semantics { heading() },
             )
             val title = context?.title.orEmpty()
             if (title.isNotBlank()) {
                 Text(
                     title,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.alpha(MUTED_ALPHA),
                 )
             }
         }
@@ -450,20 +471,14 @@ private fun TopBar(context: PlaybackContext?, colors: CoverColors, onClose: () -
 }
 
 @Composable
-private fun QueueHeader(
-    text: String,
-    actionLabel: String? = null,
-    onAction: (() -> Unit)? = null,
-    colors: CoverColors? = null,
-) {
+private fun QueueHeader(text: String, actionLabel: String? = null, onAction: (() -> Unit)? = null) {
     Row(
-        Modifier.fillMaxWidth().padding(start = Spacing.screen, end = Spacing.xs, top = Spacing.md),
+        Modifier.fillMaxWidth().padding(start = Spacing.xs, top = Spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
+            style = MaterialTheme.typography.titleMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f).padding(vertical = Spacing.sm).semantics { heading() },
@@ -471,53 +486,37 @@ private fun QueueHeader(
         if (actionLabel != null && onAction != null) {
             TextButton(
                 onClick = onAction,
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = colors?.onSurface ?: MaterialTheme.colorScheme.primary,
-                ),
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onPrimaryContainer),
             ) { Text(actionLabel) }
         }
     }
 }
 
-@Suppress("LongParameterList")
+/** A queue row: a card of the separated list, in the cover's colors. */
 @Composable
 private fun QueueRow(
     title: String,
     artist: String,
     artworkUrl: String?,
-    colors: CoverColors,
     current: Boolean,
-    isPlaying: Boolean,
     onClick: () -> Unit,
-    containerColor: Color = Color.Transparent,
-    trailing: (@Composable () -> Unit)? = null,
+    containerColor: Color,
+    trailing: @Composable RowScope.() -> Unit,
 ) {
-    ListItem(
-        headlineContent = {
-            Text(
-                title,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                color = if (current) MaterialTheme.colorScheme.primary else colors.onSurface,
-                fontWeight = if (current) FontWeight.SemiBold else null,
-            )
-        },
-        supportingContent = {
-            Text(artist, maxLines = 1, overflow = TextOverflow.Ellipsis, color = colors.onSurfaceVariant)
-        },
-        leadingContent = {
-            Box(contentAlignment = Alignment.Center) {
-                CoverArt(url = artworkUrl, contentDescription = null, modifier = Modifier.size(48.dp))
-                if (current) PlayingBars(animate = isPlaying)
-            }
-        },
-        trailingContent = trailing,
-        colors = ListItemDefaults.colors(containerColor = containerColor),
-        modifier = Modifier.clickable(onClick = onClick),
+    MediaListItem(
+        title = title,
+        subtitle = artist,
+        onClick = onClick,
+        active = current,
+        containerColor = containerColor,
+        leading = { Artwork(url = artworkUrl, contentDescription = null, modifier = Modifier.size(64.dp)) },
+        trailing = trailing,
     )
 }
 
-@PreviewLightDark
+private const val MUTED_ALPHA = 0.72f
+
+@PhonePreviews
 @Composable
 private fun QueuePreview() {
     val tracks = PreviewData.tracks

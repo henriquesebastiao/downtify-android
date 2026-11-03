@@ -7,40 +7,55 @@
     <string name="nav_search">Search</string>
     <string name="nav_library">Library</string>
     <string name="nav_downloads">Downloads</string>
+    <string name="nav_trash">Trash</string>
     <string name="action_back">Back</string>
     <string name="action_settings">Settings</string>
-    <string name="action_more">More options</string>
+    <string name="action_open_menu">Open menu</string>
     <string name="action_retry">Try again</string>
     <string name="action_cancel">Cancel</string>
 
     <!-- Connect -->
     <string name="connect_title_line1">Your music,</string>
     <string name="connect_title_line2">from your server.</string>
-    <string name="connect_body">Connect to the Downtify you run at home. Everything streams from there, and stays yours.</string>
     <string name="connect_address_label">Server address</string>
     <string name="connect_address_hint">The same address you open Downtify at in a browser.</string>
     <string name="connect_found">Found on this network</string>
     <string name="connect_searching">Looking for servers…</string>
-    <string name="connect_none_found">None found. Type the address instead — Docker\'s default network doesn\'t announce the server.</string>
-    <string name="connect_server_subtitle">%1$s · Downtify %2$s</string>
+    <string name="connect_none_found">No server found on this network yet.</string>
+    <string name="connect_server_subtitle">%1$s · Downtify\u00A0%2$s</string>
     <string name="connect_action">Connect</string>
-    <string name="connect_scan">Scan the code from Settings › Apps</string>
-    <string name="connect_cleartext_warning">This address isn\'t on your home network and doesn\'t use HTTPS: the phone\'s key would travel unencrypted. Put Downtify behind an HTTPS reverse proxy to use it from outside.</string>
-    <string name="connect_revoked">This phone was unpaired from the server. Pair it again to keep listening.</string>
+    <string name="connect_step">Step %1$d of %2$d</string>
+    <string name="connect_scan">Scan a pairing QR code</string>
+    <string name="connect_cleartext_warning">Not on your home network and not HTTPS: the phone\'s key would travel unencrypted.</string>
+    <string name="connect_revoked">This phone was signed out of the server. Sign in again to keep listening.</string>
     <string name="connect_error_invalid">That doesn\'t look like an address. Try http://192.168.1.20:8000.</string>
     <string name="connect_error_unreachable">Can\'t reach a server at that address. Check it, and that the phone is on the same network.</string>
     <string name="connect_error_not_downtify">Something answered, but it isn\'t Downtify.</string>
     <string name="connect_error_too_new">This server (Downtify %1$s) is newer than this app understands. Update the app.</string>
 
+    <string name="sign_in_title">Sign in to %1$s</string>
+    <string name="sign_in_body">Use your account from the web page.</string>
+    <string name="sign_in_username">Username</string>
+    <string name="sign_in_password">Password</string>
+    <string name="sign_in_show_password">Show password</string>
+    <string name="sign_in_hide_password">Hide password</string>
+    <string name="sign_in_action">Sign in</string>
+    <string name="sign_in_use_code">Pair with a code</string>
+    <string name="sign_in_use_password">Sign in with your password instead</string>
+    <string name="sign_in_error_wrong">Wrong username or password.</string>
+    <string name="sign_in_error_off">This server has sign-in turned off. Use a pairing code instead.</string>
+    <string name="sign_in_error_failed">The server couldn\'t sign this phone in (error %1$d).</string>
+    <string name="sign_in_cleartext_warning">Not on your home network and not HTTPS: your password would travel unencrypted.</string>
+
     <string name="pair_title">Pair with %1$s</string>
-    <string name="pair_body">On the web page, open Settings › Apps and press Pair a phone. Scan the QR code, or type the code shown under it.</string>
+    <string name="pair_body">From Settings › Apps on the web page.</string>
     <string name="pair_code_label">Pairing code</string>
     <string name="pair_code_placeholder">XXXX-XXXX</string>
     <string name="pair_action">Pair</string>
     <string name="pair_scan">Scan the QR code</string>
     <string name="pair_other_server">Use another server</string>
     <string name="pair_error_wrong_code">That code is wrong, expired or already used. Codes work once, for five minutes.</string>
-    <string name="pair_error_too_many">Too many attempts. Try again in %1$d s.</string>
+    <string name="pair_error_too_many">Too many attempts. Try again in %1$d\u00A0s.</string>
     <string name="pair_error_unreachable">Can\'t reach the server. Check the connection and try again.</string>
     <string name="pair_error_failed">The server couldn\'t pair this phone (error %1$d).</string>
     <string name="pair_error_other_server">This code is for a different server than the one at that address.</string>
@@ -48,17 +63,14 @@
     <string name="scan_title">Scan the pairing code</string>
     <string name="scan_hint">Point the camera at the QR code in Settings › Apps › Pair a phone.</string>
     <string name="scan_close">Close the scanner</string>
-    <string name="connect_local_network_denied">Local network access is off, so Downtify can only reach a server you pick from the list. To type an address, allow it in the app\'s settings.</string>
+    <string name="connect_local_network_denied">Local network access is off. To type an address, allow it in the app\'s settings.</string>
     <string name="scan_permission_denied">Camera access is off. Type the code instead, or allow the camera in the phone\'s settings.</string>
     <string name="scan_not_downtify">That QR code isn\'t a Downtify pairing code.</string>
 
     <!-- Home -->
-    <string name="home_good_morning">Good morning</string>
-    <string name="home_good_afternoon">Good afternoon</string>
-    <string name="home_good_evening">Good evening</string>
     <string name="home_streaming_from">Streaming from %1$s</string>
     <string name="home_unreachable">Can\'t reach %1$s · showing your synced library</string>
-    <string name="home_different_server">Another server answers at this address · pair again in Settings</string>
+    <string name="home_different_server">Another server answers at this address · sign in again in Settings</string>
     <string name="home_syncing">Syncing with %1$s…</string>
     <string name="home_jump_back_in">Jump back in</string>
     <string name="home_recently_added">Recently added</string>
@@ -74,9 +86,14 @@
     <string name="library_artists">Artists</string>
     <string name="library_playlists">Playlists</string>
     <string name="library_songs">Songs</string>
+    <string name="library_sort">Sort by: %1$s</string>
     <string name="library_sort_recent">Recently added</string>
     <string name="library_sort_alpha">Alphabetical</string>
     <string name="library_sort_artist">Artist</string>
+    <string name="library_sort_by">Sort by</string>
+    <string name="library_sort_order">Order</string>
+    <string name="library_sort_ascending">Ascending</string>
+    <string name="library_sort_descending">Descending</string>
     <string name="library_show_list">Show as list</string>
     <string name="library_show_grid">Show as grid</string>
     <string name="library_empty_albums">No albums yet</string>
@@ -95,7 +112,7 @@
         <item quantity="one">%d album</item>
         <item quantity="other">%d albums</item>
     </plurals>
-    <string name="minutes_short">%d min</string>
+    <string name="minutes_short">%d\u00A0min</string>
     <string name="unknown_artist">Unknown artist</string>
     <string name="unknown_album">Unknown album</string>
 
@@ -295,27 +312,30 @@
     <string name="settings_change_server">Change server</string>
     <string name="settings_open_web">Server settings</string>
     <string name="settings_playback">Playback</string>
+    <string name="settings_normalize_volume">Normalize volume</string>
+    <string name="settings_normalize_volume_hint">Plays songs at a similar loudness, using the server’s measurements, from the next song. Songs without a measurement keep their original volume.</string>
     <string name="settings_quality_wifi">Streaming quality on Wi-Fi</string>
     <string name="settings_quality_mobile">Streaming quality on mobile data</string>
     <string name="settings_quality_no_transcoding">The server can\'t transcode (no ffmpeg): files stream as they are.</string>
     <string name="settings_quality_original">Original · as downloaded</string>
-    <string name="settings_quality_transcoded">%1$s · %2$d kbps · transcoded by the server</string>
-    <string name="settings_quality_label">%1$s · %2$d kbps</string>
+    <string name="settings_quality_transcoded">%1$s · %2$d\u00A0kbps · transcoded by the server</string>
+    <string name="settings_quality_label">%1$s · %2$d\u00A0kbps</string>
     <string name="settings_appearance">Appearance</string>
     <string name="settings_theme">Theme</string>
-    <string name="settings_theme_system">Follow system</string>
+    <string name="settings_theme_system">System</string>
     <string name="settings_theme_dark">Dark</string>
     <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_body">System follows your device’s light or dark mode.</string>
     <string name="settings_dynamic_color">Use wallpaper colors</string>
     <string name="settings_dynamic_color_body">Material You instead of Downtify green</string>
     <string name="settings_about">About</string>
     <string name="settings_app_version">Downtify for Android %1$s</string>
     <string name="settings_server_api">Server API version %1$d</string>
-    <string name="settings_unpair">Unpair this phone</string>
+    <string name="settings_unpair">Sign out</string>
     <string name="settings_unpair_body">Forget this server\'s key on the phone</string>
-    <string name="settings_unpair_title">Unpair this phone?</string>
-    <string name="settings_unpair_message">The phone forgets its key and goes back to the connect screen. To remove it from the server too, open Settings › Apps › Paired apps on the web page. Your synced library stays until you pair with another server.</string>
-    <string name="settings_unpair_confirm">Unpair</string>
+    <string name="settings_unpair_title">Sign out of this server?</string>
+    <string name="settings_unpair_message">The phone forgets its key and goes back to the connect screen. To remove it from the server too, open Settings › Apps › Paired apps on the web page. Your synced library stays until you sign in to another server.</string>
+    <string name="settings_unpair_confirm">Sign out</string>
 
     <!-- Player -->
     <string name="player_play">Play</string>
@@ -349,18 +369,26 @@
     <string name="player_playing_from_album">Playing from album</string>
     <string name="player_playing_from_artist">Playing from artist</string>
     <string name="player_playing_from_playlist">Playing from playlist</string>
-    <string name="player_playing_from_library">Playing from your library</string>
-    <string name="player_source_original">Streaming from %1$s · %2$s · Original quality</string>
-    <string name="player_source_transcoded">Streaming from %1$s · %2$s %3$d kbps</string>
+    <string name="player_now_playing">Now playing</string>
+    <string name="player_source_original_quality">Streaming from %1$s · Original quality</string>
+    <string name="player_sample_rate">%1$s\u00A0kHz</string>
+    <string name="player_bitrate">%1$d\u00A0kbps</string>
     <string name="player_source_unknown">Streaming from %1$s</string>
     <string name="player_playing_from_podcast">Podcast</string>
-    <string name="player_go_to_show">Go to podcast</string>
     <string name="player_skip_back">Back 10 seconds</string>
     <string name="player_skip_forward">Forward 30 seconds</string>
     <string name="player_speed">Playback speed %1$s. Tap to change</string>
-    <string name="player_source_phone">Playing from this phone · %1$s</string>
+    <string name="player_source_this_phone">Playing from this phone</string>
     <string name="player_lyrics_none">No lyrics for this song.</string>
     <string name="player_lyrics_loading">Loading lyrics…</string>
+    <string name="player_lyrics_synced">Synced</string>
+    <string name="player_lyrics_static">Static</string>
+    <string name="player_lyrics_timing">Adjust timing</string>
+    <string name="player_lyrics_earlier">Lyrics earlier</string>
+    <string name="player_lyrics_later">Lyrics later</string>
+    <string name="player_lyrics_timing_reset">Reset timing</string>
+    <!-- How far the lyrics are moved, in seconds: "+0.25 s". -->
+    <string name="player_lyrics_offset">%1$s\u00A0s</string>
     <string name="player_error_network">Can\'t reach the server to play this song.</string>
     <string name="player_error_not_found">This song isn\'t on the server anymore.</string>
     <string name="player_error_old_server">The server is too old for streaming — update Downtify on the server.</string>
@@ -374,8 +402,10 @@
     <string name="settings_language_summary">%1$s · set in Android\'s app language settings</string>
     <string name="settings_amoled">Pure black</string>
     <string name="settings_amoled_body">True black in the dark theme. Saves power on OLED screens.</string>
+    <string name="settings_floating_nav_bar">Floating navigation bar</string>
+    <string name="settings_floating_nav_bar_body">On phones, the bar is a rounded pill instead of spanning the screen</string>
     <string name="settings_font">Font</string>
-    <string name="settings_font_downtify">Downtify</string>
+    <string name="settings_font_downtify">Downtify classic</string>
     <string name="settings_font_system">System font</string>
     <string name="settings_font_google_sans_flex" translatable="false">Google Sans Flex</string>
     <string name="settings_about_entry">About Downtify</string>
@@ -449,4 +479,84 @@
     <string name="license_limitation_warranty_body">The software comes without any warranty.</string>
     <string name="license_full_text">Full license text</string>
     <string name="license_text_unavailable">The license text couldn\'t be loaded.</string>
+    <string name="settings_read_ahead">Preload upcoming songs</string>
+    <string name="settings_read_ahead_off">Off</string>
+    <string name="settings_read_ahead_count">Songs ahead: %1$d</string>
+    <string name="settings_stream_cache">Temporary audio cache</string>
+    <string name="settings_stream_cache_size">%1$d\u00A0MB</string>
+    <string name="settings_stream_cache_body">Space for recently played and preloaded audio. Saved offline downloads are separate. Large songs may exceed this limit; only complete songs count as ready.</string>
+    <string name="settings_read_ahead_mobile">Preload using mobile data</string>
+    <string name="settings_read_ahead_mobile_body">Allow extra data usage to prepare upcoming songs.</string>
+    <string name="settings_cache_apply">Apply</string>
+    <string name="player_buffer_ready">Offline buffer: %1$d/%2$d</string>
+
+    <!-- Music trash (admins, when the server has it on) -->
+    <string name="trash_title">Trash</string>
+    <string name="trash_move">Move to trash</string>
+    <string name="trash_checking">Checking the files…</string>
+    <string name="trash_checking_body">The server is checking exactly which files would move. This can take a moment.</string>
+    <string name="trash_failed">That didn\'t go through</string>
+    <string name="trash_admin_only">Only admins can see this</string>
+    <string name="trash_admin_only_body">Ask an admin of this server to restore a song.</string>
+    <string name="trash_tab_trash">In the trash</string>
+    <string name="trash_tab_kept_out">Kept out of downloads</string>
+    <string name="trash_search">Search the trash</string>
+    <string name="trash_empty">The trash is empty</string>
+    <string name="trash_empty_body">Songs moved to the trash show up here until they expire.</string>
+    <string name="trash_no_match">Nothing in the trash matches</string>
+    <string name="trash_show_more">Show more</string>
+    <string name="trash_kept_out_body">Songs whose time in the trash ran out. Automatic downloads skip them until you allow them again.</string>
+    <string name="trash_kept_out_empty">Nothing is kept out of downloads</string>
+    <string name="trash_allow">Allow downloads</string>
+    <string name="trash_allow_title">Allow “%1$s” to be downloaded again?</string>
+    <string name="trash_allow_body">Automatic downloads may fetch it again. Nothing is downloaded right now.</string>
+    <string name="trash_kept_until">Kept until %1$s</string>
+    <string name="trash_restore">Restore</string>
+    <string name="trash_error_admin">Only an admin can use the trash.</string>
+    <string name="trash_error_changed">A file changed after it was checked. Nothing was lost; choose the song again.</string>
+    <string name="trash_error_missing">A file is missing. Check the server\'s storage, then try again.</string>
+    <string name="trash_error_collision">Another file is already in its place. Nothing was overwritten; the song stays in the trash.</string>
+    <string name="trash_error_playing">Someone is playing this song. Pause it first.</string>
+    <string name="trash_error_upgrade">The library upgrade is running. Wait for it, or pause it first.</string>
+    <string name="trash_error_confirmation">The check expired. Choose the songs again.</string>
+    <string name="trash_error_identity">This song\'s tags are too thin to keep it out of automatic downloads. Nothing was moved.</string>
+    <string name="trash_error_busy">Something is still on its way. Wait for it to finish.</string>
+    <string name="trash_error_expired">Its time in the trash ran out.</string>
+    <string name="trash_error_folder">This song\'s folder isn\'t covered by the trash.</string>
+    <string name="trash_error_storage">The server\'s storage isn\'t ready. Nothing was moved; check it, then try again.</string>
+    <string name="trash_error_off">The trash is off on this server.</string>
+    <string name="trash_error">The trash didn\'t answer. Nothing was moved or deleted.</string>
+    <string name="trash_state_pending">Waiting to move</string>
+    <string name="trash_state_moving">Moving</string>
+    <string name="trash_state_trashed">In the trash</string>
+    <string name="trash_state_restoring">Restoring</string>
+    <string name="trash_state_restored">Restored</string>
+    <string name="trash_state_expired">Expired</string>
+    <string name="trash_state_error">Stopped — files kept</string>
+    <string name="trash_state_unknown">Updating</string>
+    <plurals name="trash_moving">
+        <item quantity="one">Moving %1$d song to the trash</item>
+        <item quantity="other">Moving %1$d songs to the trash</item>
+    </plurals>
+    <plurals name="trash_confirm_title">
+        <item quantity="one">Move %1$d song to the trash?</item>
+        <item quantity="other">Move %1$d songs to the trash?</item>
+    </plurals>
+    <plurals name="trash_confirm_body">
+        <item quantity="one">Only these files move, with their lyrics. They leave the library for everyone and can be restored for %1$d day.</item>
+        <item quantity="other">Only these files move, with their lyrics. They leave the library for everyone and can be restored for %1$d days.</item>
+    </plurals>
+    <plurals name="trash_summary">
+        <item quantity="one">%1$d song · %2$s</item>
+        <item quantity="other">%1$d songs · %2$s</item>
+    </plurals>
+    <plurals name="trash_kept_days">
+        <item quantity="one">kept %1$d day after moving</item>
+        <item quantity="other">kept %1$d days after moving</item>
+    </plurals>
+    <string name="settings_normalization_level">Playback level</string>
+    <string name="settings_normalization_normal">Normal</string>
+    <string name="settings_normalization_louder">Louder</string>
+    <string name="settings_normalization_maximum">Maximum</string>
+    <string name="settings_normalization_level_hint">Raises playback volume within each track’s safe limit. Your audio files stay unchanged.</string>
 </resources>

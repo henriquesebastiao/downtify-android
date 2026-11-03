@@ -22,7 +22,7 @@ import okhttp3.Response
 class TrackDownloader(private val client: OkHttpClient) {
 
     sealed interface Result {
-        data class Complete(val bytes: Long) : Result
+        data class Complete(val bytes: Long, val etag: String? = null) : Result
 
         /** The server doesn't have it (404/410): the track left the library. */
         data object Gone : Result
@@ -77,12 +77,16 @@ class TrackDownloader(private val client: OkHttpClient) {
         val body = response.body
         val expected = body.contentLength().takeIf { it >= 0 }?.let { it + from }
         val written = FileOutputStream(part, from > 0).use { out ->
-            body.byteStream().use { input -> copy(input, out, from, onProgress) }
+            body.byteStream().use { input -> copy(input, out, from, onProgress).also { out.fd.sync() } }
         }
         return if (expected != null && written != expected) {
             Result.Failed(null, IOException("Got $written of $expected bytes"))
+        } else if (!OfflineFileHealth().usable(part, written)) {
+            // Do not resume a bad prefix forever. Only the unusable temporary copy is discarded.
+            part.delete()
+            Result.Failed(null, IOException("Downloaded audio is empty or has a zero-filled header"))
         } else {
-            Result.Complete(written)
+            Result.Complete(written, response.header("ETag").takeIf { from == 0L })
         }
     }
 

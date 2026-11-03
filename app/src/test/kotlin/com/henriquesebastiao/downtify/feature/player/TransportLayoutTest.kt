@@ -20,8 +20,8 @@ import org.robolectric.annotation.Config
 private fun SemanticsNodeInteraction.bounds(): Rect = fetchSemanticsNode().boundsInRoot
 
 /**
- * The transport buttons keep a gap between them on every width: a 360 dp phone leaves 328 dp for
- * buttons that add up to exactly 328 dp at full size, so they used to touch.
+ * The transport (an expressive button group) and the toggles under it keep a gap between their
+ * buttons on every width, and the play button keeps its size where there is room for it.
  */
 @RunWith(AndroidJUnit4::class)
 class TransportLayoutTest {
@@ -52,40 +52,45 @@ class TransportLayoutTest {
         }
     }
 
-    // 360 dp wide, 3x: the screenshot's phone. 8 dp = 24 px.
+    // xhdpi is 2x: 8 dp = 16 px.
     @Config(qualifiers = "w360dp-h800dp-xhdpi")
     @Test
     fun aSongsButtonsDoNotTouchOnA360dpScreen() {
         show(songState)
-        assertGaps(listOf("Shuffle, off", "Previous", "Pause", "Next", "Repeat, off"), 7.5f * 2)
+        assertGaps(listOf("Previous", "Pause", "Next"), 7.5f * 2)
+        assertGaps(listOf("Shuffle, off", "Repeat, off", "Add to Liked songs"), 7.5f * 2)
     }
 
     @Config(qualifiers = "w360dp-h800dp-xhdpi")
     @Test
     fun anEpisodesButtonsDoNotTouchOnA360dpScreen() {
         show(episodeState)
-        assertGaps(
-            listOf("Playback speed 1×. Tap to change", "Back 10 seconds", "Pause", "Forward 30 seconds"),
-            7.5f * 2,
-        )
+        assertGaps(listOf("Back 10 seconds", "Pause", "Forward 30 seconds"), 7.5f * 2)
     }
 
     @Config(qualifiers = "w320dp-h700dp-xhdpi")
     @Test
     fun andOnAnEvenNarrowerOne() {
         show(songState)
-        assertGaps(listOf("Previous", "Pause", "Next"), 4f * 2)
+        assertGaps(listOf("Previous", "Pause", "Next"), 7.5f * 2)
     }
 
     @Config(qualifiers = "w411dp-h914dp-xhdpi")
     @Test
-    fun aWideScreenKeepsTheFullSizeButtons() {
+    fun aTallScreenKeepsTheFullSizeButtonsWithPlayTheWidest() {
         show(songState)
         val play = compose.onNodeWithContentDescription("Pause").bounds()
-        // xhdpi is 2x: 104 x 80 dp.
-        assertEquals(104f * 2, play.width, 1f)
-        assertEquals(80f * 2, play.height, 1f)
-        assertGaps(listOf("Previous", "Pause", "Next"), 8f * 2)
+        val previous = compose.onNodeWithContentDescription("Previous").bounds()
+        assertEquals(76f * 2, play.height, 1f)
+        assertTrue(play.width > previous.width)
+    }
+
+    @Config(qualifiers = "w360dp-h640dp-xhdpi")
+    @Test
+    fun aShortScreenGetsTheCompactTransport() {
+        show(songState)
+        assertEquals(56f * 2, compose.onNodeWithContentDescription("Pause").bounds().height, 1f)
+        assertGaps(listOf("Previous", "Pause", "Next"), 7.5f * 2)
     }
 
     @Config(qualifiers = "w360dp-h800dp-xhdpi")
@@ -100,7 +105,7 @@ class TransportLayoutTest {
         val card = compose.onNodeWithContentDescription(
             "Pause",
         ).fetchSemanticsNode().layoutInfo.coordinates.parentLayoutCoordinates
-        // The button is 48 dp inside a 64 dp card: 8 dp above and 8 dp below.
+        // The 48 dp button sits in the middle of the card's height.
         val cardBounds = generateSequence(card) { it.parentLayoutCoordinates }.last().size
         assertTrue(cardBounds.height > 0)
         val topGap = pause.top

@@ -1,5 +1,6 @@
 package com.henriquesebastiao.downtify.core.data.db
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -60,8 +61,11 @@ data class PlaylistEntity(
     val cover: String,
     val position: Int,
     val trackIds: List<String>,
+    @ColumnInfo(defaultValue = "0") val favorite: Boolean = false,
+    @ColumnInfo(defaultValue = "''") val displayName: String = "",
+    @ColumnInfo(defaultValue = "0") val favoriteSupported: Boolean = false,
 ) {
-    fun toModel() = Playlist(name, liked, cover, trackIds)
+    fun toModel() = Playlist(name, liked, cover, trackIds, favorite, displayName, favoriteSupported)
 }
 
 @Entity(tableName = "likes")
@@ -70,6 +74,10 @@ data class LikeEntity(
     /** 0 = most recently liked. */
     val position: Int,
 )
+
+/** How much later than its LRC a track's synced lyrics run, as set on this phone (ms, may be negative). */
+@Entity(tableName = "lyrics_offsets")
+data class LyricsOffsetEntity(@PrimaryKey val trackId: String, val offsetMs: Long)
 
 @Entity(tableName = "recent_contexts")
 data class RecentContextEntity(

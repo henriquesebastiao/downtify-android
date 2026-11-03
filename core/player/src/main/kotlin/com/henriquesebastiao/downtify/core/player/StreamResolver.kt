@@ -7,10 +7,12 @@ import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.ResolvingDataSource
 import com.henriquesebastiao.downtify.core.data.NetworkMonitor
 import com.henriquesebastiao.downtify.core.data.di.ApplicationScope
+import com.henriquesebastiao.downtify.core.data.loudness.LoudnessProfiles
 import com.henriquesebastiao.downtify.core.data.offline.OfflineRepository
 import com.henriquesebastiao.downtify.core.data.session.ServerRepository
 import com.henriquesebastiao.downtify.core.data.settings.SettingsRepository
 import com.henriquesebastiao.downtify.core.data.settings.UserSettings
+import com.henriquesebastiao.downtify.core.model.StreamIds
 import com.henriquesebastiao.downtify.core.model.StreamPolicy
 import com.henriquesebastiao.downtify.core.model.StreamQuality
 import com.henriquesebastiao.downtify.core.model.Transcoding
@@ -40,8 +42,10 @@ class StreamResolver @Inject constructor(
     private val server: ServerRepository,
     private val network: NetworkMonitor,
     private val offline: OfflineRepository,
+    private val loudness: LoudnessProfiles,
     settings: SettingsRepository,
     @ApplicationScope scope: CoroutineScope,
+    private val cache: AudioCacheStore,
 ) : ResolvingDataSource.Resolver {
 
     private val settings = settings.settings.stateIn(scope, SharingStarted.Eagerly, UserSettings())
@@ -53,22 +57,42 @@ class StreamResolver @Inject constructor(
         // the audio (or downloads it now), with seeking, under the token.
         MediaItems.streamVideoIdOf(dataSpec.uri)?.let { videoId ->
             val session = sessions.current ?: throw IOException("Not paired with a server")
-            return dataSpec.withUri(Uri.parse(ServerUrls.streamFile(session.baseUrl, videoId)))
+            return dataSpec.withUri(Uri.parse(ServerUrls.streamFile(session.baseUrl, videoId))).buildUpon()
+                .setKey(cache.key(StreamIds.mediaId(videoId), "source")).build()
         }
         val trackId = MediaItems.trackIdOf(dataSpec.uri) ?: return dataSpec
         offline.localFile(trackId)?.let { file ->
             chosen.put(trackId, StreamQuality.Original)
             local.put(trackId, true)
+            loudness.prepareLocalBlocking(trackId, file)
             return dataSpec.withUri(Uri.fromFile(file))
         }
         local.remove(trackId)
         val session = sessions.current ?: throw IOException("Not paired with a server")
         val quality = if (dataSpec.position == 0L || chosen[trackId] == null) {
-            qualityNow().also { chosen.put(trackId, it) }
+            (if (!network.status.value.online) cache.completedQuality(trackId) ?: qualityNow() else qualityNow())
+                .also { chosen.put(trackId, it) }
         } else {
             chosen[trackId]!!
         }
-        return dataSpec.withUri(Uri.parse(ServerUrls.stream(session.baseUrl, trackId, quality)))
+        // Before its audio is decoded: the normalizer reads the gain at the stream's first sample.
+        loudness.prepareStreamBlocking(trackId, ask = dataSpec.position == 0L && network.status.value.online)
+        return dataSpec.withUri(Uri.parse(ServerUrls.stream(session.baseUrl, trackId, quality))).buildUpon()
+            .setKey(cache.key(trackId, quality.encode())).build()
+    }
+
+    /** Resolve a future item without changing a playing track's selected representation. */
+    fun preloadSpec(uri: Uri, quality: StreamQuality): DataSpec? {
+        val paired = sessions.current ?: return null
+        MediaItems.streamVideoIdOf(uri)?.let { videoId ->
+            return DataSpec.Builder().setUri(ServerUrls.streamFile(paired.baseUrl, videoId))
+                .setKey(cache.key(StreamIds.mediaId(videoId), "source")).build()
+        }
+        val trackId = MediaItems.trackIdOf(uri) ?: return null
+        offline.localFile(trackId)?.let { return DataSpec.Builder().setUri(Uri.fromFile(it)).build() }
+        val selected = if (!network.status.value.online) cache.completedQuality(trackId) ?: quality else quality
+        return DataSpec.Builder().setUri(ServerUrls.stream(paired.baseUrl, trackId, selected))
+            .setKey(cache.key(trackId, selected.encode())).build()
     }
 
     /** What a stream started now would use (shown in Now Playing). */

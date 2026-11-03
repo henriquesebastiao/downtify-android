@@ -1,8 +1,10 @@
 package com.henriquesebastiao.downtify.core.player
 
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.Process
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -10,26 +12,36 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSourceBitmapLoader
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.audio.AudioCapabilities
+import androidx.media3.exoplayer.audio.AudioOffloadSupport
+import androidx.media3.exoplayer.audio.AudioSink
+import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder
 import androidx.media3.session.CacheBitmapLoader
 import androidx.media3.session.CommandButton
 import androidx.media3.session.DefaultMediaNotificationProvider
+import androidx.media3.session.MediaLibraryService
+import androidx.media3.session.MediaLibraryService.MediaLibrarySession
 import androidx.media3.session.MediaSession
-import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import com.henriquesebastiao.downtify.core.data.NetworkMonitor
 import com.henriquesebastiao.downtify.core.data.activity.PlaybackActivityReporter
 import com.henriquesebastiao.downtify.core.data.catalog.CatalogRepository
 import com.henriquesebastiao.downtify.core.data.library.LibraryRepository
 import com.henriquesebastiao.downtify.core.data.listens.ListenReporter
+import com.henriquesebastiao.downtify.core.data.loudness.LoudnessProfiles
+import com.henriquesebastiao.downtify.core.data.offline.OfflineRepository
 import com.henriquesebastiao.downtify.core.data.playback.PlaybackRepository
 import com.henriquesebastiao.downtify.core.data.playback.playbackOwner
 import com.henriquesebastiao.downtify.core.data.podcasts.PodcastsRepository
+import com.henriquesebastiao.downtify.core.data.sync.SyncCoordinator
 import com.henriquesebastiao.downtify.core.model.EpisodeIds
 import com.henriquesebastiao.downtify.core.model.PlayQueue
 import com.henriquesebastiao.downtify.core.model.StreamIds
@@ -48,19 +60,20 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.guava.future
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 
 /**
- * ExoPlayer in a [MediaSessionService]: the media notification, lock screen,
+ * ExoPlayer in a [MediaLibraryService]: the media notification, lock screen,
  * Bluetooth and headset buttons, and other controllers all come from the
  * session. Audio focus is handled by ExoPlayer; unplugging headphones pauses.
  */
 @UnstableApi
 @AndroidEntryPoint
-class PlaybackService : MediaSessionService() {
+class PlaybackService : MediaLibraryService() {
 
     @Inject
     @AudioDataSource
@@ -84,6 +97,10 @@ class PlaybackService : MediaSessionService() {
 
     @Inject lateinit var resolver: StreamResolver
 
+    @Inject lateinit var loudness: LoudnessProfiles
+
+    @Inject lateinit var readAhead: ReadAheadBuffer
+
     @Inject lateinit var playback: PlaybackRepository
 
     @Inject
@@ -91,7 +108,17 @@ class PlaybackService : MediaSessionService() {
     lateinit var streamingClient: OkHttpClient
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private var session: MediaSession? = null
+
+    @Inject lateinit var offline: OfflineRepository
+
+    @Inject lateinit var network: NetworkMonitor
+
+    @Inject lateinit var artwork: SessionArtworkCache
+
+    @Inject lateinit var syncCoordinator: SyncCoordinator
+
+    private var session: MediaLibrarySession? = null
+    private var artworkTracker: SessionArtworkTracker? = null
     private var listens: ListenTracker? = null
     private var activity: ActivityTracker? = null
     private var episodes: EpisodeProgressTracker? = null
@@ -104,7 +131,25 @@ class PlaybackService : MediaSessionService() {
 
     override fun onCreate() {
         super.onCreate()
-        val player = ExoPlayer.Builder(this)
+        CarDiagnostics.service(true)
+        val normalizer = NormalizationAudioProcessor(
+            gainForTrack = loudness::gainDb,
+            isEnabled = { loudness.enabled.value },
+            gainRevision = { loudness.level.value.ordinal },
+        )
+        val renderers = object : DefaultRenderersFactory(this) {
+            override fun buildAudioSink(
+                context: Context,
+                enableFloatOutput: Boolean,
+                enableAudioTrackPlaybackParams: Boolean,
+            ): AudioSink = DefaultAudioSink.Builder(context)
+                .setAudioCapabilities(AudioCapabilities.DEFAULT_AUDIO_CAPABILITIES)
+                .setAudioProcessors(arrayOf(normalizer))
+                .setEnableFloatOutput(false)
+                .setAudioOffloadSupportProvider { _, _ -> AudioOffloadSupport.DEFAULT_UNSUPPORTED }
+                .build()
+        }
+        val player = ExoPlayer.Builder(this, renderers)
             .setMediaSourceFactory(DefaultMediaSourceFactory(audioDataSource))
             .setAudioAttributes(
                 AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(),
@@ -118,8 +163,8 @@ class PlaybackService : MediaSessionService() {
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .build()
 
-        session = MediaSession.Builder(this, player)
-            .setCallback(SessionCallback())
+        val callback = SessionCallback()
+        session = MediaLibrarySession.Builder(this, player, callback)
             .setBitmapLoader(
                 CacheBitmapLoader(
                     DataSourceBitmapLoader(DataSourceBitmapLoader.DEFAULT_EXECUTOR_SERVICE.get(), artworkDataSource),
@@ -128,6 +173,13 @@ class PlaybackService : MediaSessionService() {
             .apply { launchIntent()?.let(::setSessionActivity) }
             .build()
 
+        callback.observe(checkNotNull(session))
+        syncCoordinator.setMediaServiceActive(true)
+        scope.launch {
+            withContext(Dispatchers.IO) { sessions.ensureLoaded() }
+            artworkTracker = SessionArtworkTracker(player, artwork, sessions, network, scope).also { it.start() }
+        }
+
         setMediaNotificationProvider(
             DefaultMediaNotificationProvider(this).apply { setSmallIcon(R.drawable.ic_notification) },
         )
@@ -135,11 +187,37 @@ class PlaybackService : MediaSessionService() {
         listens = ListenTracker(player, reporter, scope).also { it.start() }
         activity = ActivityTracker(player, activityReporter, scope).also { it.start() }
         episodes = EpisodeProgressTracker(player, podcasts, scope).also { it.start() }
-        prefetch = StreamPrefetchTracker(player, catalog, scope).also { it.start() }
-        warmer = TranscodeWarmer(player, resolver, streamingClient, scope).also { it.start() }
+        prefetch = StreamPrefetchTracker(player, catalog, scope, enabled = { !readAhead.enabled }).also { it.start() }
+        warmer =
+            TranscodeWarmer(player, resolver, streamingClient, scope, enabled = {
+                !readAhead.enabled
+            }).also { it.start() }
+        readAhead.start(player, scope)
         keepLikeButtonCurrent(player)
         stopWhenSignedOut(player)
+        removeDeletedLibraryTracks(player)
         persistence = PlaybackPersistence(player, playback, sessions, scope).also { it.start() }
+    }
+
+    /**
+     * Songs that left the library (deleted, moved to the server's trash, hidden) leave the queue
+     * too — but only once a sync of this session has succeeded: until then the local library may be
+     * a stale copy, and a queue restored offline must survive.
+     */
+    private fun removeDeletedLibraryTracks(player: Player) {
+        combine(library.successfulSync, library.library) { count, snapshot -> count to snapshot }
+            .onEach { (count, snapshot) ->
+                if (count > 0 && snapshot != null) {
+                    for (index in player.mediaItemCount - 1 downTo 0) {
+                        val item = player.getMediaItemAt(index)
+                        val id = item.localConfiguration?.uri?.let(MediaItems::trackIdOf)
+                        if (id != null && id !in snapshot.byId) {
+                            if (index == player.currentMediaItemIndex) player.pause()
+                            player.removeMediaItem(index)
+                        }
+                    }
+                }
+            }.launchIn(scope)
     }
 
     /** Unpaired (here or from the web): the queue belongs to a server the app can't reach anymore. */
@@ -157,7 +235,7 @@ class PlaybackService : MediaSessionService() {
         }
     }
 
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? = session
 
     /** Stop when the user swipes the app away while nothing is playing. */
     override fun onTaskRemoved(rootIntent: Intent?) {
@@ -166,6 +244,10 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        CarDiagnostics.service(false)
+        syncCoordinator.setMediaServiceActive(false)
+        artworkTracker?.stop()
+        readAhead.stop()
         persistence?.stop()
         listens?.stop()
         activity?.stop()
@@ -266,13 +348,27 @@ class PlaybackService : MediaSessionService() {
             .setSlots(CommandButton.SLOT_OVERFLOW)
             .build()
 
-    private inner class SessionCallback : MediaSession.Callback {
-        override fun onConnectAsync(
-            session: MediaSession,
+    private inner class SessionCallback : CarBrowser(this@PlaybackService, library, offline, sessions, artwork, scope) {
+        private fun own(controller: MediaSession.ControllerInfo): Boolean =
+            ControllerAccess.isApp(controller, packageName, Process.myUid())
+
+        override fun onSetMediaItems(
+            mediaSession: MediaSession,
             controller: MediaSession.ControllerInfo,
-        ): ListenableFuture<MediaSession.ConnectionResult> = scope.future {
+            mediaItems: MutableList<MediaItem>,
+            startIndex: Int,
+            startPositionMs: Long,
+        ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> = scope.future {
             persistence?.awaitReady()
-            onConnect(session, controller)
+            if (own(controller) && mediaItems.none { it.requestMetadata.searchQuery != null }) {
+                MediaSession.MediaItemsWithStartPosition(
+                    onAddMediaItems(mediaSession, controller, mediaItems).await(),
+                    startIndex,
+                    startPositionMs,
+                )
+            } else {
+                super.onSetMediaItems(mediaSession, controller, mediaItems, startIndex, startPositionMs).await()
+            }
         }
 
         override fun onPlaybackResumption(
@@ -292,15 +388,19 @@ class PlaybackService : MediaSessionService() {
         override fun onConnect(
             session: MediaSession,
             controller: MediaSession.ControllerInfo,
-        ): MediaSession.ConnectionResult = MediaSession.ConnectionResult.AcceptedResultBuilder(session)
-            .setAvailableSessionCommands(
-                MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
-                    .add(likeCommand)
-                    .add(addToQueueCommand)
-                    .add(moveInQueueCommand)
-                    .build(),
-            )
-            .build()
+        ): MediaSession.ConnectionResult {
+            if (!ControllerAccess.canConnect(controller, packageName, Process.myUid())) {
+                return MediaSession.ConnectionResult.reject()
+            }
+            val commands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon()
+            if (own(controller)) {
+                commands.add(likeCommand).add(addToQueueCommand).add(moveInQueueCommand)
+            } else {
+                commands.add(likeCommand)
+            }
+            return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+                .setAvailableSessionCommands(commands.build()).build()
+        }
 
         override fun onCustomCommand(
             session: MediaSession,
@@ -308,6 +408,9 @@ class PlaybackService : MediaSessionService() {
             customCommand: SessionCommand,
             args: Bundle,
         ): ListenableFuture<SessionResult> {
+            if (!own(controller) && customCommand.customAction != ACTION_TOGGLE_LIKE) {
+                return Futures.immediateFuture(SessionResult(SessionError.ERROR_PERMISSION_DENIED))
+            }
             if (customCommand.customAction == ACTION_TOGGLE_LIKE) {
                 val id = session.player.currentMediaItem?.mediaId
                 if (id != null && !EpisodeIds.isEpisode(id) && !StreamIds.isStream(id)) {
@@ -346,6 +449,7 @@ class PlaybackService : MediaSessionService() {
             controller: MediaSession.ControllerInfo,
             mediaItems: MutableList<MediaItem>,
         ): ListenableFuture<MutableList<MediaItem>> {
+            if (!own(controller)) return scope.future { carAddItems(mediaItems).toMutableList() }
             val snapshot = library.library.value
             val baseUrl = sessions.current?.baseUrl
             val resolved = mediaItems.mapNotNull { item ->

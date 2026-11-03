@@ -6,40 +6,55 @@
     <string name="nav_search">Търсене</string>
     <string name="nav_library">Библиотека</string>
     <string name="nav_downloads">Изтегляния</string>
+    <string name="nav_trash">Кошче</string>
     <string name="action_back">Назад</string>
     <string name="action_settings">Настройки</string>
-    <string name="action_more">Още опции</string>
+    <string name="action_open_menu">Отваряне на менюто</string>
     <string name="action_retry">Опитай отново</string>
     <string name="action_cancel">Отказ</string>
 
     <!-- Connect -->
     <string name="connect_title_line1">Твоята музика,</string>
     <string name="connect_title_line2">от твоя сървър.</string>
-    <string name="connect_body">Свържи се с Downtify, който пускаш у дома. Всичко се възпроизвежда оттам и остава твое.</string>
     <string name="connect_address_label">Адрес на сървъра</string>
     <string name="connect_address_hint">Същият адрес, на който отваряш Downtify в браузъра.</string>
     <string name="connect_found">Намерени в тази мрежа</string>
     <string name="connect_searching">Търсене на сървъри…</string>
-    <string name="connect_none_found">Не е намерен нито един. Въведи адреса ръчно — мрежата по подразбиране на Docker не обявява сървъра.</string>
-    <string name="connect_server_subtitle">%1$s · Downtify %2$s</string>
+    <string name="connect_none_found">Още няма намерен сървър в тази мрежа.</string>
+    <string name="connect_server_subtitle">%1$s · Downtify\u00A0%2$s</string>
     <string name="connect_action">Свързване</string>
-    <string name="connect_scan">Сканирай кода от Настройки › Приложения</string>
-    <string name="connect_cleartext_warning">Този адрес не е в домашната ти мрежа и не използва HTTPS: ключът на телефона би пътувал некриптиран. Сложи Downtify зад HTTPS обратен прокси, за да го ползваш отвън.</string>
-    <string name="connect_revoked">Този телефон беше разкачен от сървъра. Свържи го отново, за да продължиш да слушаш.</string>
+    <string name="connect_step">Стъпка %1$d от %2$d</string>
+    <string name="connect_scan">Сканирай QR за сдвояване</string>
+    <string name="connect_cleartext_warning">Извън домашната ти мрежа и без HTTPS: ключът на телефона би пътувал некриптиран.</string>
+    <string name="connect_revoked">Този телефон беше изписан от сървъра. Влез отново, за да продължиш да слушаш.</string>
     <string name="connect_error_invalid">Това не прилича на адрес. Опитай с http://192.168.1.20:8000.</string>
     <string name="connect_error_unreachable">Няма достъп до сървър на този адрес. Провери го и дали телефонът е в същата мрежа.</string>
     <string name="connect_error_not_downtify">Нещо отговори, но не е Downtify.</string>
     <string name="connect_error_too_new">Този сървър (Downtify %1$s) е по-нов, отколкото приложението разбира. Обнови приложението.</string>
 
+    <string name="sign_in_title">Вход в %1$s</string>
+    <string name="sign_in_body">Акаунтът ти от уеб страницата.</string>
+    <string name="sign_in_username">Потребителско име</string>
+    <string name="sign_in_password">Парола</string>
+    <string name="sign_in_show_password">Покажи паролата</string>
+    <string name="sign_in_hide_password">Скрий паролата</string>
+    <string name="sign_in_action">Вход</string>
+    <string name="sign_in_use_code">Сдвояване с код</string>
+    <string name="sign_in_use_password">Влез с паролата си</string>
+    <string name="sign_in_error_wrong">Грешно потребителско име или парола.</string>
+    <string name="sign_in_error_off">Входът е изключен на този сървър. Използвай код за сдвояване.</string>
+    <string name="sign_in_error_failed">Сървърът не успя да впише този телефон (грешка %1$d).</string>
+    <string name="sign_in_cleartext_warning">Извън домашната ти мрежа и без HTTPS: паролата ти би пътувала некриптирана.</string>
+
     <string name="pair_title">Сдвояване с %1$s</string>
-    <string name="pair_body">На уеб страницата отвори Настройки › Приложения и натисни Сдвояване на телефон. Сканирай QR кода или въведи кода под него.</string>
+    <string name="pair_body">От Настройки › Приложения в уеб страницата.</string>
     <string name="pair_code_label">Код за сдвояване</string>
     <string name="pair_code_placeholder">XXXX-XXXX</string>
     <string name="pair_action">Сдвои</string>
     <string name="pair_scan">Сканирай QR кода</string>
     <string name="pair_other_server">Използвай друг сървър</string>
     <string name="pair_error_wrong_code">Този код е грешен, изтекъл или вече използван. Кодовете работят веднъж и за пет минути.</string>
-    <string name="pair_error_too_many">Твърде много опити. Опитай отново след %1$d с.</string>
+    <string name="pair_error_too_many">Твърде много опити. Опитай отново след %1$d\u00A0с.</string>
     <string name="pair_error_unreachable">Няма достъп до сървъра. Провери връзката и опитай отново.</string>
     <string name="pair_error_failed">Сървърът не успя да сдвои този телефон (грешка %1$d).</string>
     <string name="pair_error_other_server">Този код е за друг сървър, а не за този на въпросния адрес.</string>
@@ -47,17 +62,14 @@
     <string name="scan_title">Сканиране на кода за сдвояване</string>
     <string name="scan_hint">Насочи камерата към QR кода в Настройки › Приложения › Сдвояване на телефон.</string>
     <string name="scan_close">Затвори скенера</string>
-    <string name="connect_local_network_denied">Достъпът до локалната мрежа е изключен, затова Downtify стига само до сървър, избран от списъка. За да въведеш адрес, разреши го в настройките на приложението.</string>
+    <string name="connect_local_network_denied">Достъпът до локалната мрежа е изключен. За да въведеш адрес, разреши го в настройките на приложението.</string>
     <string name="scan_permission_denied">Достъпът до камерата е изключен. Въведи кода или разреши камерата в настройките на телефона.</string>
     <string name="scan_not_downtify">Този QR код не е код за сдвояване на Downtify.</string>
 
     <!-- Home -->
-    <string name="home_good_morning">Добро утро</string>
-    <string name="home_good_afternoon">Добър ден</string>
-    <string name="home_good_evening">Добър вечер</string>
     <string name="home_streaming_from">Възпроизвеждане от %1$s</string>
     <string name="home_unreachable">Няма достъп до %1$s · показва се синхронизираната ти библиотека</string>
-    <string name="home_different_server">На този адрес отговаря друг сървър · сдвои отново от Настройки</string>
+    <string name="home_different_server">На този адрес отговаря друг сървър · влез отново от Настройки</string>
     <string name="home_syncing">Синхронизиране с %1$s…</string>
     <string name="home_jump_back_in">Продължи оттам, където спря</string>
     <string name="home_recently_added">Наскоро добавени</string>
@@ -73,9 +85,14 @@
     <string name="library_artists">Изпълнители</string>
     <string name="library_playlists">Плейлисти</string>
     <string name="library_songs">Песни</string>
+    <string name="library_sort">Подреди по: %1$s</string>
     <string name="library_sort_recent">Наскоро добавени</string>
     <string name="library_sort_alpha">По азбучен ред</string>
     <string name="library_sort_artist">Изпълнител</string>
+    <string name="library_sort_by">Подреди по</string>
+    <string name="library_sort_order">Ред</string>
+    <string name="library_sort_ascending">Възходящо</string>
+    <string name="library_sort_descending">Низходящо</string>
     <string name="library_show_list">Покажи като списък</string>
     <string name="library_show_grid">Покажи като мрежа</string>
     <string name="library_empty_albums">Още няма албуми</string>
@@ -94,7 +111,7 @@
         <item quantity="one">%d албум</item>
         <item quantity="other">%d албума</item>
     </plurals>
-    <string name="minutes_short">%d мин</string>
+    <string name="minutes_short">%d\u00A0мин</string>
     <string name="unknown_artist">Неизвестен изпълнител</string>
     <string name="unknown_album">Неизвестен албум</string>
 
@@ -293,27 +310,30 @@
     <string name="settings_change_server">Смяна на сървъра</string>
     <string name="settings_open_web">Настройки на сървъра</string>
     <string name="settings_playback">Възпроизвеждане</string>
+    <string name="settings_normalize_volume">Нормализиране на звука</string>
+    <string name="settings_normalize_volume_hint">Пуска песните с близка сила по измерванията на сървъра, от следващата песен. Песните без измерване запазват оригиналната си сила.</string>
     <string name="settings_quality_wifi">Качество на потока по Wi-Fi</string>
     <string name="settings_quality_mobile">Качество на потока по мобилни данни</string>
     <string name="settings_quality_no_transcoding">Сървърът не може да прекодира (няма ffmpeg): файловете се възпроизвеждат както са.</string>
     <string name="settings_quality_original">Оригинално · както е изтеглено</string>
-    <string name="settings_quality_transcoded">%1$s · %2$d kbps · прекодирано от сървъра</string>
-    <string name="settings_quality_label">%1$s · %2$d kbps</string>
+    <string name="settings_quality_transcoded">%1$s · %2$d\u00A0kbps · прекодирано от сървъра</string>
+    <string name="settings_quality_label">%1$s · %2$d\u00A0kbps</string>
     <string name="settings_appearance">Външен вид</string>
     <string name="settings_theme">Тема</string>
-    <string name="settings_theme_system">Следвай системата</string>
+    <string name="settings_theme_system">Системна</string>
     <string name="settings_theme_dark">Тъмна</string>
     <string name="settings_theme_light">Светла</string>
+    <string name="settings_theme_body">„Системна“ следва светлия или тъмния режим на устройството.</string>
     <string name="settings_dynamic_color">Цветове от тапета</string>
     <string name="settings_dynamic_color_body">Material You вместо зеленото на Downtify</string>
     <string name="settings_about">Относно</string>
     <string name="settings_app_version">Downtify за Android %1$s</string>
     <string name="settings_server_api">Версия на API на сървъра: %1$d</string>
-    <string name="settings_unpair">Разкачи този телефон</string>
+    <string name="settings_unpair">Изход</string>
     <string name="settings_unpair_body">Забрави ключа на този сървър в телефона</string>
-    <string name="settings_unpair_title">Да се разкачи ли този телефон?</string>
-    <string name="settings_unpair_message">Телефонът забравя ключа си и се връща към екрана за свързване. За да го премахнеш и от сървъра, отвори Настройки › Приложения › Сдвоени приложения на уеб страницата. Синхронизираната ти библиотека остава, докато не сдвоиш с друг сървър.</string>
-    <string name="settings_unpair_confirm">Разкачи</string>
+    <string name="settings_unpair_title">Изход от този сървър?</string>
+    <string name="settings_unpair_message">Телефонът забравя ключа си и се връща към екрана за свързване. За да го премахнеш и от сървъра, отвори Настройки › Приложения › Сдвоени приложения на уеб страницата. Синхронизираната ти библиотека остава, докато не влезеш в друг сървър.</string>
+    <string name="settings_unpair_confirm">Изход</string>
 
     <!-- Player -->
     <string name="player_play">Пусни</string>
@@ -347,18 +367,25 @@
     <string name="player_playing_from_album">Свири от албум</string>
     <string name="player_playing_from_artist">Свири от изпълнител</string>
     <string name="player_playing_from_playlist">Свири от плейлист</string>
-    <string name="player_playing_from_library">Свири от библиотеката ти</string>
-    <string name="player_source_original">Възпроизвеждане от %1$s · %2$s · Оригинално качество</string>
-    <string name="player_source_transcoded">Възпроизвеждане от %1$s · %2$s %3$d kbps</string>
+    <string name="player_now_playing">Сега свири</string>
+    <string name="player_source_original_quality">Възпроизвеждане от %1$s · Оригинално качество</string>
+    <string name="player_sample_rate">%1$s\u00A0kHz</string>
+    <string name="player_bitrate">%1$d\u00A0kbps</string>
     <string name="player_source_unknown">Възпроизвеждане от %1$s</string>
     <string name="player_playing_from_podcast">Подкаст</string>
-    <string name="player_go_to_show">Към подкаста</string>
     <string name="player_skip_back">Назад с 10 секунди</string>
     <string name="player_skip_forward">Напред с 30 секунди</string>
     <string name="player_speed">Скорост на възпроизвеждане %1$s. Докосни за промяна</string>
-    <string name="player_source_phone">Свири от този телефон · %1$s</string>
+    <string name="player_source_this_phone">Свири от този телефон</string>
     <string name="player_lyrics_none">Няма текст за тази песен.</string>
     <string name="player_lyrics_loading">Зареждане на текста…</string>
+    <string name="player_lyrics_synced">Синхронизиран</string>
+    <string name="player_lyrics_static">Статичен</string>
+    <string name="player_lyrics_timing">Настрой синхрона</string>
+    <string name="player_lyrics_earlier">Текстът по-рано</string>
+    <string name="player_lyrics_later">Текстът по-късно</string>
+    <string name="player_lyrics_timing_reset">Нулирай синхрона</string>
+    <string name="player_lyrics_offset">%1$s\u00A0с</string>
     <string name="player_error_network">Няма достъп до сървъра, за да се пусне тази песен.</string>
     <string name="player_error_not_found">Тази песен вече не е на сървъра.</string>
     <string name="player_error_old_server">Сървърът е твърде стар за поточно възпроизвеждане — обнови Downtify на сървъра.</string>
@@ -372,8 +399,10 @@
     <string name="settings_language_summary">%1$s · задава се в езиковите настройки на приложенията в Android</string>
     <string name="settings_amoled">Чисто черно</string>
     <string name="settings_amoled_body">Истинско черно в тъмната тема. Пести батерия на OLED екрани.</string>
+    <string name="settings_floating_nav_bar">Плаваща лента за навигация</string>
+    <string name="settings_floating_nav_bar_body">На телефона лентата е заоблена капсула, вместо да заема цялата ширина на екрана</string>
     <string name="settings_font">Шрифт</string>
-    <string name="settings_font_downtify">Downtify</string>
+    <string name="settings_font_downtify">Класически Downtify</string>
     <string name="settings_font_system">Системен шрифт</string>
     <string name="settings_about_entry">Относно Downtify</string>
 
@@ -442,4 +471,84 @@
     <string name="license_limitation_warranty_body">Софтуерът се предоставя без каквато и да е гаранция.</string>
     <string name="license_full_text">Пълен текст на лиценза</string>
     <string name="license_text_unavailable">Текстът на лиценза не можа да се зареди.</string>
+    <string name="settings_read_ahead">Предварително зареждане на песни</string>
+    <string name="settings_read_ahead_off">Изключено</string>
+    <string name="settings_read_ahead_count">Песни напред: %1$d</string>
+    <string name="settings_stream_cache">Временен аудио кеш</string>
+    <string name="settings_stream_cache_size">%1$d\u00A0MB</string>
+    <string name="settings_stream_cache_body">Място за наскоро слушано и предварително заредено аудио. Офлайн изтеглянията са отделни. Големите песни може да надвишат лимита; само целите песни се считат за готови.</string>
+    <string name="settings_read_ahead_mobile">Зареждане през мобилни данни</string>
+    <string name="settings_read_ahead_mobile_body">Разрешаване на допълнителни данни за подготовка на следващите песни.</string>
+    <string name="settings_cache_apply">Прилагане</string>
+    <string name="player_buffer_ready">Офлайн буфер: %1$d/%2$d</string>
+
+    <!-- Music trash (admins, when the server has it on) -->
+    <string name="trash_title">Кошче</string>
+    <string name="trash_move">Премести в кошчето</string>
+    <string name="trash_checking">Файловете се проверяват…</string>
+    <string name="trash_checking_body">Сървърът проверява точно кои файлове ще бъдат преместени. Може да отнеме момент.</string>
+    <string name="trash_failed">Не се получи</string>
+    <string name="trash_admin_only">Само администратори могат да виждат това</string>
+    <string name="trash_admin_only_body">Помоли администратор на този сървър да възстанови песен.</string>
+    <string name="trash_tab_trash">В кошчето</string>
+    <string name="trash_tab_kept_out">Извън изтеглянията</string>
+    <string name="trash_search">Търси в кошчето</string>
+    <string name="trash_empty">Кошчето е празно</string>
+    <string name="trash_empty_body">Песните, преместени в кошчето, се показват тук, докато изтекат.</string>
+    <string name="trash_no_match">Нищо в кошчето не съвпада</string>
+    <string name="trash_show_more">Покажи още</string>
+    <string name="trash_kept_out_body">Песни, чийто срок в кошчето е изтекъл. Автоматичните изтегляния ги пропускат, докато не ги разрешиш отново.</string>
+    <string name="trash_kept_out_empty">Нищо не е извън изтеглянията</string>
+    <string name="trash_allow">Разреши изтеглянията</string>
+    <string name="trash_allow_title">Да се разреши „%1$s“ да се изтегли отново?</string>
+    <string name="trash_allow_body">Автоматичните изтегляния може да я изтеглят пак. Сега нищо не се изтегля.</string>
+    <string name="trash_kept_until">Пази се до %1$s</string>
+    <string name="trash_restore">Възстанови</string>
+    <string name="trash_error_admin">Само администратор може да използва кошчето.</string>
+    <string name="trash_error_changed">Файл се промени след проверката. Нищо не е изгубено; избери песента отново.</string>
+    <string name="trash_error_missing">Липсва файл. Провери хранилището на сървъра и опитай пак.</string>
+    <string name="trash_error_collision">На мястото ѝ вече има друг файл. Нищо не е презаписано; песента остава в кошчето.</string>
+    <string name="trash_error_playing">Някой слуша тази песен. Първо я спри на пауза.</string>
+    <string name="trash_error_upgrade">Подобряването на библиотеката работи. Изчакай го или първо го спри на пауза.</string>
+    <string name="trash_error_confirmation">Проверката изтече. Избери песните отново.</string>
+    <string name="trash_error_identity">Таговете на тази песен не стигат, за да остане извън автоматичните изтегляния. Нищо не е преместено.</string>
+    <string name="trash_error_busy">Нещо все още е на път. Изчакай да приключи.</string>
+    <string name="trash_error_expired">Срокът ѝ в кошчето изтече.</string>
+    <string name="trash_error_folder">Папката на тази песен не е покрита от кошчето.</string>
+    <string name="trash_error_storage">Хранилището на сървъра не е готово. Нищо не е преместено; провери го и опитай пак.</string>
+    <string name="trash_error_off">Кошчето е изключено на този сървър.</string>
+    <string name="trash_error">Кошчето не отговори. Нищо не е преместено или изтрито.</string>
+    <string name="trash_state_pending">Чака преместване</string>
+    <string name="trash_state_moving">Премества се</string>
+    <string name="trash_state_trashed">В кошчето</string>
+    <string name="trash_state_restoring">Възстановява се</string>
+    <string name="trash_state_restored">Възстановена</string>
+    <string name="trash_state_expired">Изтекла</string>
+    <string name="trash_state_error">Спряна — файловете са запазени</string>
+    <string name="trash_state_unknown">Обновява се</string>
+    <plurals name="trash_moving">
+        <item quantity="one">%1$d песен се премества в кошчето</item>
+        <item quantity="other">%1$d песни се преместват в кошчето</item>
+    </plurals>
+    <plurals name="trash_confirm_title">
+        <item quantity="one">Да се премести %1$d песен в кошчето?</item>
+        <item quantity="other">Да се преместят %1$d песни в кошчето?</item>
+    </plurals>
+    <plurals name="trash_confirm_body">
+        <item quantity="one">Преместват се само тези файлове, с текстовете им. Те излизат от библиотеката за всички и могат да се възстановят в продължение на %1$d ден.</item>
+        <item quantity="other">Преместват се само тези файлове, с текстовете им. Те излизат от библиотеката за всички и могат да се възстановят в продължение на %1$d дни.</item>
+    </plurals>
+    <plurals name="trash_summary">
+        <item quantity="one">%1$d песен · %2$s</item>
+        <item quantity="other">%1$d песни · %2$s</item>
+    </plurals>
+    <plurals name="trash_kept_days">
+        <item quantity="one">пазят се %1$d ден след преместването</item>
+        <item quantity="other">пазят се %1$d дни след преместването</item>
+    </plurals>
+    <string name="settings_normalization_level">Ниво на звука</string>
+    <string name="settings_normalization_normal">Нормално</string>
+    <string name="settings_normalization_louder">По-силно</string>
+    <string name="settings_normalization_maximum">Максимум</string>
+    <string name="settings_normalization_level_hint">Увеличава звука до безопасната граница за всяка песен. Аудиофайловете не се променят.</string>
 </resources>

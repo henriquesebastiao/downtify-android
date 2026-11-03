@@ -16,14 +16,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -31,19 +29,22 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import com.henriquesebastiao.downtify.BuildConfig
 import com.henriquesebastiao.downtify.R
 import com.henriquesebastiao.downtify.core.designsystem.component.DowntifyIcons
 import com.henriquesebastiao.downtify.core.designsystem.component.DowntifyLogo
+import com.henriquesebastiao.downtify.core.designsystem.component.PageHeader
+import com.henriquesebastiao.downtify.core.designsystem.component.PhonePreviews
+import com.henriquesebastiao.downtify.core.designsystem.component.Tag
+import com.henriquesebastiao.downtify.core.designsystem.component.TagTone
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyTheme
 import com.henriquesebastiao.downtify.core.designsystem.theme.Spacing
 import com.henriquesebastiao.downtify.ui.common.GroupedList
@@ -91,19 +92,15 @@ private enum class AboutSheet { Terms, Donate }
 @Composable
 fun AboutScreen(versionLabel: String, actions: AboutActions, modifier: Modifier = Modifier) {
     var sheet by rememberSaveable { mutableStateOf<AboutSheet?>(null) }
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     Scaffold(
-        modifier = modifier,
+        modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.about_title)) },
-                navigationIcon = {
-                    IconButton(onClick = actions.onBack) {
-                        Icon(
-                            painterResource(DowntifyIcons.Back),
-                            contentDescription = stringResource(R.string.action_back),
-                        )
-                    }
-                },
+            PageHeader(
+                title = stringResource(R.string.about_title),
+                onBack = actions.onBack,
+                backLabel = stringResource(R.string.action_back),
+                scrollBehavior = scrollBehavior,
             )
         },
     ) { padding ->
@@ -126,6 +123,7 @@ fun AboutScreen(versionLabel: String, actions: AboutActions, modifier: Modifier 
                     GroupedRow(
                         title = stringResource(R.string.about_version),
                         summary = versionLabel,
+                        summaryValues = listOf(versionLabel),
                         icon = DowntifyIcons.Info,
                         action = RowAction.Click(actions.onCopyVersion, DowntifyIcons.Copy),
                     ),
@@ -178,27 +176,25 @@ fun AboutScreen(versionLabel: String, actions: AboutActions, modifier: Modifier 
     }
 }
 
+/** The app's mark, its name, the version as a tag, and what it is. */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun AboutHeader(versionLabel: String) {
     Column(
         Modifier.fillMaxWidth().padding(horizontal = Spacing.screen, vertical = Spacing.xl),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+        verticalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
-        DowntifyLogo(size = 72.dp)
+        DowntifyLogo(size = 80.dp)
         Text(
             stringResource(R.string.app_name),
-            style = MaterialTheme.typography.headlineSmall,
+            style = MaterialTheme.typography.headlineMediumEmphasized,
             modifier = Modifier.semantics { heading() },
         )
-        Text(
-            versionLabel,
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary,
-        )
+        Tag(versionLabel, tone = TagTone.Secondary)
         Text(
             stringResource(R.string.about_tagline),
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
@@ -218,7 +214,7 @@ private fun TermsSheet(onDismiss: () -> Unit) {
         ) {
             Text(
                 stringResource(R.string.terms_title),
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.headlineSmall,
                 modifier = Modifier.semantics { heading() },
             )
             TermsSection(R.string.terms_use_title, R.string.terms_use_body)
@@ -234,7 +230,7 @@ private fun TermsSheet(onDismiss: () -> Unit) {
 @Composable
 private fun TermsSection(title: Int, body: Int) {
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-        Text(stringResource(title), style = MaterialTheme.typography.titleSmall)
+        Text(stringResource(title), style = MaterialTheme.typography.titleMedium)
         Text(
             stringResource(body),
             style = MaterialTheme.typography.bodyMedium,
@@ -243,6 +239,7 @@ private fun TermsSection(title: Int, body: Int) {
     }
 }
 
+/** Where to support the project: one row per service, each opening its page. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DonateSheet(onBuyMeACoffee: () -> Unit, onGithubSponsors: () -> Unit, onDismiss: () -> Unit) {
@@ -250,51 +247,42 @@ private fun DonateSheet(onBuyMeACoffee: () -> Unit, onGithubSponsors: () -> Unit
         Column(
             Modifier
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = Spacing.screen)
                 .navigationBarsPadding(),
             verticalArrangement = Arrangement.spacedBy(Spacing.lg),
         ) {
-            Text(
-                stringResource(R.string.donate_title),
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.semantics { heading() },
-            )
-            Text(
-                stringResource(R.string.donate_body),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            DonateOption(
-                icon = DowntifyIcons.Coffee,
-                title = R.string.donate_buy_me_a_coffee,
-                body = R.string.donate_buy_me_a_coffee_body,
-                onClick = onBuyMeACoffee,
-            )
-            DonateOption(
-                icon = DowntifyIcons.Favorite,
-                title = R.string.donate_github_sponsors,
-                body = R.string.donate_github_sponsors_body,
-                onClick = onGithubSponsors,
+            Column(
+                Modifier.padding(horizontal = Spacing.screen),
+                verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+            ) {
+                Text(
+                    stringResource(R.string.donate_title),
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.semantics { heading() },
+                )
+                Text(
+                    stringResource(R.string.donate_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            GroupedList(
+                listOf(
+                    GroupedRow(
+                        title = stringResource(R.string.donate_buy_me_a_coffee),
+                        summary = stringResource(R.string.donate_buy_me_a_coffee_body),
+                        icon = DowntifyIcons.Coffee,
+                        action = RowAction.Click(onBuyMeACoffee, DowntifyIcons.OpenInNew),
+                    ),
+                    GroupedRow(
+                        title = stringResource(R.string.donate_github_sponsors),
+                        summary = stringResource(R.string.donate_github_sponsors_body),
+                        icon = DowntifyIcons.Favorite,
+                        action = RowAction.Click(onGithubSponsors, DowntifyIcons.OpenInNew),
+                    ),
+                ),
             )
             Spacer(Modifier.height(Spacing.lg))
         }
-    }
-}
-
-@Composable
-private fun DonateOption(icon: Int, title: Int, body: Int, onClick: () -> Unit) {
-    OutlinedButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-        Icon(painterResource(icon), contentDescription = null)
-        Spacer(Modifier.padding(horizontal = Spacing.sm))
-        Column(Modifier.weight(1f)) {
-            Text(stringResource(title), style = MaterialTheme.typography.titleSmall)
-            Text(
-                stringResource(body),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Icon(painterResource(DowntifyIcons.OpenInNew), contentDescription = null)
     }
 }
 
@@ -312,7 +300,7 @@ private fun copyToClipboard(context: Context, text: String, confirmation: String
     }
 }
 
-@PreviewLightDark
+@PhonePreviews
 @Composable
 private fun AboutPreview() {
     DowntifyTheme {

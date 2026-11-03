@@ -55,6 +55,8 @@ data class PlayerState(
     val stream: PlayingStream? = null,
     /** 1 for music; an episode can play faster or slower. */
     val speed: Float = 1f,
+    val readAheadReady: Int = 0,
+    val readAheadTarget: Int = 0,
     val isPlaying: Boolean = false,
     val isBuffering: Boolean = false,
     val positionMs: Long = 0,

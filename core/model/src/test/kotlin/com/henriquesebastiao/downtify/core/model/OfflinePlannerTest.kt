@@ -94,12 +94,13 @@ class OfflinePlannerTest {
         assertTrue(!progress.isComplete)
     }
 
+    // The no-break space keeps a size on one line: "412" never ends a line with "MB" on the next.
     @Test
     fun formatsBytesInDecimalUnits() {
-        assertEquals("0 B", formatBytes(0))
-        assertEquals("412 MB", formatBytes(412_000_000))
-        assertEquals("2.4 GB", formatBytes(2_400_000_000))
-        assertEquals("128 GB", formatBytes(128_000_000_000))
-        assertEquals("12 KB", formatBytes(12_000))
+        assertEquals("0\u00A0B", formatBytes(0))
+        assertEquals("412\u00A0MB", formatBytes(412_000_000))
+        assertEquals("2.4\u00A0GB", formatBytes(2_400_000_000))
+        assertEquals("128\u00A0GB", formatBytes(128_000_000_000))
+        assertEquals("12\u00A0KB", formatBytes(12_000))
     }
 }

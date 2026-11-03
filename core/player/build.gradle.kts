@@ -16,4 +16,5 @@ dependencies {
     implementation(libs.kotlinx.coroutines.guava)
     implementation(libs.kotlinx.coroutines.android)
     testImplementation(libs.robolectric)
+    testImplementation(libs.okhttp.mockwebserver)
 }

@@ -6,40 +6,55 @@
     <string name="nav_search">Keresés</string>
     <string name="nav_library">Könyvtár</string>
     <string name="nav_downloads">Letöltések</string>
+    <string name="nav_trash">Kuka</string>
     <string name="action_back">Vissza</string>
     <string name="action_settings">Beállítások</string>
-    <string name="action_more">További lehetőségek</string>
+    <string name="action_open_menu">Menü megnyitása</string>
     <string name="action_retry">Újra</string>
     <string name="action_cancel">Mégse</string>
 
     <!-- Connect -->
     <string name="connect_title_line1">A zenéd,</string>
     <string name="connect_title_line2">a saját szervereden.</string>
-    <string name="connect_body">Csatlakozz az otthon futtatott Downtifyhoz. Minden onnan streamel, és a tiéd marad.</string>
     <string name="connect_address_label">Szerver címe</string>
     <string name="connect_address_hint">Ugyanaz a cím, amelyen böngészőben megnyitod a Downtifyt.</string>
     <string name="connect_found">Ezen a hálózaton találhatók</string>
     <string name="connect_searching">Szerverek keresése…</string>
-    <string name="connect_none_found">Nem található egy sem. Írd be inkább a címet — a Docker alapértelmezett hálózata nem hirdeti a szervert.</string>
-    <string name="connect_server_subtitle">%1$s · Downtify %2$s</string>
+    <string name="connect_none_found">Ezen a hálózaton még nem található szerver.</string>
+    <string name="connect_server_subtitle">%1$s · Downtify\u00A0%2$s</string>
     <string name="connect_action">Csatlakozás</string>
-    <string name="connect_scan">Olvasd be a kódot a Beállítások › Alkalmazások oldalról</string>
-    <string name="connect_cleartext_warning">Ez a cím nem az otthoni hálózaton van, és nem használ HTTPS-t: a telefon kulcsa titkosítatlanul utazna. Tedd a Downtifyt HTTPS-es fordított proxy mögé, hogy kívülről is használhasd.</string>
-    <string name="connect_revoked">Ezt a telefont leválasztották a szerverről. Párosítsd újra, hogy tovább hallgathass zenét.</string>
+    <string name="connect_step">%1$d/%2$d. lépés</string>
+    <string name="connect_scan">Párosító QR-kód beolvasása</string>
+    <string name="connect_cleartext_warning">Nem az otthoni hálózaton van, és nincs HTTPS: a telefon kulcsa titkosítatlanul utazna.</string>
+    <string name="connect_revoked">Ezt a telefont kijelentkeztették a szerverről. Jelentkezz be újra, hogy tovább hallgathass zenét.</string>
     <string name="connect_error_invalid">Ez nem úgy néz ki, mint egy cím. Próbáld így: http://192.168.1.20:8000.</string>
     <string name="connect_error_unreachable">Ezen a címen nem érhető el szerver. Ellenőrizd a címet, és hogy a telefon ugyanazon a hálózaton van-e.</string>
     <string name="connect_error_not_downtify">Valami válaszolt, de nem Downtify.</string>
     <string name="connect_error_too_new">Ez a szerver (Downtify %1$s) újabb, mint amit az alkalmazás ismer. Frissítsd az alkalmazást.</string>
 
+    <string name="sign_in_title">Bejelentkezés ide: %1$s</string>
+    <string name="sign_in_body">Használd a weboldalon használt fiókodat.</string>
+    <string name="sign_in_username">Felhasználónév</string>
+    <string name="sign_in_password">Jelszó</string>
+    <string name="sign_in_show_password">Jelszó megjelenítése</string>
+    <string name="sign_in_hide_password">Jelszó elrejtése</string>
+    <string name="sign_in_action">Bejelentkezés</string>
+    <string name="sign_in_use_code">Párosítás kóddal</string>
+    <string name="sign_in_use_password">Bejelentkezés jelszóval</string>
+    <string name="sign_in_error_wrong">Hibás felhasználónév vagy jelszó.</string>
+    <string name="sign_in_error_off">Ezen a szerveren ki van kapcsolva a bejelentkezés. Használj párosítókódot.</string>
+    <string name="sign_in_error_failed">A szerver nem tudta bejelentkeztetni a telefont (hiba: %1$d).</string>
+    <string name="sign_in_cleartext_warning">Nem az otthoni hálózaton van, és nincs HTTPS: a jelszavad titkosítatlanul utazna.</string>
+
     <string name="pair_title">Párosítás: %1$s</string>
-    <string name="pair_body">A weboldalon nyisd meg a Beállítások › Alkalmazások részt, és koppints a Telefon párosítása gombra. Olvasd be a QR-kódot, vagy írd be alatta látható kódot.</string>
+    <string name="pair_body">A weboldal Beállítások › Alkalmazások részéből.</string>
     <string name="pair_code_label">Párosítókód</string>
     <string name="pair_code_placeholder">XXXX-XXXX</string>
     <string name="pair_action">Párosítás</string>
     <string name="pair_scan">QR-kód beolvasása</string>
     <string name="pair_other_server">Másik szerver használata</string>
     <string name="pair_error_wrong_code">Ez a kód hibás, lejárt vagy már felhasználták. A kódok öt percig érvényesek, és csak egyszer használhatók.</string>
-    <string name="pair_error_too_many">Túl sok próbálkozás. Próbáld újra %1$d mp múlva.</string>
+    <string name="pair_error_too_many">Túl sok próbálkozás. Próbáld újra %1$d\u00A0mp múlva.</string>
     <string name="pair_error_unreachable">A szerver nem érhető el. Ellenőrizd a kapcsolatot, és próbáld újra.</string>
     <string name="pair_error_failed">A szerver nem tudta párosítani a telefont (hiba: %1$d).</string>
     <string name="pair_error_other_server">Ez a kód nem az ezen a címen lévő szerverhez tartozik.</string>
@@ -47,17 +62,14 @@
     <string name="scan_title">Párosítókód beolvasása</string>
     <string name="scan_hint">Irányítsd a kamerát a Beállítások › Alkalmazások › Telefon párosítása oldalon látható QR-kódra.</string>
     <string name="scan_close">Olvasó bezárása</string>
-    <string name="connect_local_network_denied">A helyi hálózati hozzáférés ki van kapcsolva, ezért a Downtify csak a listából választott szervert éri el. Cím beírásához engedélyezd az alkalmazás beállításaiban.</string>
+    <string name="connect_local_network_denied">A helyi hálózati hozzáférés ki van kapcsolva. Cím beírásához engedélyezd az alkalmazás beállításaiban.</string>
     <string name="scan_permission_denied">A kamerahozzáférés ki van kapcsolva. Írd be a kódot, vagy engedélyezd a kamerát a telefon beállításaiban.</string>
     <string name="scan_not_downtify">Ez a QR-kód nem Downtify párosítókód.</string>
 
     <!-- Home -->
-    <string name="home_good_morning">Jó reggelt</string>
-    <string name="home_good_afternoon">Jó napot</string>
-    <string name="home_good_evening">Jó estét</string>
     <string name="home_streaming_from">Streamelés innen: %1$s</string>
     <string name="home_unreachable">%1$s nem érhető el · a szinkronizált könyvtárad látható</string>
-    <string name="home_different_server">Ezen a címen másik szerver válaszol · párosíts újra a Beállításokban</string>
+    <string name="home_different_server">Ezen a címen másik szerver válaszol · jelentkezz be újra a Beállításokban</string>
     <string name="home_syncing">Szinkronizálás: %1$s…</string>
     <string name="home_jump_back_in">Folytasd, ahol abbahagytad</string>
     <string name="home_recently_added">Nemrég hozzáadott</string>
@@ -73,9 +85,14 @@
     <string name="library_artists">Előadók</string>
     <string name="library_playlists">Lejátszási listák</string>
     <string name="library_songs">Dalok</string>
+    <string name="library_sort">Rendezés: %1$s</string>
     <string name="library_sort_recent">Nemrég hozzáadott</string>
     <string name="library_sort_alpha">Betűrend</string>
     <string name="library_sort_artist">Előadó</string>
+    <string name="library_sort_by">Rendezés</string>
+    <string name="library_sort_order">Sorrend</string>
+    <string name="library_sort_ascending">Növekvő</string>
+    <string name="library_sort_descending">Csökkenő</string>
     <string name="library_show_list">Megjelenítés listaként</string>
     <string name="library_show_grid">Megjelenítés rácsként</string>
     <string name="library_empty_albums">Még nincs album</string>
@@ -94,7 +111,7 @@
         <item quantity="one">%d album</item>
         <item quantity="other">%d album</item>
     </plurals>
-    <string name="minutes_short">%d perc</string>
+    <string name="minutes_short">%d\u00A0perc</string>
     <string name="unknown_artist">Ismeretlen előadó</string>
     <string name="unknown_album">Ismeretlen album</string>
 
@@ -293,27 +310,30 @@
     <string name="settings_change_server">Szerver váltása</string>
     <string name="settings_open_web">Szerverbeállítások</string>
     <string name="settings_playback">Lejátszás</string>
+    <string name="settings_normalize_volume">Hangerő normalizálása</string>
+    <string name="settings_normalize_volume_hint">A szerver mérései alapján hasonló hangerővel játssza le a dalokat, a következő daltól. A mérés nélküli dalok megtartják eredeti hangerejüket.</string>
     <string name="settings_quality_wifi">Streamelési minőség Wi-Fi-n</string>
     <string name="settings_quality_mobile">Streamelési minőség mobiladaton</string>
     <string name="settings_quality_no_transcoding">A szerver nem tud átkódolni (nincs ffmpeg): a fájlok eredeti formában streamelnek.</string>
     <string name="settings_quality_original">Eredeti · ahogy letöltötték</string>
-    <string name="settings_quality_transcoded">%1$s · %2$d kbps · a szerver átkódolja</string>
-    <string name="settings_quality_label">%1$s · %2$d kbps</string>
+    <string name="settings_quality_transcoded">%1$s · %2$d\u00A0kbps · a szerver átkódolja</string>
+    <string name="settings_quality_label">%1$s · %2$d\u00A0kbps</string>
     <string name="settings_appearance">Megjelenés</string>
     <string name="settings_theme">Téma</string>
-    <string name="settings_theme_system">Rendszer követése</string>
+    <string name="settings_theme_system">Rendszer</string>
     <string name="settings_theme_dark">Sötét</string>
     <string name="settings_theme_light">Világos</string>
+    <string name="settings_theme_body">A Rendszer az eszköz világos vagy sötét módját követi.</string>
     <string name="settings_dynamic_color">Háttérkép színeinek használata</string>
     <string name="settings_dynamic_color_body">Material You a Downtify-zöld helyett</string>
     <string name="settings_about">Névjegy</string>
     <string name="settings_app_version">Downtify Androidra %1$s</string>
     <string name="settings_server_api">Szerver API-verziója: %1$d</string>
-    <string name="settings_unpair">A telefon leválasztása</string>
+    <string name="settings_unpair">Kijelentkezés</string>
     <string name="settings_unpair_body">A szerver kulcsának elfelejtése a telefonon</string>
-    <string name="settings_unpair_title">Leválasztod a telefont?</string>
-    <string name="settings_unpair_message">A telefon elfelejti a kulcsát, és visszatér a csatlakozási képernyőre. Hogy a szerverről is eltávolítsd, nyisd meg a weboldalon a Beállítások › Alkalmazások › Párosított alkalmazások részt. A szinkronizált könyvtárad megmarad, amíg másik szerverrel nem párosítasz.</string>
-    <string name="settings_unpair_confirm">Leválasztás</string>
+    <string name="settings_unpair_title">Kijelentkezel erről a szerverről?</string>
+    <string name="settings_unpair_message">A telefon elfelejti a kulcsát, és visszatér a csatlakozási képernyőre. Hogy a szerverről is eltávolítsd, nyisd meg a weboldalon a Beállítások › Alkalmazások › Párosított alkalmazások részt. A szinkronizált könyvtárad megmarad, amíg másik szerverre nem jelentkezel be.</string>
+    <string name="settings_unpair_confirm">Kijelentkezés</string>
 
     <!-- Player -->
     <string name="player_play">Lejátszás</string>
@@ -347,18 +367,25 @@
     <string name="player_playing_from_album">Lejátszás albumból</string>
     <string name="player_playing_from_artist">Lejátszás előadótól</string>
     <string name="player_playing_from_playlist">Lejátszás lejátszási listából</string>
-    <string name="player_playing_from_library">Lejátszás a könyvtáradból</string>
-    <string name="player_source_original">Streamelés innen: %1$s · %2$s · Eredeti minőség</string>
-    <string name="player_source_transcoded">Streamelés innen: %1$s · %2$s %3$d kbps</string>
+    <string name="player_now_playing">Most szól</string>
+    <string name="player_source_original_quality">Streamelés innen: %1$s · Eredeti minőség</string>
+    <string name="player_sample_rate">%1$s\u00A0kHz</string>
+    <string name="player_bitrate">%1$d\u00A0kbps</string>
     <string name="player_source_unknown">Streamelés innen: %1$s</string>
     <string name="player_playing_from_podcast">Podcast</string>
-    <string name="player_go_to_show">Ugrás a podcastra</string>
     <string name="player_skip_back">Vissza 10 másodpercet</string>
     <string name="player_skip_forward">Előre 30 másodpercet</string>
     <string name="player_speed">Lejátszási sebesség: %1$s. Koppints a módosításhoz</string>
-    <string name="player_source_phone">Lejátszás erről a telefonról · %1$s</string>
+    <string name="player_source_this_phone">Lejátszás erről a telefonról</string>
     <string name="player_lyrics_none">Ehhez a dalhoz nincs szöveg.</string>
     <string name="player_lyrics_loading">Dalszöveg betöltése…</string>
+    <string name="player_lyrics_synced">Időzített</string>
+    <string name="player_lyrics_static">Statikus</string>
+    <string name="player_lyrics_timing">Időzítés igazítása</string>
+    <string name="player_lyrics_earlier">Dalszöveg korábban</string>
+    <string name="player_lyrics_later">Dalszöveg később</string>
+    <string name="player_lyrics_timing_reset">Időzítés visszaállítása</string>
+    <string name="player_lyrics_offset">%1$s\u00A0mp</string>
     <string name="player_error_network">A szerver nem érhető el a dal lejátszásához.</string>
     <string name="player_error_not_found">Ez a dal már nincs a szerveren.</string>
     <string name="player_error_old_server">A szerver túl régi a streameléshez — frissítsd a Downtifyt a szerveren.</string>
@@ -372,8 +399,10 @@
     <string name="settings_language_summary">%1$s · az Android alkalmazásnyelv-beállításaiban módosítható</string>
     <string name="settings_amoled">Tiszta fekete</string>
     <string name="settings_amoled_body">Valódi fekete a sötét témában. Energiát takarít meg OLED kijelzőn.</string>
+    <string name="settings_floating_nav_bar">Lebegő navigációs sáv</string>
+    <string name="settings_floating_nav_bar_body">Telefonon a sáv lekerekített kapszula a képernyő teljes szélessége helyett</string>
     <string name="settings_font">Betűtípus</string>
-    <string name="settings_font_downtify">Downtify</string>
+    <string name="settings_font_downtify">Klasszikus Downtify</string>
     <string name="settings_font_system">Rendszer betűtípusa</string>
     <string name="settings_about_entry">A Downtifyról</string>
 
@@ -442,4 +471,84 @@
     <string name="license_limitation_warranty_body">A szoftver bármilyen garancia nélkül érkezik.</string>
     <string name="license_full_text">A licenc teljes szövege</string>
     <string name="license_text_unavailable">A licenc szövegét nem sikerült betölteni.</string>
+    <string name="settings_read_ahead">Következő számok előtöltése</string>
+    <string name="settings_read_ahead_off">Kikapcsolva</string>
+    <string name="settings_read_ahead_count">Előtöltött számok száma: %1$d</string>
+    <string name="settings_stream_cache">Ideiglenes hanggyorsítótár</string>
+    <string name="settings_stream_cache_size">%1$d\u00A0MB</string>
+    <string name="settings_stream_cache_body">A nemrég játszott és előtöltött hang tárhelye. Az offline letöltések külön maradnak. A nagy számok túlléphetik a korlátot; csak a teljes számok számítanak késznek.</string>
+    <string name="settings_read_ahead_mobile">Előtöltés mobiladattal</string>
+    <string name="settings_read_ahead_mobile_body">Többlet adatforgalom engedélyezése a következő számokhoz.</string>
+    <string name="settings_cache_apply">Alkalmaz</string>
+    <string name="player_buffer_ready">Offline puffer: %1$d/%2$d</string>
+
+    <!-- Music trash (admins, when the server has it on) -->
+    <string name="trash_title">Kuka</string>
+    <string name="trash_move">Áthelyezés a kukába</string>
+    <string name="trash_checking">Fájlok ellenőrzése…</string>
+    <string name="trash_checking_body">A szerver ellenőrzi, pontosan mely fájlok kerülnének át. Ez eltarthat egy pillanatig.</string>
+    <string name="trash_failed">Nem sikerült</string>
+    <string name="trash_admin_only">Ezt csak adminisztrátorok láthatják</string>
+    <string name="trash_admin_only_body">Kérd meg a szerver egyik adminisztrátorát, hogy állítson vissza egy számot.</string>
+    <string name="trash_tab_trash">A kukában</string>
+    <string name="trash_tab_kept_out">Letöltésekből kizárva</string>
+    <string name="trash_search">Keresés a kukában</string>
+    <string name="trash_empty">A kuka üres</string>
+    <string name="trash_empty_body">A kukába tett számok itt látszanak, amíg le nem járnak.</string>
+    <string name="trash_no_match">Semmi sem egyezik a kukában</string>
+    <string name="trash_show_more">Több megjelenítése</string>
+    <string name="trash_kept_out_body">Számok, amelyek ideje lejárt a kukában. Az automatikus letöltések kihagyják őket, amíg újra nem engedélyezed.</string>
+    <string name="trash_kept_out_empty">Semmi sincs kizárva a letöltésekből</string>
+    <string name="trash_allow">Letöltés engedélyezése</string>
+    <string name="trash_allow_title">Újra letölthető legyen ez: „%1$s”?</string>
+    <string name="trash_allow_body">Az automatikus letöltések újra letölthetik. Most semmi sem töltődik le.</string>
+    <string name="trash_kept_until">Megőrizve eddig: %1$s</string>
+    <string name="trash_restore">Visszaállítás</string>
+    <string name="trash_error_admin">Csak adminisztrátor használhatja a kukát.</string>
+    <string name="trash_error_changed">Egy fájl az ellenőrzés után megváltozott. Semmi sem veszett el; válaszd ki újra a számot.</string>
+    <string name="trash_error_missing">Hiányzik egy fájl. Ellenőrizd a szerver tárhelyét, majd próbáld újra.</string>
+    <string name="trash_error_collision">A helyén már van egy másik fájl. Semmi sem lett felülírva; a szám a kukában marad.</string>
+    <string name="trash_error_playing">Valaki épp ezt a számot hallgatja. Előbb szüneteltesd.</string>
+    <string name="trash_error_upgrade">A könyvtár feljavítása fut. Várd meg, vagy előbb szüneteltesd.</string>
+    <string name="trash_error_confirmation">Az ellenőrzés lejárt. Válaszd ki újra a számokat.</string>
+    <string name="trash_error_identity">Ennek a számnak a címkéi kevesek ahhoz, hogy kimaradjon az automatikus letöltésekből. Semmi sem került át.</string>
+    <string name="trash_error_busy">Valami még folyamatban van. Várd meg, amíg befejeződik.</string>
+    <string name="trash_error_expired">Lejárt az ideje a kukában.</string>
+    <string name="trash_error_folder">Ennek a számnak a mappáját nem fedi le a kuka.</string>
+    <string name="trash_error_storage">A szerver tárhelye nem áll készen. Semmi sem került át; ellenőrizd, majd próbáld újra.</string>
+    <string name="trash_error_off">A kuka ki van kapcsolva ezen a szerveren.</string>
+    <string name="trash_error">A kuka nem válaszolt. Semmi sem került át és semmi sem törlődött.</string>
+    <string name="trash_state_pending">Áthelyezésre vár</string>
+    <string name="trash_state_moving">Áthelyezés</string>
+    <string name="trash_state_trashed">A kukában</string>
+    <string name="trash_state_restoring">Visszaállítás</string>
+    <string name="trash_state_restored">Visszaállítva</string>
+    <string name="trash_state_expired">Lejárt</string>
+    <string name="trash_state_error">Leállt — a fájlok megmaradtak</string>
+    <string name="trash_state_unknown">Frissítés</string>
+    <plurals name="trash_moving">
+        <item quantity="one">%1$d szám áthelyezése a kukába</item>
+        <item quantity="other">%1$d szám áthelyezése a kukába</item>
+    </plurals>
+    <plurals name="trash_confirm_title">
+        <item quantity="one">Áthelyezel %1$d számot a kukába?</item>
+        <item quantity="other">Áthelyezel %1$d számot a kukába?</item>
+    </plurals>
+    <plurals name="trash_confirm_body">
+        <item quantity="one">Csak ezek a fájlok kerülnek át, a dalszövegeikkel. Mindenkinél eltűnnek a könyvtárból, és %1$d napig visszaállíthatók.</item>
+        <item quantity="other">Csak ezek a fájlok kerülnek át, a dalszövegeikkel. Mindenkinél eltűnnek a könyvtárból, és %1$d napig visszaállíthatók.</item>
+    </plurals>
+    <plurals name="trash_summary">
+        <item quantity="one">%1$d szám · %2$s</item>
+        <item quantity="other">%1$d szám · %2$s</item>
+    </plurals>
+    <plurals name="trash_kept_days">
+        <item quantity="one">az áthelyezés után %1$d napig megmaradnak</item>
+        <item quantity="other">az áthelyezés után %1$d napig megmaradnak</item>
+    </plurals>
+    <string name="settings_normalization_level">Hangerőszint</string>
+    <string name="settings_normalization_normal">Normál</string>
+    <string name="settings_normalization_louder">Hangosabb</string>
+    <string name="settings_normalization_maximum">Maximum</string>
+    <string name="settings_normalization_level_hint">A hangerőt az egyes számok biztonságos határáig növeli. A hangfájlok változatlanok maradnak.</string>
 </resources>

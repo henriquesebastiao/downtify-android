@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.room.Room
 import com.henriquesebastiao.downtify.core.data.db.DowntifyDatabase
+import com.henriquesebastiao.downtify.core.data.db.MIGRATION_3_4
 import com.henriquesebastiao.downtify.core.data.sync.LibraryLocalStore
 import com.henriquesebastiao.downtify.core.data.sync.RoomLibraryStore
 import dagger.Binds
@@ -28,6 +29,7 @@ internal object DataModule {
     @Singleton
     fun database(@ApplicationContext context: Context): DowntifyDatabase =
         Room.databaseBuilder(context, DowntifyDatabase::class.java, "downtify.db")
+            .addMigrations(MIGRATION_3_4)
             // The library is a cache of the server's: rebuilding it on a schema change is a sync away.
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()

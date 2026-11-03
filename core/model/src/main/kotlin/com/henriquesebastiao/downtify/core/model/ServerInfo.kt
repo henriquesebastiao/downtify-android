@@ -36,6 +36,8 @@ data class Capabilities(
     val discover: Boolean = false,
     val lyrics: Boolean = false,
     val librarySync: Boolean = false,
+    /** The app may sign in with a username and password (`POST /api/auth/token`); else it pairs with a code. */
+    val passwordSignIn: Boolean = false,
 )
 
 data class Transcoding(

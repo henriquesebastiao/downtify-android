@@ -25,7 +25,9 @@ class AuthInterceptor @Inject constructor(private val store: SessionStore) : Int
         val response = chain.proceed(
             request.newBuilder().header(AUTHORIZATION, "Bearer ${session.token}").build(),
         )
-        if (response.code == HTTP_UNAUTHORIZED && !request.url.encodedPath.endsWith(PAIR_PATH)) {
+        // A 401 to a pairing code or a password is about what was typed, not about the token.
+        val signingIn = SIGN_IN_PATHS.any { request.url.encodedPath.endsWith(it) }
+        if (response.code == HTTP_UNAUTHORIZED && !signingIn) {
             store.onRevoked(session.token)
         }
         return response
@@ -34,7 +36,7 @@ class AuthInterceptor @Inject constructor(private val store: SessionStore) : Int
     companion object {
         const val AUTHORIZATION = "Authorization"
         private const val HTTP_UNAUTHORIZED = 401
-        private const val PAIR_PATH = "/api/auth/pair"
+        private val SIGN_IN_PATHS = listOf("/api/auth/pair", "/api/auth/token")
 
         /** Whether [url] is on the server at [baseUrl]: same scheme, host and port, under its path. */
         fun belongsTo(url: HttpUrl, baseUrl: String): Boolean {

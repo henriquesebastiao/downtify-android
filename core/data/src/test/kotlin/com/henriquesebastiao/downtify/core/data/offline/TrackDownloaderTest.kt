@@ -8,6 +8,7 @@ import mockwebserver3.MockWebServer
 import okhttp3.OkHttpClient
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -41,6 +42,22 @@ class TrackDownloaderTest {
         assertEquals(TrackDownloader.Result.Complete(10), result)
         assertEquals("0123456789", part.readText())
         assertNull(server.takeRequest().headers["Range"])
+    }
+
+    @Test
+    fun wholeFileCarriesItsEtagForAnOfflineMeasurement() = runTest {
+        server.enqueue(MockResponse.Builder().code(200).addHeader("ETag", "source-one").body("audio").build())
+        assertEquals(TrackDownloader.Result.Complete(5, "source-one"), downloader.download(url(), part))
+    }
+
+    @Test
+    fun resumedBytesCannotClaimAWholeFileEtag() = runTest {
+        part.writeText("a")
+        server.enqueue(
+            MockResponse.Builder().code(206).addHeader("ETag", "new-source")
+                .addHeader("Content-Range", "bytes 1-4/5").body("udio").build(),
+        )
+        assertEquals(TrackDownloader.Result.Complete(5), downloader.download(url(), part))
     }
 
     @Test
@@ -96,6 +113,24 @@ class TrackDownloaderTest {
 
         assertEquals(TrackDownloader.Result.Failed(503), result)
         assertEquals("012", part.readText())
+    }
+
+    @Test
+    fun rejectsAndRestartsAZeroFilledDownload() = runTest {
+        server.enqueue(MockResponse.Builder().code(200).body("\u0000".repeat(4096)).build())
+        assertTrue(downloader.download(url(), part) is TrackDownloader.Result.Failed)
+        assertFalse(part.exists())
+        server.enqueue(MockResponse.Builder().code(200).body("fLaCaudio").build())
+        assertEquals(TrackDownloader.Result.Complete(9), downloader.download(url(), part))
+        assertNull(server.takeRequest().headers["Range"])
+        assertNull(server.takeRequest().headers["Range"])
+    }
+
+    @Test
+    fun rejectsAnEmptySuccessfulResponse() = runTest {
+        server.enqueue(MockResponse.Builder().code(200).body("").build())
+        assertTrue(downloader.download(url(), part) is TrackDownloader.Result.Failed)
+        assertFalse(part.exists())
     }
 
     @Test

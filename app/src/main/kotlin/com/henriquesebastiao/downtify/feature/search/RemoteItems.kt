@@ -1,27 +1,25 @@
 package com.henriquesebastiao.downtify.feature.search
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -31,22 +29,25 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.henriquesebastiao.downtify.R
-import com.henriquesebastiao.downtify.core.designsystem.component.CoverArt
+import com.henriquesebastiao.downtify.core.designsystem.component.Artwork
+import com.henriquesebastiao.downtify.core.designsystem.component.CircleButton
 import com.henriquesebastiao.downtify.core.designsystem.component.DowntifyIcons
+import com.henriquesebastiao.downtify.core.designsystem.component.MediaListItem
 import com.henriquesebastiao.downtify.core.designsystem.component.PlayingBars
+import com.henriquesebastiao.downtify.core.designsystem.component.SectionCard
+import com.henriquesebastiao.downtify.core.designsystem.component.SectionTone
 import com.henriquesebastiao.downtify.core.designsystem.component.SourceBadge
 import com.henriquesebastiao.downtify.core.designsystem.component.SourceBrand
+import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyShape
 import com.henriquesebastiao.downtify.core.designsystem.theme.Spacing
 import com.henriquesebastiao.downtify.core.model.CatalogSource
 import com.henriquesebastiao.downtify.core.model.LinkKind
@@ -60,12 +61,12 @@ import com.henriquesebastiao.downtify.core.model.Track
 import com.henriquesebastiao.downtify.core.model.formatDuration
 
 /**
- * A song the server can download: tapping anywhere plays it in full from
- * the server. Everything else lives in the row's menu: what sounds like
- * it, the download (then its progress), and — once the song is in the
- * library — the library actions (like, lyrics) instead of the download.
+ * A song the server can download, as a card of a separated list: tapping anywhere plays it in
+ * full from the server. Its source and artist under the title, its duration in tabular figures.
+ * Everything else lives in the row's menu: what sounds like it, the download (then its progress),
+ * and — once the song is in the library — the library actions (like, lyrics) instead of the
+ * download.
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun RemoteSongRow(
     song: RemoteSong,
@@ -83,84 +84,55 @@ internal fun RemoteSongRow(
     onShowLyrics: (Track) -> Unit = {},
 ) {
     val active = job?.status == ServerJobStatus.Queued || job?.status == ServerJobStatus.Downloading
-    ListItem(
-        headlineContent = {
-            Text(
-                song.title,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                color = if (playing) MaterialTheme.colorScheme.primary else Color.Unspecified,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.basicMarquee(),
-            )
-        },
-        supportingContent = {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                SourceLabel(song.source)
-                Text(
-                    listOf(song.artist, song.durationSeconds.takeIf { it > 0 }?.let { formatDuration(it.toDouble()) })
-                        .filterNot { it.isNullOrBlank() }
-                        .joinToString(" · "),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.basicMarquee(),
+    MediaListItem(
+        title = song.title,
+        subtitle = song.artist,
+        meta = song.durationSeconds.takeIf { it > 0 }?.let { formatDuration(it.toDouble()) },
+        onClick = onPlay,
+        active = playing,
+        supportingLeading = { SourceLabel(song.source) },
+        leading = { PlayCover(song, playing, isPlaying, resolving, onPlay) },
+        trailing = {
+            if (job?.status == ServerJobStatus.Done) {
+                Icon(
+                    painterResource(DowntifyIcons.CheckCircle),
+                    contentDescription = stringResource(R.string.search_job_done),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+            if (active) {
+                JobProgress(job)
+            } else {
+                RemoteSongMenu(
+                    song = song,
+                    job = job,
+                    libraryTrack = libraryTrack,
+                    isLiked = isLiked,
+                    onSimilar = onSimilar,
+                    onDownload = onDownload,
+                    onToggleLike = onToggleLike,
+                    onShowLyrics = onShowLyrics,
                 )
             }
         },
-        leadingContent = {
-            PlayCover(song, playing, isPlaying, resolving, onPlay)
-        },
-        trailingContent = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (job?.status == ServerJobStatus.Done) {
-                    Icon(
-                        painterResource(DowntifyIcons.CheckCircle),
-                        contentDescription = stringResource(R.string.search_job_done),
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                }
-                if (active) {
-                    val label = stringResource(
-                        if (job.status == ServerJobStatus.Queued) {
-                            R.string.search_job_queued
-                        } else {
-                            R.string.search_job_downloading
-                        },
-                    )
-                    Box(
-                        Modifier.size(48.dp).semantics { contentDescription = label },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        if (job.status == ServerJobStatus.Downloading && job.progress > 0f) {
-                            CircularProgressIndicator(
-                                progress = { job.progress / PERCENT },
-                                modifier = Modifier.size(24.dp),
-                            )
-                        } else {
-                            CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(24.dp))
-                        }
-                    }
-                } else {
-                    RemoteSongMenu(
-                        song = song,
-                        job = job,
-                        libraryTrack = libraryTrack,
-                        isLiked = isLiked,
-                        onSimilar = onSimilar,
-                        onDownload = onDownload,
-                        onToggleLike = onToggleLike,
-                        onShowLyrics = onShowLyrics,
-                    )
-                }
-            }
-        },
-        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-        modifier = modifier.clickable(
-            onClickLabel = stringResource(R.string.search_play_full, song.title),
-            role = Role.Button,
-            onClick = onPlay,
-        ),
+        modifier = modifier,
     )
+}
+
+/** A download on the server: a long wait, so the wavy indicator — filling once the server says how far it got. */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun JobProgress(job: ServerJob) {
+    val label = stringResource(
+        if (job.status == ServerJobStatus.Queued) R.string.search_job_queued else R.string.search_job_downloading,
+    )
+    Box(Modifier.size(48.dp).semantics { contentDescription = label }, contentAlignment = Alignment.Center) {
+        if (job.status == ServerJobStatus.Downloading && job.progress > 0f) {
+            CircularWavyProgressIndicator(progress = { job.progress / PERCENT }, modifier = Modifier.size(32.dp))
+        } else {
+            CircularWavyProgressIndicator(modifier = Modifier.size(32.dp))
+        }
+    }
 }
 
 /** What a track row's menu can do: similar and download, then library actions once downloaded. */
@@ -177,13 +149,7 @@ private fun RemoteSongMenu(
 ) {
     var open by remember { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { open = true }) {
-            Icon(
-                painterResource(DowntifyIcons.MoreVert),
-                contentDescription = stringResource(R.string.track_more, song.title),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        CircleButton(DowntifyIcons.MoreVert, stringResource(R.string.track_more, song.title), { open = true })
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.search_similar, song.title)) },
@@ -252,6 +218,7 @@ private fun RemoteSongMenu(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun PlayCover(song: RemoteSong, playing: Boolean, isPlaying: Boolean, resolving: Boolean, onPlay: () -> Unit) {
     val label = stringResource(
@@ -260,26 +227,22 @@ private fun PlayCover(song: RemoteSong, playing: Boolean, isPlaying: Boolean, re
     )
     Box(
         Modifier
-            .size(56.dp)
-            .clip(MaterialTheme.shapes.small)
+            .size(COVER)
+            .clip(DowntifyShape.ArtworkThumb)
             .clickable(role = Role.Button, onClick = onPlay)
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
-        CoverArt(url = song.coverUrl.ifBlank { null }, contentDescription = null, modifier = Modifier.size(56.dp))
+        Artwork(url = song.coverUrl.ifBlank { null }, contentDescription = null, modifier = Modifier.size(COVER))
         // Like a library row: the row that's playing shows the three bars (still when paused);
         // anything else is a bare cover, tapped to play.
         if (playing) PlayingBars(animate = isPlaying)
         if (resolving) {
             Box(
-                Modifier.size(32.dp).clip(CircleShape).background(MaterialTheme.colorScheme.scrim.copy(alpha = SCRIM)),
+                Modifier.size(40.dp).background(MaterialTheme.colorScheme.inverseSurface, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
-                CircularProgressIndicator(
-                    strokeWidth = 2.dp,
-                    color = Color.White,
-                    modifier = Modifier.size(24.dp),
-                )
+                LoadingIndicator(color = MaterialTheme.colorScheme.inverseOnSurface, modifier = Modifier.size(36.dp))
             }
         }
     }
@@ -287,18 +250,27 @@ private fun PlayCover(song: RemoteSong, playing: Boolean, isPlaying: Boolean, re
 
 @Composable
 private fun SourceLabel(source: CatalogSource) {
+    val gap = Modifier.padding(end = 6.dp)
     when (source) {
-        CatalogSource.Spotify -> SourceBadge(stringResource(R.string.search_source_spotify), SourceBrand.Spotify)
-        CatalogSource.YouTube -> SourceBadge(stringResource(R.string.search_source_youtube), SourceBrand.YouTube)
-        CatalogSource.TextSearch -> SourceBadge(stringResource(R.string.search_source_soulseek), SourceBrand.Neutral)
+        CatalogSource.Spotify -> SourceBadge(stringResource(R.string.search_source_spotify), SourceBrand.Spotify, gap)
+
+        CatalogSource.YouTube -> SourceBadge(stringResource(R.string.search_source_youtube), SourceBrand.YouTube, gap)
+
+        CatalogSource.TextSearch -> SourceBadge(
+            stringResource(R.string.search_source_soulseek),
+            SourceBrand.Neutral,
+            gap,
+        )
+
         CatalogSource.Other -> Unit
     }
 }
 
 /**
- * An album on YouTube Music: tapping opens its tracks (listen first),
- * the button downloads it all, then "Downloading 4/9".
+ * An album on YouTube Music, as a card: tapping opens its tracks (listen first), the button
+ * downloads it all, then "Downloading 4/9".
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun RemoteAlbumRow(
     album: RemoteAlbum,
@@ -307,65 +279,67 @@ internal fun RemoteAlbumRow(
     onOpen: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    ListItem(
-        headlineContent = {
-            Text(album.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
+    MediaListItem(
+        title = album.title,
+        subtitle = listOf(
+            album.releaseType.ifBlank {
+                stringResource(R.string.search_kind_album)
+            },
+            album.artist,
+            album.year,
+        )
+            .filter { it.isNotBlank() }
+            .joinToString(" · "),
+        // The progress gets its own line: in the trailing slot it squeezed the title to a word.
+        meta = progress?.let {
+            if (it.isActive) {
+                stringResource(R.string.search_album_progress, it.done, it.total)
+            } else {
+                stringResource(R.string.search_album_done)
+            }
         },
-        supportingContent = {
-            Text(
-                listOf(
-                    album.releaseType.ifBlank {
-                        stringResource(R.string.search_kind_album)
-                    },
-                    album.artist,
-                    album.year,
-                )
-                    .filter { it.isNotBlank() }
-                    .joinToString(" · "),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+        onClick = onOpen,
+        leading = {
+            Artwork(
+                url = album.coverUrl.ifBlank { null },
+                contentDescription = null,
+                placeholderIcon = DowntifyIcons.Album,
+                modifier = Modifier.size(COVER),
             )
         },
-        leadingContent = {
-            CoverArt(url = album.coverUrl.ifBlank { null }, contentDescription = null, modifier = Modifier.size(56.dp))
-        },
-        trailingContent = {
+        trailing = {
             when {
-                progress == null -> IconButton(onClick = onDownload) {
-                    Icon(
-                        painterResource(DowntifyIcons.Downloads),
-                        contentDescription = stringResource(R.string.search_download_to_server, album.title),
-                        tint = MaterialTheme.colorScheme.primary,
+                progress == null -> CircleButton(
+                    DowntifyIcons.Downloads,
+                    stringResource(R.string.search_download_to_server, album.title),
+                    onDownload,
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+
+                progress.isActive -> Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                    CircularWavyProgressIndicator(
+                        progress = { progress.done.toFloat() / progress.total.coerceAtLeast(1) },
+                        modifier = Modifier.size(32.dp),
                     )
                 }
 
-                else -> Surface(
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    shape = CircleShape,
-                ) {
-                    Text(
-                        if (progress.isActive) {
-                            stringResource(R.string.search_album_progress, progress.done, progress.total)
-                        } else {
-                            stringResource(R.string.search_album_done)
-                        },
-                        style = MaterialTheme.typography.labelMedium,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                    )
-                }
+                else -> Icon(
+                    painterResource(DowntifyIcons.CheckCircle),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(12.dp),
+                )
             }
         },
-        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-        modifier = modifier.clickable(
-            onClickLabel = album.title,
-            role = Role.Button,
-            onClick = onOpen,
-        ),
+        modifier = modifier,
     )
 }
 
-/** What a pasted link points at: listen to all of it first, then download it all. */
+/**
+ * What a pasted link points at, as the screen's hero card: its cover, kind and name, then listen
+ * to all of it first or download it all.
+ */
 @Composable
 internal fun LinkHeader(
     link: ResolvedLink,
@@ -374,73 +348,76 @@ internal fun LinkHeader(
     onPlay: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier.fillMaxWidth().padding(horizontal = Spacing.screen, vertical = Spacing.sm),
-        horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
-        verticalAlignment = Alignment.CenterVertically,
+    SectionCard(
+        hero = true,
+        tone = SectionTone.High,
+        modifier = modifier.fillMaxWidth().padding(horizontal = Spacing.screen, vertical = Spacing.sm),
     ) {
-        CoverArt(
-            url = link.coverUrl.ifBlank { null },
-            contentDescription = null,
-            shape = MaterialTheme.shapes.medium,
-            modifier = Modifier.size(96.dp),
-        )
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-            Text(
-                stringResource(
-                    when (link.kind) {
-                        LinkKind.Track -> R.string.search_kind_song
-                        LinkKind.Album -> R.string.search_kind_album
-                        LinkKind.Playlist -> R.string.search_kind_playlist
-                        LinkKind.Artist -> R.string.search_kind_artist
-                    },
-                ),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.lg), verticalAlignment = Alignment.CenterVertically) {
+            Artwork(
+                url = link.coverUrl.ifBlank { null },
+                contentDescription = null,
+                shape = if (link.kind == LinkKind.Artist) CircleShape else DowntifyShape.ArtworkThumb,
+                placeholderIcon = when (link.kind) {
+                    LinkKind.Artist -> DowntifyIcons.Artist
+                    LinkKind.Playlist -> DowntifyIcons.Playlist
+                    else -> DowntifyIcons.Album
+                },
+                modifier = Modifier.size(96.dp),
             )
-            Text(link.name, style = MaterialTheme.typography.titleLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            if (link.kind != LinkKind.Artist && link.subtitle.isNotBlank()) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
                 Text(
-                    listOf(link.subtitle, link.year).filter { it.isNotBlank() }.joinToString(" · "),
-                    style = MaterialTheme.typography.bodyMedium,
+                    stringResource(
+                        when (link.kind) {
+                            LinkKind.Track -> R.string.search_kind_song
+                            LinkKind.Album -> R.string.search_kind_album
+                            LinkKind.Playlist -> R.string.search_kind_playlist
+                            LinkKind.Artist -> R.string.search_kind_artist
+                        },
+                    ),
+                    style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
+                )
+                Text(
+                    link.name,
+                    style = MaterialTheme.typography.headlineSmall,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-            }
-            if (link.tracks.size > 1) {
-                Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-                    FilledTonalButton(onClick = onPlay, modifier = Modifier.fillMaxWidth()) {
-                        Icon(
-                            painterResource(DowntifyIcons.Play),
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                        )
-                        Text(
-                            stringResource(R.string.search_link_play_all),
-                            modifier = Modifier.padding(start = Spacing.sm),
-                        )
-                    }
-                    FilledTonalButton(onClick = onDownload, enabled = !requested, modifier = Modifier.fillMaxWidth()) {
-                        Icon(
-                            painterResource(DowntifyIcons.Downloads),
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                        )
-                        Text(
-                            pluralStringResource(
-                                R.plurals.search_link_download_all,
-                                link.tracks.size,
-                                link.tracks.size,
-                            ),
-                            modifier = Modifier.padding(start = Spacing.sm),
-                        )
-                    }
+                if (link.kind != LinkKind.Artist && link.subtitle.isNotBlank()) {
+                    Text(
+                        listOf(link.subtitle, link.year).filter { it.isNotBlank() }.joinToString(" · "),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
+            }
+        }
+        if (link.tracks.size > 1) {
+            Button(onClick = onPlay, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
+                Icon(painterResource(DowntifyIcons.Play), contentDescription = null, modifier = Modifier.size(20.dp))
+                Text(stringResource(R.string.search_link_play_all), modifier = Modifier.padding(start = Spacing.sm))
+            }
+            FilledTonalButton(
+                onClick = onDownload,
+                enabled = !requested,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+            ) {
+                Icon(
+                    painterResource(DowntifyIcons.Downloads),
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                )
+                Text(
+                    pluralStringResource(R.plurals.search_link_download_all, link.tracks.size, link.tracks.size),
+                    modifier = Modifier.padding(start = Spacing.sm),
+                )
             }
         }
     }
 }
 
-private const val SCRIM = 0.6f
+private val COVER = 64.dp
 private const val PERCENT = 100f

@@ -12,8 +12,13 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
@@ -24,18 +29,20 @@ import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -55,9 +62,12 @@ import androidx.navigation.compose.rememberNavController
 import com.henriquesebastiao.downtify.AppState
 import com.henriquesebastiao.downtify.MainViewModel
 import com.henriquesebastiao.downtify.R
+import com.henriquesebastiao.downtify.core.designsystem.theme.LocalFloatingNavBar
+import com.henriquesebastiao.downtify.core.designsystem.theme.Spacing
 import com.henriquesebastiao.downtify.core.model.PlaybackContext
 import com.henriquesebastiao.downtify.core.model.PlaybackContextType
 import com.henriquesebastiao.downtify.core.model.RecentContext
+import com.henriquesebastiao.downtify.core.network.ServerUrls
 import com.henriquesebastiao.downtify.core.player.PlayerEvent
 import com.henriquesebastiao.downtify.feature.about.AboutRoute
 import com.henriquesebastiao.downtify.feature.about.LicenseRoute
@@ -69,30 +79,43 @@ import com.henriquesebastiao.downtify.feature.downloads.DownloadsRoute
 import com.henriquesebastiao.downtify.feature.home.HomeRoute
 import com.henriquesebastiao.downtify.feature.library.LibraryNavigation
 import com.henriquesebastiao.downtify.feature.library.LibraryRoute
-import com.henriquesebastiao.downtify.feature.player.LyricsSheet
+import com.henriquesebastiao.downtify.feature.player.ExpandingPlayer
+import com.henriquesebastiao.downtify.feature.player.LyricsScreen
 import com.henriquesebastiao.downtify.feature.player.MiniPlayer
 import com.henriquesebastiao.downtify.feature.player.NowPlayingActions
 import com.henriquesebastiao.downtify.feature.player.NowPlayingScreen
+import com.henriquesebastiao.downtify.feature.player.PlayerExpansion
 import com.henriquesebastiao.downtify.feature.player.PlayerViewModel
 import com.henriquesebastiao.downtify.feature.player.QueueActions
 import com.henriquesebastiao.downtify.feature.player.QueueScreen
+import com.henriquesebastiao.downtify.feature.player.miniPlayerAnchor
+import com.henriquesebastiao.downtify.feature.player.playingCoverUrl
+import com.henriquesebastiao.downtify.feature.player.rememberPlayerExpansion
 import com.henriquesebastiao.downtify.feature.podcasts.PodcastsRoute
 import com.henriquesebastiao.downtify.feature.podcasts.ShowRoute
 import com.henriquesebastiao.downtify.feature.search.SearchNavigation
 import com.henriquesebastiao.downtify.feature.search.SearchRoute
 import com.henriquesebastiao.downtify.feature.settings.SettingsRoute
 import com.henriquesebastiao.downtify.feature.similar.SimilarRoute as SimilarScreenRoute
+import com.henriquesebastiao.downtify.feature.trash.MoveToTrashHost
+import com.henriquesebastiao.downtify.feature.trash.MoveToTrashViewModel
+import com.henriquesebastiao.downtify.feature.trash.TrashRoute as TrashScreenRoute
 import com.henriquesebastiao.downtify.ui.common.CoverUrls
+import com.henriquesebastiao.downtify.ui.common.LocalBottomBarsInset
 import com.henriquesebastiao.downtify.ui.common.LocalCoverUrls
 import com.henriquesebastiao.downtify.ui.navigation.AboutRoute as AboutDestination
 import com.henriquesebastiao.downtify.ui.navigation.AlbumRoute
+import com.henriquesebastiao.downtify.ui.navigation.AppDrawer
 import com.henriquesebastiao.downtify.ui.navigation.ArtistRoute as ArtistDestination
 import com.henriquesebastiao.downtify.ui.navigation.DiscoverRoute as DiscoverDestination
 import com.henriquesebastiao.downtify.ui.navigation.DownloadsRoute as DownloadsDestination
+import com.henriquesebastiao.downtify.ui.navigation.DrawerDestination
+import com.henriquesebastiao.downtify.ui.navigation.FloatingNavBar
 import com.henriquesebastiao.downtify.ui.navigation.HomeRoute as HomeDestination
 import com.henriquesebastiao.downtify.ui.navigation.LibraryRoute as LibraryDestination
 import com.henriquesebastiao.downtify.ui.navigation.LicenseRoute as LicenseDestination
 import com.henriquesebastiao.downtify.ui.navigation.LikedRoute
+import com.henriquesebastiao.downtify.ui.navigation.NavLabel
 import com.henriquesebastiao.downtify.ui.navigation.PlaylistRoute
 import com.henriquesebastiao.downtify.ui.navigation.PodcastsRoute as PodcastsDestination
 import com.henriquesebastiao.downtify.ui.navigation.SearchQueryRoute
@@ -101,7 +124,9 @@ import com.henriquesebastiao.downtify.ui.navigation.SettingsRoute as SettingsDes
 import com.henriquesebastiao.downtify.ui.navigation.ShowRoute as ShowDestination
 import com.henriquesebastiao.downtify.ui.navigation.SimilarRoute
 import com.henriquesebastiao.downtify.ui.navigation.TopLevelDestination
+import com.henriquesebastiao.downtify.ui.navigation.TrashRoute as TrashDestination
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.launch
 
 /** The app: the connect screen until the phone is paired, then the main shell. */
 @Composable
@@ -148,7 +173,12 @@ private fun MainShell() {
             }
         }
     }
-    var nowPlayingOpen by rememberSaveable { mutableStateOf(false) }
+    // Now Playing, open or closed or anywhere between: it grows out of the mini player and shrinks back into it.
+    val expansion = rememberPlayerExpansion()
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(hasMedia) { if (!hasMedia) expansion.snapTo(open = false) }
+    // The side menu, opened from Home's menu button.
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
     var currentTab by rememberSaveable { mutableStateOf(TopLevelDestination.Home) }
     val onSettings = destination?.hasRoute<SettingsDestination>() == true ||
         destination?.hasRoute<AboutDestination>() == true ||
@@ -157,85 +187,133 @@ private fun MainShell() {
     TopLevelDestination.entries.firstOrNull { destination?.hasRoute(it.route::class) == true }?.let { currentTab = it }
     RequestNotificationPermission()
 
-    Box(Modifier.fillMaxSize()) {
-        NavigationSuiteScaffold(
-            navigationSuiteItems = {
-                TopLevelDestination.entries.forEach { tab ->
-                    val selected = tab == currentTab
-                    item(
-                        selected = selected,
-                        onClick = {
-                            if (selected) {
-                                // Re-tapping the open tab closes whatever was
-                                // opened above it (Discover, an album, a
-                                // search) and shows the tab's start view.
-                                // Falls back to a plain switch when the tab
-                                // has no entry in the stack.
-                                if (!navController.popBackStack(tab.route, inclusive = false)) {
-                                    navController.navigateTopLevel(tab)
-                                }
-                            } else {
-                                currentTab = tab
-                                navController.navigateTopLevel(tab)
+    val openTab: (TopLevelDestination) -> Unit = { tab ->
+        if (tab == currentTab) {
+            // Re-tapping the open tab closes whatever was opened above it (Discover, an album, a
+            // search) and shows the tab's start view. Falls back to a plain switch when the tab
+            // has no entry in the stack.
+            if (!navController.popBackStack(tab.route, inclusive = false)) navController.navigateTopLevel(tab)
+        } else {
+            currentTab = tab
+            navController.navigateTopLevel(tab)
+        }
+    }
+    val adaptiveLayout = NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(currentWindowAdaptiveInfo())
+    val phone = adaptiveLayout in PhoneBars
+    // An artist, an album or a playlist takes the phone's whole height: no bar, only the mini player.
+    val onDetail = destination?.hasRoute<AlbumRoute>() == true ||
+        destination?.hasRoute<PlaylistRoute>() == true ||
+        destination?.hasRoute<LikedRoute>() == true ||
+        destination?.hasRoute<ArtistDestination>() == true
+    // On a phone the bar floats as a pill unless the user picked the full-width one; the rail stays.
+    val floatingBar = !onSettings && !onDetail && LocalFloatingNavBar.current && phone
+    val noBar = onSettings || floatingBar || (onDetail && phone)
+    val miniPlayer = hasMedia && !onSettings
+
+    // The same instance MoveToTrashHost uses: whether this pairing gets the music trash.
+    val trash: MoveToTrashViewModel = hiltViewModel()
+    val trashOn by trash.canManage.collectAsStateWithLifecycle()
+    AppDrawer(
+        drawerState = drawerState,
+        selected = DrawerDestination.entries.firstOrNull { destination?.hasRoute(it.route::class) == true },
+        onSelect = { item ->
+            scope.launch { drawerState.close() }
+            navController.navigate(item.route) { launchSingleTop = true }
+        },
+        destinations = DrawerDestination.entries.filter { trashOn || !it.trashOnly },
+    ) {
+        Box(Modifier.fillMaxSize()) {
+            NavigationSuiteScaffold(
+                navigationSuiteItems = {
+                    TopLevelDestination.entries.forEach { tab ->
+                        val selected = tab == currentTab
+                        item(
+                            selected = selected,
+                            onClick = { openTab(tab) },
+                            icon = {
+                                Icon(
+                                    painterResource(if (selected) tab.selectedIcon else tab.icon),
+                                    contentDescription = null,
+                                )
+                            },
+                            label = { NavLabel(stringResource(tab.label)) },
+                        )
+                    }
+                },
+                layoutType = if (noBar) NavigationSuiteType.None else adaptiveLayout,
+            ) {
+                // The content runs on behind the mini player and the floating bar, as in PixelPlayer:
+                // they float over its end, and the screens pad their lists by what they cover.
+                Box(Modifier.fillMaxSize()) {
+                    // What sits at the bottom clears the system's navigation bar, unless the full-width bar
+                    // under it already does; the screens above then leave no room for it themselves.
+                    val fullWidthBar = !noBar && phone
+                    val bottomStack = (miniPlayer || floatingBar) && !fullWidthBar
+                    val content = if (bottomStack) {
+                        Modifier.consumeWindowInsets(
+                            WindowInsets.navigationBars,
+                        )
+                    } else {
+                        Modifier
+                    }
+                    var stackHeight by remember { mutableStateOf(0.dp) }
+                    val covered = if (miniPlayer || floatingBar) stackHeight else 0.dp
+                    CompositionLocalProvider(LocalBottomBarsInset provides covered) {
+                        Box(Modifier.fillMaxSize().then(content)) {
+                            MoveToTrashHost(onMessage = { text -> scope.launch { snackbar.showSnackbar(text) } }) {
+                                AppNavHost(navController, onOpenMenu = { scope.launch { drawerState.open() } })
                             }
-                        },
-                        icon = {
-                            Icon(
-                                painterResource(if (selected) tab.selectedIcon else tab.icon),
-                                contentDescription = null,
-                            )
-                        },
-                        label = { Text(stringResource(tab.label)) },
-                    )
-                }
-            },
-            layoutType = if (onSettings) {
-                NavigationSuiteType.None
-            } else {
-                NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(currentWindowAdaptiveInfo())
-            },
-        ) {
-            Column(Modifier.fillMaxSize()) {
-                Box(Modifier.weight(1f)) {
-                    AppNavHost(navController)
-                    SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
-                }
-                if (hasMedia && !onSettings) {
-                    MiniPlayerHost(
-                        player = player,
-                        onOpen = { nowPlayingOpen = true },
-                        onSimilar = { artist, title -> navController.navigate(SimilarRoute(artist, title)) },
-                    )
+                        }
+                    }
+                    if (miniPlayer || floatingBar) {
+                        val density = LocalDensity.current
+                        Column(
+                            Modifier
+                                .align(Alignment.BottomCenter)
+                                // Measured with the system bar's padding: that's covered too.
+                                .onSizeChanged { stackHeight = with(density) { it.height.toDp() } }
+                                .then(if (fullWidthBar) Modifier else Modifier.navigationBarsPadding()),
+                        ) {
+                            if (miniPlayer) {
+                                MiniPlayerHost(
+                                    player = player,
+                                    expansion = expansion,
+                                    onOpen = { scope.launch { expansion.expand() } },
+                                    attached = floatingBar,
+                                )
+                            }
+                            if (floatingBar) FloatingNavBar(currentTab, openTab, attached = miniPlayer)
+                        }
+                    }
+                    SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = covered))
                 }
             }
+            if (hasMedia) {
+                NowPlayingOverlay(
+                    expansion = expansion,
+                    player = player,
+                    attached = floatingBar,
+                    onOpen = { scope.launch { expansion.expand() } },
+                    onClose = { scope.launch { expansion.collapse() } },
+                    onNavigate = { route ->
+                        scope.launch { expansion.collapse() }
+                        navController.navigate(route) { launchSingleTop = true }
+                    },
+                )
+            }
         }
-        NowPlayingOverlay(
-            open = nowPlayingOpen && hasMedia,
-            player = player,
-            onClose = { nowPlayingOpen = false },
-            onNavigate = { route ->
-                nowPlayingOpen = false
-                // Similar opens per track: a fresh entry, so tapping it for
-                // another track while its page is already open still shows the
-                // new mix (single-top would keep the stale one).
-                if (route is SimilarRoute) {
-                    navController.navigate(route)
-                } else {
-                    navController.navigate(route) { launchSingleTop = true }
-                }
-            },
-        )
     }
 }
 
 @Composable
-private fun AppNavHost(navController: NavHostController) {
+private fun AppNavHost(navController: NavHostController, onOpenMenu: () -> Unit) {
     val toAlbum: (String) -> Unit = { navController.navigate(AlbumRoute(it)) }
     val toArtist: (String) -> Unit = { navController.navigate(ArtistDestination(it)) }
     val toPlaylist: (String) -> Unit = { navController.navigate(PlaylistRoute(it)) }
     NavHost(navController = navController, startDestination = HomeDestination) {
         composable<HomeDestination> {
             HomeRoute(
+                onOpenMenu = onOpenMenu,
                 onOpenSettings = { navController.navigate(SettingsDestination) },
                 onOpenRecent = { navController.navigate(routeFor(it)) },
                 onOpenAlbum = toAlbum,
@@ -298,6 +376,7 @@ private fun AppNavHost(navController: NavHostController) {
         }
         composable<DownloadsDestination> {
             DownloadsRoute(
+                onBack = navController::popBackStack,
                 onOpen = { item ->
                     when (item.type) {
                         PlaybackContextType.Album -> toAlbum(item.refId)
@@ -307,6 +386,7 @@ private fun AppNavHost(navController: NavHostController) {
                 },
             )
         }
+        composable<TrashDestination> { TrashScreenRoute(onBack = navController::popBackStack) }
         composable<SettingsDestination> {
             SettingsRoute(
                 onBack = navController::popBackStack,
@@ -333,49 +413,72 @@ private fun AppNavHost(navController: NavHostController) {
     }
 }
 
-/** The mini player collects the ticking state itself, so only it recomposes as the song plays. */
+/**
+ * The mini player collects the ticking state itself, so only it recomposes as the song plays. It's
+ * where Now Playing grows out of: a drag up on it opens Now Playing under the finger.
+ */
 @Composable
-private fun MiniPlayerHost(player: PlayerViewModel, onOpen: () -> Unit, onSimilar: (String, String) -> Unit) {
+private fun MiniPlayerHost(player: PlayerViewModel, expansion: PlayerExpansion, onOpen: () -> Unit, attached: Boolean) {
     val state by player.state.collectAsStateWithLifecycle()
-    val downloadJob by player.streamJob.collectAsStateWithLifecycle()
-    val streamTrack by player.streamTrack.collectAsStateWithLifecycle()
     MiniPlayer(
         state = state,
         onOpen = onOpen,
         onTogglePlay = player::togglePlayPause,
-        onSimilar = onSimilar,
-        downloadJob = downloadJob,
-        onDownloadStream = player::downloadStream,
-        hasLibraryCopy = streamTrack != null,
+        onPrevious = player::previous,
+        onNext = player::next,
+        onSkipBack = player::skipBack,
+        onSkipForward = player::skipForward,
+        attached = attached,
+        coverModifier = Modifier.onGloballyPositioned { expansion.miniCover = it },
+        modifier = Modifier
+            .padding(horizontal = Spacing.screen, vertical = Spacing.xs)
+            .miniPlayerAnchor(expansion),
     )
 }
 
-/** Now Playing slides up over everything and collapses back into the mini player, following predictive back. */
+/**
+ * Now Playing: it grows out of the mini player ([attached] to the floating bar or not) and shrinks
+ * back into it, under a finger, a tap or predictive back. Closed, only the light part of it stays
+ * composed, off screen (see [ExpandingPlayer]); Now Playing itself is composed while it shows.
+ */
 @Composable
-private fun NowPlayingOverlay(open: Boolean, player: PlayerViewModel, onClose: () -> Unit, onNavigate: (Any) -> Unit) {
+private fun NowPlayingOverlay(
+    expansion: PlayerExpansion,
+    player: PlayerViewModel,
+    attached: Boolean,
+    onOpen: () -> Unit,
+    onClose: () -> Unit,
+    onNavigate: (Any) -> Unit,
+) {
     val state by player.state.collectAsStateWithLifecycle()
     val isLiked by player.isLiked.collectAsStateWithLifecycle()
     val streamJob by player.streamJob.collectAsStateWithLifecycle()
     val streamTrack by player.streamTrack.collectAsStateWithLifecycle()
     val serverName by player.serverName.collectAsStateWithLifecycle()
     val lyrics by player.lyrics.collectAsStateWithLifecycle()
-    var backProgress by remember { mutableFloatStateOf(0f) }
-    var sheet by rememberSaveable { mutableStateOf<String?>(null) }
+    val lyricsOffset by player.lyricsOffset.collectAsStateWithLifecycle()
+    var lyricsOpen by rememberSaveable { mutableStateOf(false) }
     var queueOpen by rememberSaveable { mutableStateOf(false) }
-    val density = LocalDensity.current
+    val open = expansion.expanded
 
-    LaunchedEffect(open) { if (!open) queueOpen = false }
+    LaunchedEffect(open) {
+        if (!open) {
+            queueOpen = false
+            lyricsOpen = false
+        }
+    }
     BackHandler(enabled = open && queueOpen) { queueOpen = false }
-    PredictiveBackHandler(enabled = open && sheet == null && !queueOpen) { progress ->
+    BackHandler(enabled = open && lyricsOpen) { lyricsOpen = false }
+    // Back folds the player towards the mini player as the gesture goes, then closes it or springs back open.
+    PredictiveBackHandler(enabled = open && !lyricsOpen && !queueOpen) { progress ->
         try {
-            progress.collect { backProgress = it.progress }
+            expansion.foldBack { fold -> progress.collect { fold(it.progress) } }
             onClose()
         } catch (e: CancellationException) {
-            backProgress = 0f
+            onOpen()
             throw e
         }
     }
-    LaunchedEffect(open) { if (open) backProgress = 0f }
 
     val controls = remember(player, onClose, onNavigate) {
         NowPlayingActions(
@@ -388,14 +491,14 @@ private fun NowPlayingOverlay(open: Boolean, player: PlayerViewModel, onClose: (
             onCycleRepeat = player::cycleRepeat,
             onToggleLike = player::toggleLike,
             onDownloadStream = player::downloadStream,
-            onSimilar = { artist, title -> onNavigate(SimilarRoute(artist, title)) },
+            onShiftLyrics = player::shiftLyrics,
+            onResetLyrics = player::resetLyricsOffset,
             onOpenLyrics = {
                 player.loadLyrics()
-                sheet = SHEET_LYRICS
+                lyricsOpen = true
             },
             onOpenQueue = { queueOpen = true },
             onOpenContext = { routeFor(it)?.let(onNavigate) },
-            onGoToAlbum = { onNavigate(AlbumRoute(it)) },
             onGoToArtist = { onNavigate(ArtistDestination(it)) },
             onSkipBack = player::skipBack,
             onSkipForward = player::skipForward,
@@ -404,29 +507,38 @@ private fun NowPlayingOverlay(open: Boolean, player: PlayerViewModel, onClose: (
         )
     }
 
-    AnimatedVisibility(
-        visible = open,
-        enter = slideInVertically { it },
-        exit = slideOutVertically { it },
-    ) {
-        NowPlayingScreen(
-            state = state,
-            isLiked = isLiked,
-            serverName = serverName,
-            downloadJob = streamJob,
-            hasLibraryCopy = streamTrack != null,
-            libraryTrack = streamTrack,
-            actions = controls,
-            modifier = Modifier.graphicsLayer {
-                val p = backProgress
-                translationY = with(density) { (p * 96.dp.toPx()) }
-                scaleX = 1f - p * 0.08f
-                scaleY = 1f - p * 0.08f
-                shape = RoundedCornerShape((p * 28).dp)
-                clip = p > 0f
-            },
-        )
-    }
+    ExpandingPlayer(
+        expansion = expansion,
+        coverUrl = playingCoverUrl(state),
+        largeCoverUrl = playingCoverUrl(state, ServerUrls.COVER_LARGE),
+        attached = attached,
+        dragEnabled = !lyricsOpen && !queueOpen,
+        mini = { coverModifier ->
+            MiniPlayer(
+                state = state,
+                onOpen = onOpen,
+                onTogglePlay = player::togglePlayPause,
+                onPrevious = player::previous,
+                onNext = player::next,
+                onSkipBack = player::skipBack,
+                onSkipForward = player::skipForward,
+                attached = attached,
+                coverModifier = coverModifier,
+            )
+        },
+        full = { coverModifier ->
+            NowPlayingScreen(
+                state = state,
+                isLiked = isLiked,
+                serverName = serverName,
+                downloadJob = streamJob,
+                hasLibraryCopy = streamTrack != null,
+                libraryTrack = streamTrack,
+                actions = controls,
+                coverModifier = coverModifier,
+            )
+        },
+    )
 
     // The queue unfolds over Now Playing from its queue button, as in Spotify.
     AnimatedVisibility(
@@ -447,14 +559,20 @@ private fun NowPlayingOverlay(open: Boolean, player: PlayerViewModel, onClose: (
         )
     }
 
-    when (sheet) {
-        SHEET_LYRICS -> {
-            LaunchedEffect(state.track?.id, streamTrack?.id) { player.loadLyrics() }
-            LyricsSheet(lyrics = lyrics, positionMs = state.positionMs, onSeek = player::seekTo, onDismiss = {
-                sheet =
-                    null
-            })
-        }
+    // The lyrics, too, rise over Now Playing from its lyrics button.
+    AnimatedVisibility(
+        visible = open && lyricsOpen,
+        enter = slideInVertically { it },
+        exit = slideOutVertically { it },
+    ) {
+        LaunchedEffect(state.track?.id, streamTrack?.id) { player.loadLyrics() }
+        LyricsScreen(
+            lyrics = lyrics,
+            offsetMs = lyricsOffset,
+            state = state,
+            controls = controls,
+            onBack = { lyricsOpen = false },
+        )
     }
 }
 
@@ -499,4 +617,9 @@ private fun routeFor(context: PlaybackContext): Any? = when (context.type) {
     PlaybackContextType.Songs -> null
 }
 
-private const val SHEET_LYRICS = "lyrics"
+/** The layouts NavigationSuiteScaffold picks for a phone: where the floating bar takes over. */
+private val PhoneBars = setOf(
+    NavigationSuiteType.NavigationBar,
+    NavigationSuiteType.ShortNavigationBarCompact,
+    NavigationSuiteType.ShortNavigationBarMedium,
+)

@@ -19,6 +19,7 @@ import com.henriquesebastiao.downtify.core.model.Track
 import com.henriquesebastiao.downtify.core.player.PlayerController
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlin.random.Random
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -31,14 +32,21 @@ import kotlinx.coroutines.launch
 
 enum class LibraryTab { Songs, Albums, Artists, Playlists }
 
-/** A playlist row: [playlist] null is "Liked songs". */
-data class PlaylistItem(val playlist: Playlist?, val title: String, val count: Int, val coverTrackId: String?)
+/** A playlist row: [playlist] null is "Liked songs". [tracks] are the ones in the library, in order. */
+data class PlaylistItem(
+    val playlist: Playlist?,
+    val title: String,
+    val count: Int,
+    val coverTrackId: String?,
+    val tracks: List<Track> = emptyList(),
+)
 
 data class LibraryUiState(
     val loading: Boolean = true,
     val tab: LibraryTab = LibraryTab.Songs,
     val layout: LibraryLayout = LibraryLayout.Grid,
     val sort: LibrarySort = LibrarySort.RecentlyAdded,
+    val sortDescending: Boolean = sort.descendingByDefault,
     val albums: List<Album> = emptyList(),
     val artists: List<Artist> = emptyList(),
     val playlists: List<PlaylistItem> = emptyList(),
@@ -47,7 +55,39 @@ data class LibraryUiState(
     val currentTrackId: String? = null,
     val isPlaying: Boolean = false,
     val likedIds: Set<String> = emptySet(),
-)
+) {
+    /** Whether the tab has anything for Shuffle to play. */
+    val canShuffle: Boolean get() = shuffleCandidates(this).isNotEmpty()
+}
+
+/** What Shuffle plays: [tracks], shuffled, as [context]. */
+data class ShufflePick(val tracks: List<Track>, val context: PlaybackContext)
+
+/**
+ * Shuffle on each tab, as in PixelPlayer: on Songs every song; on the others one album, artist or
+ * playlist (Liked songs among them) picked at random, its songs shuffled. The context is the one
+ * its own page plays with, so that page marks what's playing.
+ */
+fun shufflePick(state: LibraryUiState, random: Random = Random): ShufflePick? =
+    shuffleCandidates(state).randomOrNull(random)
+
+private fun shuffleCandidates(state: LibraryUiState): List<ShufflePick> = when (state.tab) {
+    LibraryTab.Songs -> listOf(ShufflePick(state.songs, PlaybackContext(PlaybackContextType.Songs, "", "")))
+
+    LibraryTab.Albums -> state.albums.map {
+        ShufflePick(it.tracks, PlaybackContext(PlaybackContextType.Album, it.id, it.title))
+    }
+
+    LibraryTab.Artists -> state.artists.map {
+        ShufflePick(it.tracks, PlaybackContext(PlaybackContextType.Artist, it.id, it.name))
+    }
+
+    LibraryTab.Playlists -> state.playlists.map { item ->
+        val context = item.playlist?.let { PlaybackContext(PlaybackContextType.Playlist, it.name, it.title) }
+            ?: PlaybackContext(PlaybackContextType.Liked, "", "")
+        ShufflePick(item.tracks, context)
+    }
+}.filter { it.tracks.isNotEmpty() }
 
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
@@ -63,14 +103,15 @@ class LibraryViewModel @Inject constructor(
     /** Only the catalog and sort order can change these sorted lists. */
     private val sorted = combine(
         library.library,
-        settings.settings.map { it.librarySort }.distinctUntilChanged(),
-    ) { snapshot, sort ->
+        settings.settings.map { it.librarySort to it.librarySortDescending }.distinctUntilChanged(),
+    ) { snapshot, (sort, descending) ->
         snapshot to LibraryUiState(
             loading = snapshot == null,
             sort = sort,
-            albums = sortAlbums(snapshot?.albums.orEmpty(), sort),
-            artists = sortArtists(snapshot?.artists.orEmpty(), sort),
-            songs = sortSongs(snapshot?.tracks.orEmpty(), sort),
+            sortDescending = descending,
+            albums = snapshot?.albums.orEmpty().sortedWith(albumOrder(sort, descending)),
+            artists = snapshot?.artists.orEmpty().sortedWith(artistOrder(sort, descending)),
+            songs = snapshot?.tracks.orEmpty().sortedWith(songOrder(sort, descending)),
         )
     }.flowOn(Dispatchers.Default)
 
@@ -110,6 +151,10 @@ class LibraryViewModel @Inject constructor(
         viewModelScope.launch { settings.setLibrarySort(value) }
     }
 
+    fun setSortDescending(value: Boolean) {
+        viewModelScope.launch { settings.setLibrarySortDescending(value) }
+    }
+
     fun toggleLayout() {
         val next = if (uiState.value.layout == LibraryLayout.Grid) LibraryLayout.List else LibraryLayout.Grid
         viewModelScope.launch { settings.setLibraryLayout(next) }
@@ -121,11 +166,9 @@ class LibraryViewModel @Inject constructor(
         player.play(uiState.value.songs, index, PlaybackContext(PlaybackContextType.Songs, "", ""))
     }
 
-    fun shuffleSongs() {
-        val songs = uiState.value.songs
-        if (songs.isNotEmpty()) {
-            player.play(songs, 0, PlaybackContext(PlaybackContextType.Songs, "", ""), shuffle = true)
-        }
+    fun shuffle() {
+        val pick = shufflePick(uiState.value) ?: return
+        player.play(pick.tracks, 0, pick.context, shuffle = true)
     }
 
     fun addToQueue(track: Track) = player.addToQueue(track)
@@ -134,32 +177,36 @@ class LibraryViewModel @Inject constructor(
         viewModelScope.launch { library.setLiked(track.id, track.id !in uiState.value.likedIds) }
     }
 
-    private fun sortAlbums(albums: List<Album>, sort: LibrarySort) = when (sort) {
-        LibrarySort.RecentlyAdded -> albums.sortedByDescending { it.added }
+    // [descending] reverses the first key only: an artist's albums stay by year, an album's songs by number.
+    private fun albumOrder(sort: LibrarySort, descending: Boolean): Comparator<Album> = when (sort) {
+        LibrarySort.RecentlyAdded -> compareBy<Album> { it.added }.directed(descending)
 
-        LibrarySort.Alphabetical -> albums.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.title })
+        LibrarySort.Alphabetical ->
+            compareBy<Album, String>(String.CASE_INSENSITIVE_ORDER) { it.title }.directed(descending)
 
-        LibrarySort.Artist -> albums.sortedWith(
-            compareBy<Album, String>(String.CASE_INSENSITIVE_ORDER) { it.artist }.thenBy { it.year },
-        )
+        LibrarySort.Artist -> compareBy<Album, String>(String.CASE_INSENSITIVE_ORDER) { it.artist }
+            .directed(descending)
+            .thenBy { it.year }
     }
 
-    private fun sortArtists(artists: List<Artist>, sort: LibrarySort) = when (sort) {
-        LibrarySort.RecentlyAdded -> artists.sortedByDescending { a -> a.tracks.maxOfOrNull { it.added } ?: 0 }
-        else -> artists.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
+    private fun artistOrder(sort: LibrarySort, descending: Boolean): Comparator<Artist> = when (sort) {
+        LibrarySort.RecentlyAdded -> compareBy<Artist> { a -> a.tracks.maxOfOrNull { it.added } ?: 0 }
+        else -> compareBy(String.CASE_INSENSITIVE_ORDER) { it.name }
+    }.directed(descending)
+
+    private fun songOrder(sort: LibrarySort, descending: Boolean): Comparator<Track> = when (sort) {
+        LibrarySort.RecentlyAdded -> compareBy<Track> { it.added }.directed(descending)
+
+        LibrarySort.Alphabetical ->
+            compareBy<Track, String>(String.CASE_INSENSITIVE_ORDER) { it.displayTitle }.directed(descending)
+
+        LibrarySort.Artist -> compareBy<Track, String>(String.CASE_INSENSITIVE_ORDER) { it.albumArtist }
+            .directed(descending)
+            .thenBy(String.CASE_INSENSITIVE_ORDER) { it.album }
+            .thenBy { it.trackNumber }
     }
 
-    private fun sortSongs(tracks: List<Track>, sort: LibrarySort) = when (sort) {
-        LibrarySort.RecentlyAdded -> tracks.sortedByDescending { it.added }
-
-        LibrarySort.Alphabetical -> tracks.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.displayTitle })
-
-        LibrarySort.Artist -> tracks.sortedWith(
-            compareBy<Track, String>(String.CASE_INSENSITIVE_ORDER) { it.albumArtist }
-                .thenBy(String.CASE_INSENSITIVE_ORDER) { it.album }
-                .thenBy { it.trackNumber },
-        )
-    }
+    private fun <T> Comparator<T>.directed(descending: Boolean): Comparator<T> = if (descending) reversed() else this
 
     private fun playlistItems(
         snapshot: LibrarySnapshot?,
@@ -167,13 +214,14 @@ class LibraryViewModel @Inject constructor(
         liked: List<String>,
     ): List<PlaylistItem> {
         val likedTracks = snapshot?.tracks(liked).orEmpty()
-        val likedItem = PlaylistItem(null, "", likedTracks.size, likedTracks.firstOrNull { it.hasCover }?.id)
+        val likedItem =
+            PlaylistItem(null, "", likedTracks.size, likedTracks.firstOrNull { it.hasCover }?.id, likedTracks)
         // The server lists its liked-songs playlist too; the app shows likes from /api/v1/likes instead.
         val others = playlists.filterNot { it.liked }.map { p ->
             val tracks = snapshot?.tracks(p.trackIds).orEmpty()
-            PlaylistItem(p, p.name, p.trackIds.size, tracks.firstOrNull { it.hasCover }?.id)
+            PlaylistItem(p, p.title, p.trackIds.size, tracks.firstOrNull { it.hasCover }?.id, tracks)
         }
-        return listOf(likedItem) + others
+        return (listOf(likedItem) + others).sortedByDescending { it.playlist?.favorite == true }
     }
 
     private companion object {

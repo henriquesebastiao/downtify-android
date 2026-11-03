@@ -5,6 +5,7 @@ import android.util.LruCache
 import androidx.room.withTransaction
 import com.henriquesebastiao.downtify.core.data.db.DowntifyDatabase
 import com.henriquesebastiao.downtify.core.data.db.LikeEntity
+import com.henriquesebastiao.downtify.core.data.db.LyricsOffsetEntity
 import com.henriquesebastiao.downtify.core.data.db.PlaylistEntity
 import com.henriquesebastiao.downtify.core.data.di.ApplicationScope
 import com.henriquesebastiao.downtify.core.data.sync.LibraryLocalStore
@@ -12,16 +13,19 @@ import com.henriquesebastiao.downtify.core.data.sync.LibraryRemote
 import com.henriquesebastiao.downtify.core.data.sync.LibrarySyncer
 import com.henriquesebastiao.downtify.core.data.sync.SyncOutcome
 import com.henriquesebastiao.downtify.core.model.Lyrics
+import com.henriquesebastiao.downtify.core.model.LyricsTiming
 import com.henriquesebastiao.downtify.core.model.Playlist
 import com.henriquesebastiao.downtify.core.network.ApiFactory
 import com.henriquesebastiao.downtify.core.network.DowntifyApi
 import com.henriquesebastiao.downtify.core.network.dto.LikeRequest
+import com.henriquesebastiao.downtify.core.network.dto.PlaylistFavoriteRequest
 import com.henriquesebastiao.downtify.core.network.session.SessionStore
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -67,6 +71,8 @@ class LibraryRepository @Inject constructor(
 
     private val status = MutableStateFlow<SyncStatus>(SyncStatus.Idle)
     val syncStatus: StateFlow<SyncStatus> = status.asStateFlow()
+    private val successful = MutableStateFlow(0L)
+    val successfulSync: StateFlow<Long> = successful.asStateFlow()
 
     private val lyricsCache = LruCache<String, Lyrics>(LYRICS_CACHE_SIZE)
 
@@ -86,6 +92,7 @@ class LibraryRepository @Inject constructor(
             if (outcome != SyncOutcome.Unchanged) Log.i(TAG, "Library sync: $outcome")
             refreshPlaylists(api)
             refreshLikes(api)
+            successful.value += 1
             status.value = SyncStatus.Idle
             true
         } catch (e: CancellationException) {
@@ -104,6 +111,22 @@ class LibraryRepository @Inject constructor(
 
     suspend fun refreshLikes() {
         api()?.let { runCatching { refreshLikes(it) }.onFailure { if (it is CancellationException) throw it } }
+    }
+
+    suspend fun setPlaylistFavorite(name: String, favorite: Boolean): Boolean {
+        val session = sessions.current ?: return false
+        val api = apis.create(session.baseUrl)
+        return try {
+            api.setPlaylistFavorite(PlaylistFavoriteRequest(name, favorite))
+            if (sessions.current != session) return false
+            refreshPlaylists(api)
+            true
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            Log.w(TAG, "Could not change a playlist favorite", error)
+            false
+        }
     }
 
     /** Likes or unlikes [trackId] here at once, then on the server; undone if the server says no. */
@@ -140,12 +163,40 @@ class LibraryRepository @Inject constructor(
         }
     }
 
+    /** How much later than its LRC [trackId]'s synced lyrics run (0 until moved). */
+    fun lyricsOffset(trackId: String): Flow<Long> =
+        db.lyricsOffsets().observe(trackId).map { it ?: 0L }.distinctUntilChanged()
+
+    /** Moves [trackId]'s lyrics [byMs] later (earlier when negative), within [LyricsTiming.MAX_MS]. */
+    suspend fun shiftLyrics(trackId: String, byMs: Long) {
+        val offsets = db.lyricsOffsets()
+        // Read and write in one transaction, so quick presses add up instead of overwriting each other.
+        db.withTransaction {
+            val offset = LyricsTiming.clamp((offsets.get(trackId) ?: 0L) + byMs)
+            if (offset == 0L) offsets.delete(trackId) else offsets.upsert(LyricsOffsetEntity(trackId, offset))
+        }
+    }
+
+    /** Puts [trackId]'s lyrics back on their LRC's times. */
+    suspend fun resetLyricsOffset(trackId: String) = db.lyricsOffsets().delete(trackId)
+
     private suspend fun refreshPlaylists(api: DowntifyApi) {
         val remote = api.playlists()
         db.withTransaction {
             db.playlists().deleteAll()
             db.playlists().upsert(
-                remote.mapIndexed { index, p -> PlaylistEntity(p.name, p.liked, p.cover, index, p.trackIds) },
+                remote.mapIndexed { index, p ->
+                    PlaylistEntity(
+                        p.name,
+                        p.liked,
+                        p.cover,
+                        index,
+                        p.trackIds,
+                        p.favorite == true,
+                        p.displayName,
+                        p.favorite != null,
+                    )
+                },
             )
         }
     }

@@ -13,15 +13,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -37,7 +36,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -45,22 +43,27 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.henriquesebastiao.downtify.R
-import com.henriquesebastiao.downtify.core.designsystem.component.CoverArt
+import com.henriquesebastiao.downtify.core.designsystem.component.Artwork
+import com.henriquesebastiao.downtify.core.designsystem.component.ArtworkTone
+import com.henriquesebastiao.downtify.core.designsystem.component.CircleButton
 import com.henriquesebastiao.downtify.core.designsystem.component.DowntifyIcons
 import com.henriquesebastiao.downtify.core.designsystem.component.EmptyState
+import com.henriquesebastiao.downtify.core.designsystem.component.MediaListItem
+import com.henriquesebastiao.downtify.core.designsystem.component.PhonePreviews
+import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyShape
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyTheme
+import com.henriquesebastiao.downtify.core.designsystem.theme.ListStyle
 import com.henriquesebastiao.downtify.core.designsystem.theme.Spacing
 import com.henriquesebastiao.downtify.core.model.PodcastEpisode
 import com.henriquesebastiao.downtify.core.model.PodcastShow
 import com.henriquesebastiao.downtify.core.model.formatDuration
 import com.henriquesebastiao.downtify.ui.common.formatDate
+import com.henriquesebastiao.downtify.ui.common.plusBottomBars
 
 @Composable
 fun ShowRoute(onBack: () -> Unit, modifier: Modifier = Modifier, viewModel: ShowViewModel = hiltViewModel()) {
@@ -94,7 +97,7 @@ data class EpisodeActions(
     val onSetPlayed: (PodcastEpisode, Boolean) -> Unit = { _, _ -> },
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ShowScreen(
     state: ShowUiState,
@@ -112,12 +115,12 @@ fun ShowScreen(
             TopAppBar(
                 title = {},
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            painterResource(DowntifyIcons.Back),
-                            contentDescription = stringResource(R.string.action_back),
-                        )
-                    }
+                    CircleButton(
+                        DowntifyIcons.Back,
+                        stringResource(R.string.action_back),
+                        onBack,
+                        Modifier.padding(start = Spacing.xs),
+                    )
                 },
             )
         },
@@ -129,7 +132,7 @@ fun ShowScreen(
         ) {
             when {
                 state.loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                    LoadingIndicator()
                 }
 
                 state.show == null -> EmptyState(
@@ -139,7 +142,8 @@ fun ShowScreen(
                 )
 
                 else -> LazyColumn(
-                    contentPadding = PaddingValues(bottom = Spacing.xl),
+                    contentPadding = PaddingValues(bottom = Spacing.xl).plusBottomBars(),
+                    verticalArrangement = Arrangement.spacedBy(ListStyle.Separated.gap),
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     item(key = "header") { Header(state.show) }
@@ -173,17 +177,18 @@ private fun Header(show: PodcastShow) {
     var expanded by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth().padding(horizontal = Spacing.screen, vertical = Spacing.sm)) {
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.lg), verticalAlignment = Alignment.CenterVertically) {
-            CoverArt(
+            Artwork(
                 url = show.artworkUrl.ifBlank { null },
                 contentDescription = null,
-                shape = MaterialTheme.shapes.large,
+                shape = DowntifyShape.Section,
                 placeholderIcon = DowntifyIcons.Podcasts,
-                modifier = Modifier.size(112.dp),
+                tone = ArtworkTone.Tertiary,
+                modifier = Modifier.size(120.dp),
             )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
                 Text(
                     show.name,
-                    style = MaterialTheme.typography.headlineSmall,
+                    style = MaterialTheme.typography.headlineMediumEmphasized,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.semantics { heading() },
@@ -191,7 +196,7 @@ private fun Header(show: PodcastShow) {
                 if (show.author.isNotBlank()) {
                     Text(
                         show.author,
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -210,6 +215,10 @@ private fun Header(show: PodcastShow) {
     }
 }
 
+/**
+ * An episode as a card: its title on up to two lines (bold until heard, then muted), the date,
+ * length and where it stopped in tabular figures, and how far it was heard as a flat bar.
+ */
 @Composable
 private fun EpisodeRow(
     episode: PodcastEpisode,
@@ -219,74 +228,59 @@ private fun EpisodeRow(
     actions: EpisodeActions,
 ) {
     val played = episode.played
-    ListItem(
-        headlineContent = {
-            Text(
-                episode.title.ifBlank { stringResource(R.string.show_untitled_episode) },
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                fontWeight = if (played) FontWeight.Normal else FontWeight.SemiBold,
-                color = when {
-                    current -> MaterialTheme.colorScheme.primary
-                    played -> MaterialTheme.colorScheme.onSurfaceVariant
-                    else -> Color.Unspecified
-                },
-            )
-        },
-        supportingContent = {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 2.dp)) {
-                Text(meta(episode), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                if (!played && episode.heard > 0f) {
-                    LinearProgressIndicator(
-                        progress = { episode.heard },
-                        strokeCap = StrokeCap.Round,
-                        modifier = Modifier.fillMaxWidth().padding(end = Spacing.sm),
-                    )
-                }
+    MediaListItem(
+        title = episode.title.ifBlank { stringResource(R.string.show_untitled_episode) },
+        titleLines = 2,
+        subtitle = status(episode),
+        meta = meta(episode),
+        onClick = { if (!busy) actions.onPlay(episode) },
+        active = current,
+        dimmed = played,
+        extra = if (!played && episode.heard > 0f) {
+            {
+                LinearProgressIndicator(
+                    progress = { episode.heard },
+                    strokeCap = StrokeCap.Round,
+                    modifier = Modifier.fillMaxWidth().padding(top = Spacing.xs, end = Spacing.sm),
+                )
             }
+        } else {
+            null
         },
-        trailingContent = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                PlayOrDownload(episode, busy, playing, actions)
-                EpisodeMenu(episode, actions)
-            }
+        trailing = {
+            PlayOrDownload(episode, busy, playing, actions)
+            EpisodeMenu(episode, actions)
         },
-        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-        modifier = Modifier.clickable(enabled = !busy) { actions.onPlay(episode) },
+        modifier = Modifier.padding(horizontal = Spacing.screen),
     )
 }
 
+/** Play an episode on the phone, or have the server fetch it first (a long wait: the wavy indicator). */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun PlayOrDownload(episode: PodcastEpisode, busy: Boolean, playing: Boolean, actions: EpisodeActions) {
     val downloading = stringResource(R.string.show_downloading)
     when {
         busy -> Box(
-            Modifier.size(48.dp).semantics {
-                contentDescription = downloading
-            },
+            Modifier.size(48.dp).semantics { contentDescription = downloading },
             contentAlignment = Alignment.Center,
         ) {
-            CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(24.dp))
+            CircularWavyProgressIndicator(Modifier.size(32.dp))
         }
 
-        episode.isDownloaded -> IconButton(onClick = { actions.onPlay(episode) }) {
-            Icon(
-                painterResource(if (playing) DowntifyIcons.Pause else DowntifyIcons.Play),
-                contentDescription = stringResource(
-                    if (playing) R.string.player_pause else R.string.show_play_episode,
-                    episode.title,
-                ),
-                tint = MaterialTheme.colorScheme.primary,
-            )
-        }
+        episode.isDownloaded -> CircleButton(
+            if (playing) DowntifyIcons.Pause else DowntifyIcons.Play,
+            stringResource(if (playing) R.string.player_pause else R.string.show_play_episode, episode.title),
+            { actions.onPlay(episode) },
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        )
 
-        else -> IconButton(onClick = { actions.onDownload(episode) }) {
-            Icon(
-                painterResource(DowntifyIcons.Downloads),
-                contentDescription = stringResource(R.string.show_download_episode, episode.title),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        else -> CircleButton(
+            DowntifyIcons.Downloads,
+            stringResource(R.string.show_download_episode, episode.title),
+            { actions.onDownload(episode) },
+        )
     }
 }
 
@@ -294,13 +288,11 @@ private fun PlayOrDownload(episode: PodcastEpisode, busy: Boolean, playing: Bool
 private fun EpisodeMenu(episode: PodcastEpisode, actions: EpisodeActions) {
     var open by remember { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { open = true }) {
-            Icon(
-                painterResource(DowntifyIcons.MoreVert),
-                contentDescription = stringResource(R.string.show_episode_options, episode.title),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        CircleButton(
+            DowntifyIcons.MoreVert,
+            stringResource(R.string.show_episode_options, episode.title),
+            { open = true },
+        )
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             DropdownMenuItem(
                 text = {
@@ -316,20 +308,22 @@ private fun EpisodeMenu(episode: PodcastEpisode, actions: EpisodeActions) {
     }
 }
 
-/** `Sep 18, 2026 · 31:02 · Resume at 12:34`. */
+/** `Sep 18, 2026 · 31:02`: the line in tabular figures. */
 @Composable
-private fun meta(episode: PodcastEpisode): String {
-    val parts = buildList {
-        formatDate(episode.publishedAt)?.let(::add)
-        if (episode.durationSeconds > 0) add(formatDuration(episode.durationSeconds.toDouble()))
-        when {
-            episode.played -> add(stringResource(R.string.show_played))
+private fun meta(episode: PodcastEpisode): String = buildList {
+    formatDate(episode.publishedAt)?.let(::add)
+    if (episode.durationSeconds > 0) add(formatDuration(episode.durationSeconds.toDouble()))
+}.joinToString(" · ")
 
-            episode.resumeAtSeconds != null ->
-                add(stringResource(R.string.show_resume_at, formatDuration(episode.resumeAtSeconds!!.toDouble())))
-        }
-    }
-    return parts.joinToString(" · ")
+/** "Played" or "Resume at 12:34", in words: beside the date and length it no longer fit one line. */
+@Composable
+private fun status(episode: PodcastEpisode): String? = when {
+    episode.played -> stringResource(R.string.show_played)
+
+    episode.resumeAtSeconds != null ->
+        stringResource(R.string.show_resume_at, formatDuration(episode.resumeAtSeconds!!.toDouble()))
+
+    else -> null
 }
 
 private const val DESCRIPTION_LINES = 4
@@ -347,7 +341,7 @@ private val previewShow = PodcastShow(
 private fun previewEpisode(id: Long, title: String, date: String, file: String?, position: Double, played: Boolean) =
     PodcastEpisode(id, 1, title, "", "${date}T14:00:00+00:00", 1_862, null, 700 + id.toInt(), file, position, played)
 
-@PreviewLightDark
+@PhonePreviews
 @Composable
 private fun ShowPreview() {
     DowntifyTheme {

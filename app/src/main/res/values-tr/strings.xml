@@ -6,40 +6,55 @@
     <string name="nav_search">Ara</string>
     <string name="nav_library">Kitaplık</string>
     <string name="nav_downloads">İndirilenler</string>
+    <string name="nav_trash">Çöp kutusu</string>
     <string name="action_back">Geri</string>
     <string name="action_settings">Ayarlar</string>
-    <string name="action_more">Diğer seçenekler</string>
+    <string name="action_open_menu">Menüyü aç</string>
     <string name="action_retry">Tekrar dene</string>
     <string name="action_cancel">İptal</string>
 
     <!-- Connect -->
     <string name="connect_title_line1">Müziğin,</string>
     <string name="connect_title_line2">sunucundan.</string>
-    <string name="connect_body">Evde çalıştırdığın Downtify\'a bağlan. Her şey oradan akar ve senin kalır.</string>
     <string name="connect_address_label">Sunucu adresi</string>
     <string name="connect_address_hint">Downtify\'ı tarayıcıda açtığın adresin aynısı.</string>
     <string name="connect_found">Bu ağda bulunanlar</string>
     <string name="connect_searching">Sunucular aranıyor…</string>
-    <string name="connect_none_found">Hiçbiri bulunamadı. Bunun yerine adresi yaz — Docker\'ın varsayılan ağı sunucuyu duyurmaz.</string>
-    <string name="connect_server_subtitle">%1$s · Downtify %2$s</string>
+    <string name="connect_none_found">Bu ağda henüz sunucu bulunamadı.</string>
+    <string name="connect_server_subtitle">%1$s · Downtify\u00A0%2$s</string>
     <string name="connect_action">Bağlan</string>
-    <string name="connect_scan">Ayarlar › Uygulamalar\'daki kodu tara</string>
-    <string name="connect_cleartext_warning">Bu adres ev ağında değil ve HTTPS kullanmıyor: telefonun anahtarı şifresiz iletilir. Dışarıdan kullanmak için Downtify\'ı HTTPS\'li bir ters vekil sunucunun arkasına koy.</string>
-    <string name="connect_revoked">Bu telefonun sunucuyla eşleşmesi kaldırıldı. Dinlemeye devam etmek için yeniden eşleştir.</string>
+    <string name="connect_step">Adım %1$d/%2$d</string>
+    <string name="connect_scan">Eşleştirme QR kodunu tara</string>
+    <string name="connect_cleartext_warning">Ev ağında değil ve HTTPS yok: telefonun anahtarı şifresiz iletilir.</string>
+    <string name="connect_revoked">Bu telefonun sunucudaki oturumu kapatıldı. Dinlemeye devam etmek için yeniden giriş yap.</string>
     <string name="connect_error_invalid">Bu bir adrese benzemiyor. http://192.168.1.20:8000 gibi dene.</string>
     <string name="connect_error_unreachable">Bu adresteki sunucuya ulaşılamıyor. Adresi ve telefonun aynı ağda olup olmadığını kontrol et.</string>
     <string name="connect_error_not_downtify">Bir şey yanıt verdi ama bu Downtify değil.</string>
     <string name="connect_error_too_new">Bu sunucu (Downtify %1$s) uygulamanın anladığından daha yeni. Uygulamayı güncelle.</string>
 
+    <string name="sign_in_title">%1$s sunucusuna giriş yap</string>
+    <string name="sign_in_body">Web sayfasındaki hesabını kullan.</string>
+    <string name="sign_in_username">Kullanıcı adı</string>
+    <string name="sign_in_password">Parola</string>
+    <string name="sign_in_show_password">Parolayı göster</string>
+    <string name="sign_in_hide_password">Parolayı gizle</string>
+    <string name="sign_in_action">Giriş yap</string>
+    <string name="sign_in_use_code">Kodla eşleştir</string>
+    <string name="sign_in_use_password">Parolanla giriş yap</string>
+    <string name="sign_in_error_wrong">Kullanıcı adı veya parola yanlış.</string>
+    <string name="sign_in_error_off">Bu sunucuda giriş kapalı. Eşleştirme kodu kullan.</string>
+    <string name="sign_in_error_failed">Sunucu bu telefonla giriş yapamadı (hata %1$d).</string>
+    <string name="sign_in_cleartext_warning">Ev ağında değil ve HTTPS yok: parolan şifresiz iletilir.</string>
+
     <string name="pair_title">%1$s ile eşleştir</string>
-    <string name="pair_body">Web sayfasında Ayarlar › Uygulamalar\'ı aç ve Telefon eşleştir\'e dokun. QR kodunu tara ya da altında görünen kodu yaz.</string>
+    <string name="pair_body">Web sayfasında Ayarlar › Uygulamalar\'dan.</string>
     <string name="pair_code_label">Eşleştirme kodu</string>
     <string name="pair_code_placeholder">XXXX-XXXX</string>
     <string name="pair_action">Eşleştir</string>
     <string name="pair_scan">QR kodunu tara</string>
     <string name="pair_other_server">Başka bir sunucu kullan</string>
     <string name="pair_error_wrong_code">Bu kod yanlış, süresi dolmuş ya da zaten kullanılmış. Kodlar beş dakika boyunca yalnızca bir kez çalışır.</string>
-    <string name="pair_error_too_many">Çok fazla deneme. %1$d sn sonra tekrar dene.</string>
+    <string name="pair_error_too_many">Çok fazla deneme. %1$d\u00A0sn sonra tekrar dene.</string>
     <string name="pair_error_unreachable">Sunucuya ulaşılamıyor. Bağlantını kontrol edip tekrar dene.</string>
     <string name="pair_error_failed">Sunucu bu telefonu eşleştiremedi (hata %1$d).</string>
     <string name="pair_error_other_server">Bu kod, o adresteki sunucudan farklı bir sunucuya ait.</string>
@@ -47,17 +62,14 @@
     <string name="scan_title">Eşleştirme kodunu tara</string>
     <string name="scan_hint">Kamerayı Ayarlar › Uygulamalar › Telefon eşleştir\'deki QR koduna doğrult.</string>
     <string name="scan_close">Tarayıcıyı kapat</string>
-    <string name="connect_local_network_denied">Yerel ağ erişimi kapalı, bu yüzden Downtify yalnızca listeden seçtiğin sunucuya ulaşabilir. Adres yazmak için uygulamanın ayarlarından izin ver.</string>
+    <string name="connect_local_network_denied">Yerel ağ erişimi kapalı. Adres yazmak için uygulamanın ayarlarından izin ver.</string>
     <string name="scan_permission_denied">Kamera erişimi kapalı. Kodu yaz ya da telefonun ayarlarından kameraya izin ver.</string>
     <string name="scan_not_downtify">Bu QR kodu bir Downtify eşleştirme kodu değil.</string>
 
     <!-- Home -->
-    <string name="home_good_morning">Günaydın</string>
-    <string name="home_good_afternoon">İyi günler</string>
-    <string name="home_good_evening">İyi akşamlar</string>
     <string name="home_streaming_from">%1$s üzerinden akıyor</string>
     <string name="home_unreachable">%1$s sunucusuna ulaşılamıyor · eşzamanlanmış kitaplığın gösteriliyor</string>
-    <string name="home_different_server">Bu adreste başka bir sunucu yanıt veriyor · Ayarlar\'dan yeniden eşleştir</string>
+    <string name="home_different_server">Bu adreste başka bir sunucu yanıt veriyor · Ayarlar\'dan yeniden giriş yap</string>
     <string name="home_syncing">%1$s ile eşzamanlanıyor…</string>
     <string name="home_jump_back_in">Kaldığın yerden devam et</string>
     <string name="home_recently_added">Son eklenenler</string>
@@ -73,9 +85,14 @@
     <string name="library_artists">Sanatçılar</string>
     <string name="library_playlists">Çalma listeleri</string>
     <string name="library_songs">Şarkılar</string>
+    <string name="library_sort">Sırala: %1$s</string>
     <string name="library_sort_recent">Son eklenenler</string>
     <string name="library_sort_alpha">Alfabetik</string>
     <string name="library_sort_artist">Sanatçı</string>
+    <string name="library_sort_by">Sırala</string>
+    <string name="library_sort_order">Sıra</string>
+    <string name="library_sort_ascending">Artan</string>
+    <string name="library_sort_descending">Azalan</string>
     <string name="library_show_list">Liste olarak göster</string>
     <string name="library_show_grid">Izgara olarak göster</string>
     <string name="library_empty_albums">Henüz albüm yok</string>
@@ -94,7 +111,7 @@
         <item quantity="one">%d albüm</item>
         <item quantity="other">%d albüm</item>
     </plurals>
-    <string name="minutes_short">%d dk</string>
+    <string name="minutes_short">%d\u00A0dk</string>
     <string name="unknown_artist">Bilinmeyen sanatçı</string>
     <string name="unknown_album">Bilinmeyen albüm</string>
 
@@ -293,27 +310,30 @@
     <string name="settings_change_server">Sunucuyu değiştir</string>
     <string name="settings_open_web">Sunucu ayarları</string>
     <string name="settings_playback">Oynatma</string>
+    <string name="settings_normalize_volume">Ses seviyesini normalleştir</string>
+    <string name="settings_normalize_volume_hint">Sunucunun ölçümlerini kullanarak şarkıları bir sonraki şarkıdan itibaren benzer ses seviyesinde çalar. Ölçümü olmayan şarkılar özgün ses seviyelerini korur.</string>
     <string name="settings_quality_wifi">Wi-Fi\'de akış kalitesi</string>
     <string name="settings_quality_mobile">Mobil veride akış kalitesi</string>
     <string name="settings_quality_no_transcoding">Sunucu kod dönüştüremiyor (ffmpeg yok): dosyalar olduğu gibi akar.</string>
     <string name="settings_quality_original">Orijinal · indirildiği gibi</string>
-    <string name="settings_quality_transcoded">%1$s · %2$d kbps · sunucu tarafından dönüştürüldü</string>
-    <string name="settings_quality_label">%1$s · %2$d kbps</string>
+    <string name="settings_quality_transcoded">%1$s · %2$d\u00A0kbps · sunucu tarafından dönüştürüldü</string>
+    <string name="settings_quality_label">%1$s · %2$d\u00A0kbps</string>
     <string name="settings_appearance">Görünüm</string>
     <string name="settings_theme">Tema</string>
-    <string name="settings_theme_system">Sistemi izle</string>
+    <string name="settings_theme_system">Sistem</string>
     <string name="settings_theme_dark">Koyu</string>
     <string name="settings_theme_light">Açık</string>
+    <string name="settings_theme_body">Sistem, cihazının açık veya koyu modunu izler.</string>
     <string name="settings_dynamic_color">Duvar kâğıdı renklerini kullan</string>
     <string name="settings_dynamic_color_body">Downtify yeşili yerine Material You</string>
     <string name="settings_about">Hakkında</string>
     <string name="settings_app_version">Android için Downtify %1$s</string>
     <string name="settings_server_api">Sunucu API sürümü %1$d</string>
-    <string name="settings_unpair">Bu telefonun eşleşmesini kaldır</string>
+    <string name="settings_unpair">Çıkış yap</string>
     <string name="settings_unpair_body">Bu sunucunun anahtarını telefondan sil</string>
-    <string name="settings_unpair_title">Bu telefonun eşleşmesi kaldırılsın mı?</string>
-    <string name="settings_unpair_message">Telefon anahtarını unutur ve bağlanma ekranına döner. Sunucudan da kaldırmak için web sayfasında Ayarlar › Uygulamalar › Eşleşmiş uygulamalar\'ı aç. Eşzamanlanmış kitaplığın başka bir sunucuyla eşleşene kadar kalır.</string>
-    <string name="settings_unpair_confirm">Eşleşmeyi kaldır</string>
+    <string name="settings_unpair_title">Bu sunucudan çıkış yapılsın mı?</string>
+    <string name="settings_unpair_message">Telefon anahtarını unutur ve bağlanma ekranına döner. Sunucudan da kaldırmak için web sayfasında Ayarlar › Uygulamalar › Eşleşmiş uygulamalar\'ı aç. Eşzamanlanmış kitaplığın başka bir sunucuya giriş yapana kadar kalır.</string>
+    <string name="settings_unpair_confirm">Çıkış yap</string>
 
     <!-- Player -->
     <string name="player_play">Oynat</string>
@@ -347,18 +367,25 @@
     <string name="player_playing_from_album">Albümden çalıyor</string>
     <string name="player_playing_from_artist">Sanatçıdan çalıyor</string>
     <string name="player_playing_from_playlist">Çalma listesinden çalıyor</string>
-    <string name="player_playing_from_library">Kitaplığından çalıyor</string>
-    <string name="player_source_original">%1$s üzerinden akıyor · %2$s · Orijinal kalite</string>
-    <string name="player_source_transcoded">%1$s üzerinden akıyor · %2$s %3$d kbps</string>
+    <string name="player_now_playing">Şimdi çalıyor</string>
+    <string name="player_source_original_quality">%1$s üzerinden akıyor · Orijinal kalite</string>
+    <string name="player_sample_rate">%1$s\u00A0kHz</string>
+    <string name="player_bitrate">%1$d\u00A0kbps</string>
     <string name="player_source_unknown">%1$s üzerinden akıyor</string>
     <string name="player_playing_from_podcast">Podcast</string>
-    <string name="player_go_to_show">Podcast\'e git</string>
     <string name="player_skip_back">10 saniye geri</string>
     <string name="player_skip_forward">30 saniye ileri</string>
     <string name="player_speed">Oynatma hızı %1$s. Değiştirmek için dokun</string>
-    <string name="player_source_phone">Bu telefondan çalıyor · %1$s</string>
+    <string name="player_source_this_phone">Bu telefondan çalıyor</string>
     <string name="player_lyrics_none">Bu şarkının sözleri yok.</string>
     <string name="player_lyrics_loading">Sözler yükleniyor…</string>
+    <string name="player_lyrics_synced">Zamanlı</string>
+    <string name="player_lyrics_static">Sabit</string>
+    <string name="player_lyrics_timing">Zamanlamayı ayarla</string>
+    <string name="player_lyrics_earlier">Sözler daha erken</string>
+    <string name="player_lyrics_later">Sözler daha geç</string>
+    <string name="player_lyrics_timing_reset">Zamanlamayı sıfırla</string>
+    <string name="player_lyrics_offset">%1$s\u00A0sn</string>
     <string name="player_error_network">Bu şarkıyı çalmak için sunucuya ulaşılamıyor.</string>
     <string name="player_error_not_found">Bu şarkı artık sunucuda değil.</string>
     <string name="player_error_old_server">Sunucu akış için çok eski — sunucudaki Downtify\'ı güncelle.</string>
@@ -372,8 +399,10 @@
     <string name="settings_language_summary">%1$s · Android\'in uygulama dili ayarlarından seçilir</string>
     <string name="settings_amoled">Saf siyah</string>
     <string name="settings_amoled_body">Koyu temada gerçek siyah. OLED ekranlarda pil tasarrufu sağlar.</string>
+    <string name="settings_floating_nav_bar">Kayan gezinme çubuğu</string>
+    <string name="settings_floating_nav_bar_body">Telefonda çubuk, ekranın tüm genişliğini kaplamak yerine yuvarlak bir hap şeklini alır</string>
     <string name="settings_font">Yazı tipi</string>
-    <string name="settings_font_downtify">Downtify</string>
+    <string name="settings_font_downtify">Klasik Downtify</string>
     <string name="settings_font_system">Sistem yazı tipi</string>
     <string name="settings_about_entry">Downtify hakkında</string>
 
@@ -442,4 +471,84 @@
     <string name="license_limitation_warranty_body">Yazılım hiçbir garanti olmaksızın sunulur.</string>
     <string name="license_full_text">Lisansın tam metni</string>
     <string name="license_text_unavailable">Lisans metni yüklenemedi.</string>
+    <string name="settings_read_ahead">Sonraki şarkıları önceden yükle</string>
+    <string name="settings_read_ahead_off">Kapalı</string>
+    <string name="settings_read_ahead_count">Önceden yüklenecek şarkı: %1$d</string>
+    <string name="settings_stream_cache">Geçici ses önbelleği</string>
+    <string name="settings_stream_cache_size">%1$d\u00A0MB</string>
+    <string name="settings_stream_cache_body">Son çalınan ve önceden yüklenen sesler için alan. Çevrimdışı indirmeler ayrıdır. Büyük şarkılar bu sınırı aşabilir; yalnızca tamamlanan şarkılar hazır sayılır.</string>
+    <string name="settings_read_ahead_mobile">Mobil veriyle önceden yükle</string>
+    <string name="settings_read_ahead_mobile_body">Sonraki şarkıları hazırlamak için ek veri kullanımına izin ver.</string>
+    <string name="settings_cache_apply">Uygula</string>
+    <string name="player_buffer_ready">Çevrimdışı arabellek: %1$d/%2$d</string>
+
+    <!-- Music trash (admins, when the server has it on) -->
+    <string name="trash_title">Çöp kutusu</string>
+    <string name="trash_move">Çöp kutusuna taşı</string>
+    <string name="trash_checking">Dosyalar denetleniyor…</string>
+    <string name="trash_checking_body">Sunucu, tam olarak hangi dosyaların taşınacağını denetliyor. Bu biraz sürebilir.</string>
+    <string name="trash_failed">Olmadı</string>
+    <string name="trash_admin_only">Bunu yalnızca yöneticiler görebilir</string>
+    <string name="trash_admin_only_body">Bir parçayı geri yüklemesi için bu sunucunun bir yöneticisine başvur.</string>
+    <string name="trash_tab_trash">Çöp kutusunda</string>
+    <string name="trash_tab_kept_out">İndirmelerin dışında</string>
+    <string name="trash_search">Çöp kutusunda ara</string>
+    <string name="trash_empty">Çöp kutusu boş</string>
+    <string name="trash_empty_body">Çöp kutusuna taşınan parçalar süreleri dolana kadar burada görünür.</string>
+    <string name="trash_no_match">Çöp kutusunda eşleşen bir şey yok</string>
+    <string name="trash_show_more">Daha fazla göster</string>
+    <string name="trash_kept_out_body">Çöp kutusundaki süresi dolan parçalar. Otomatik indirmeler, sen yeniden izin verene kadar onları atlar.</string>
+    <string name="trash_kept_out_empty">İndirmelerin dışında tutulan bir şey yok</string>
+    <string name="trash_allow">İndirmelere izin ver</string>
+    <string name="trash_allow_title">“%1$s” yeniden indirilebilsin mi?</string>
+    <string name="trash_allow_body">Otomatik indirmeler onu yeniden alabilir. Şu anda hiçbir şey indirilmez.</string>
+    <string name="trash_kept_until">%1$s tarihine kadar saklanır</string>
+    <string name="trash_restore">Geri yükle</string>
+    <string name="trash_error_admin">Çöp kutusunu yalnızca bir yönetici kullanabilir.</string>
+    <string name="trash_error_changed">Bir dosya denetimden sonra değişti. Hiçbir şey kaybolmadı; parçayı yeniden seç.</string>
+    <string name="trash_error_missing">Bir dosya eksik. Sunucunun depolamasını denetle, sonra yeniden dene.</string>
+    <string name="trash_error_collision">Yerinde zaten başka bir dosya var. Hiçbir şeyin üzerine yazılmadı; parça çöp kutusunda kalıyor.</string>
+    <string name="trash_error_playing">Biri bu parçayı çalıyor. Önce duraklat.</string>
+    <string name="trash_error_upgrade">Kitaplık iyileştirme çalışıyor. Bitmesini bekle ya da önce duraklat.</string>
+    <string name="trash_error_confirmation">Denetimin süresi doldu. Parçaları yeniden seç.</string>
+    <string name="trash_error_identity">Bu parçanın etiketleri onu otomatik indirmelerin dışında tutmaya yetmiyor. Hiçbir şey taşınmadı.</string>
+    <string name="trash_error_busy">Bir işlem hâlâ sürüyor. Bitmesini bekle.</string>
+    <string name="trash_error_expired">Çöp kutusundaki süresi doldu.</string>
+    <string name="trash_error_folder">Bu parçanın klasörü çöp kutusunun kapsamında değil.</string>
+    <string name="trash_error_storage">Sunucunun depolaması hazır değil. Hiçbir şey taşınmadı; denetle, sonra yeniden dene.</string>
+    <string name="trash_error_off">Bu sunucuda çöp kutusu kapalı.</string>
+    <string name="trash_error">Çöp kutusu yanıt vermedi. Hiçbir şey taşınmadı ya da silinmedi.</string>
+    <string name="trash_state_pending">Taşınmayı bekliyor</string>
+    <string name="trash_state_moving">Taşınıyor</string>
+    <string name="trash_state_trashed">Çöp kutusunda</string>
+    <string name="trash_state_restoring">Geri yükleniyor</string>
+    <string name="trash_state_restored">Geri yüklendi</string>
+    <string name="trash_state_expired">Süresi doldu</string>
+    <string name="trash_state_error">Durdu — dosyalar korundu</string>
+    <string name="trash_state_unknown">Güncelleniyor</string>
+    <plurals name="trash_moving">
+        <item quantity="one">%1$d parça çöp kutusuna taşınıyor</item>
+        <item quantity="other">%1$d parça çöp kutusuna taşınıyor</item>
+    </plurals>
+    <plurals name="trash_confirm_title">
+        <item quantity="one">%1$d parça çöp kutusuna taşınsın mı?</item>
+        <item quantity="other">%1$d parça çöp kutusuna taşınsın mı?</item>
+    </plurals>
+    <plurals name="trash_confirm_body">
+        <item quantity="one">Yalnızca bu dosyalar, şarkı sözleriyle birlikte taşınır. Herkes için kitaplıktan çıkarlar ve %1$d gün boyunca geri yüklenebilirler.</item>
+        <item quantity="other">Yalnızca bu dosyalar, şarkı sözleriyle birlikte taşınır. Herkes için kitaplıktan çıkarlar ve %1$d gün boyunca geri yüklenebilirler.</item>
+    </plurals>
+    <plurals name="trash_summary">
+        <item quantity="one">%1$d parça · %2$s</item>
+        <item quantity="other">%1$d parça · %2$s</item>
+    </plurals>
+    <plurals name="trash_kept_days">
+        <item quantity="one">taşındıktan sonra %1$d gün saklanır</item>
+        <item quantity="other">taşındıktan sonra %1$d gün saklanır</item>
+    </plurals>
+    <string name="settings_normalization_level">Çalma ses düzeyi</string>
+    <string name="settings_normalization_normal">Normal</string>
+    <string name="settings_normalization_louder">Daha yüksek</string>
+    <string name="settings_normalization_maximum">Maksimum</string>
+    <string name="settings_normalization_level_hint">Sesi her parçanın güvenli sınırına kadar artırır. Ses dosyaları değişmez.</string>
 </resources>
