@@ -118,3 +118,22 @@ These are designs, not code: Downtify implements them in its own components (`:c
 GPL-3.0 — see [LICENSE](LICENSE).
 
 Android Auto stability: see [the diagnostic and receiver acceptance checklist](docs/android-auto.md#stability-follow-up-full-phone-freeze-report). Launcher visibility and unit tests alone do not validate a full-phone freeze fix.
+
+## Experimental local music AI and DJ beta
+
++The optional matching-server integration adds For you playlists, mixes based on
++a song, thematic continuous DJ and a DJ button on the current queue. The normal
++player retains pause, next, volume and a 5–60 minute sleep timer, while showing
++the current/next DJ title and transition progress. Playlist menus use three recent
++destinations followed by a bounded selector.
++
++**All AI modules default off on new installations and accounts.** The server does
++the model inference and mixing; Android downloads no AI model. Existing explicit
++preferences are preserved. The latest server engine still requires its one-hour
++real playback qualification before ordinary interactive sessions are available.
++
++Debug assembly, 454 unit tests (two skipped), Spotless, Detekt and Lint passed for
++the delivered beta. Physical-device background acceptance and phone battery/CPU/
++memory/data measurements remain pending. See [beta behavior, resource use and
++limits](docs/music-ai.md).
++

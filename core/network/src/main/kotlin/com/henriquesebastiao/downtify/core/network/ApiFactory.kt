@@ -36,6 +36,8 @@ class ApiFactory @Inject constructor(@DefaultClient private val client: OkHttpCl
     /** The music trash endpoints ([TrashApi]). */
     fun createTrash(baseUrl: String): TrashApi = retrofit(baseUrl).create(TrashApi::class.java)
 
+    fun createMusicAi(baseUrl: String): MusicAiApi = retrofit(baseUrl).create(MusicAiApi::class.java)
+
     private fun retrofit(baseUrl: String, patient: Boolean = false): Retrofit {
         val slot = if (patient) cachedPatient else cached
         slot?.let { (url, retrofit) -> if (url == baseUrl) return retrofit }

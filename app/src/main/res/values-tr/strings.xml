@@ -551,4 +551,5 @@
     <string name="settings_normalization_louder">Daha yüksek</string>
     <string name="settings_normalization_maximum">Maksimum</string>
     <string name="settings_normalization_level_hint">Sesi her parçanın güvenli sınırına kadar artırır. Ses dosyaları değişmez.</string>
+    <string name="nav_music_ai">Müziğiniz</string>
 </resources>

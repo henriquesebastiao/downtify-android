@@ -14,6 +14,8 @@ import kotlinx.serialization.Serializable
 
 @Serializable data object DownloadsRoute
 
+@Serializable data object MusicAiRoute
+
 /** The server's music trash (an admin's pairing, while the server has it on). */
 @Serializable data object TrashRoute
 
@@ -41,7 +43,7 @@ import kotlinx.serialization.Serializable
 @Serializable data class SearchQueryRoute(val query: String)
 
 /** Tracks like one track, from YouTube Music's radio mix; blank until something is named. */
-@Serializable data class SimilarRoute(val artist: String = "", val track: String = "")
+@Serializable data class SimilarRoute(val artist: String = "", val track: String = "", val seed: String = "")
 
 /** The three top-level destinations of the navigation bar / rail. */
 enum class TopLevelDestination(
@@ -66,7 +68,15 @@ enum class DrawerDestination(
     @DrawableRes val selectedIcon: Int,
     /** Shown only to an admin's pairing on a server that has the music trash on. */
     val trashOnly: Boolean = false,
+    val musicAiOnly: Boolean = false,
 ) {
     Downloads(DownloadsRoute, R.string.nav_downloads, DowntifyIcons.Downloads, DowntifyIcons.DownloadsFilled),
     Trash(TrashRoute, R.string.nav_trash, DowntifyIcons.Delete, DowntifyIcons.Delete, trashOnly = true),
+    MusicAi(
+        MusicAiRoute,
+        R.string.nav_music_ai,
+        DowntifyIcons.Library,
+        DowntifyIcons.LibraryFilled,
+        musicAiOnly = true,
+    ),
 }

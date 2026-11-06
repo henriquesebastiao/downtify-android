@@ -60,18 +60,22 @@ object PlayerModule {
         http: OkHttpDataSource.Factory,
         resolver: StreamResolver,
         store: AudioCacheStore,
-    ): DataSource.Factory = ResolvingDataSource.Factory(
-        // file:// (offline copies) is read straight from disk; http(s) goes through the streaming cache.
-        DefaultDataSource.Factory(
-            context,
-            CacheDataSource.Factory()
-                .setCache(cache)
-                .setUpstreamDataSourceFactory(http)
-                .setCacheKeyFactory { it.key ?: store.uriKey(it.uri.toString()) }
-                .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR),
-        ),
-        resolver,
-    )
+    ): DataSource.Factory {
+        val regular = ResolvingDataSource.Factory(
+            // file:// (offline copies) is read straight from disk; http(s) goes through the streaming cache.
+            DefaultDataSource.Factory(
+                context,
+                CacheDataSource.Factory()
+                    .setCache(cache)
+                    .setUpstreamDataSourceFactory(http)
+                    .setCacheKeyFactory { it.key ?: store.uriKey(it.uri.toString()) }
+                    .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR),
+            ),
+            resolver,
+        )
+        val direct = ResolvingDataSource.Factory(http, resolver)
+        return DataSource.Factory { DjDataSource(regular, direct, resolver::isDjHlsResource) }
+    }
 
     @Provides
     @Singleton

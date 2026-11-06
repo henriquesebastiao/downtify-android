@@ -88,6 +88,10 @@ class SimilarViewModel @Inject constructor(
         private set
     var track by mutableStateOf(savedState[KEY_TRACK] ?: "")
         private set
+    private var seed: String = savedState[KEY_SEED] ?: ""
+    var external by mutableStateOf(false)
+        private set
+    val capabilities = similar.capabilities
 
     private val songs = MutableStateFlow<List<RemoteSong>>(emptyList())
     private val loading = MutableStateFlow(false)
@@ -152,6 +156,27 @@ class SimilarViewModel @Inject constructor(
         if (artist.isNotBlank() || track.isNotBlank()) search()
         viewModelScope.launch { followRouteArgs() }
         viewModelScope.launch {
+            capabilities.collect { caps ->
+                if (caps.version == 1) {
+                    val before = external
+                    if (external && !caps.enabled("external_beta")) external = false
+                    if (!caps.enabled("similarity") && caps.enabled("external_beta")) external = true
+                    val feature = if (external) "external_beta" else "similarity"
+                    if (!caps.enabled(feature)) {
+                        searching?.cancel()
+                        songs.value = emptyList()
+                        loading.value = false
+                        loadingMore.value = false
+                        hasMore.value = false
+                    }
+                    if (before != external) {
+                        songs.value = emptyList()
+                        search()
+                    }
+                }
+            }
+        }
+        viewModelScope.launch {
             player.state
                 .map { state -> state.stream?.videoId to state.upNext.count { !it.queued } }
                 .distinctUntilChanged()
@@ -164,14 +189,18 @@ class SimilarViewModel @Inject constructor(
      * already on top: follow the route's arguments so the mix follows.
      */
     private suspend fun followRouteArgs() {
-        savedState.getStateFlow(KEY_ARTIST, artist)
-            .combine(savedState.getStateFlow(KEY_TRACK, track)) { a, t -> a to t }
+        combine(
+            savedState.getStateFlow(KEY_ARTIST, artist),
+            savedState.getStateFlow(KEY_TRACK, track),
+            savedState.getStateFlow(KEY_SEED, seed),
+        ) { a, t, id -> Triple(a, t, id) }
             .distinctUntilChanged()
-            .collect { (a, t) ->
-                if (a.isBlank() && t.isBlank()) return@collect
-                if (a == artist && t == track) return@collect
+            .collect { (a, t, id) ->
+                if (a.isBlank() && t.isBlank() && id.isBlank()) return@collect
+                if (a == artist && t == track && id == seed) return@collect
                 artist = a
                 track = t
+                seed = id
                 search()
             }
     }
@@ -227,24 +256,41 @@ class SimilarViewModel @Inject constructor(
 
     fun onArtistChange(value: String) {
         artist = value
+        seed = ""
     }
 
     fun onTrackChange(value: String) {
         track = value
+        seed = ""
+    }
+
+    fun onExternalChange(value: Boolean) {
+        if (value && !capabilities.value.enabled("external_beta")) return
+        if (!value && !capabilities.value.enabled("similarity")) return
+        external = value
+        songs.value = emptyList()
+        search()
     }
 
     fun search() {
         searching?.cancel()
-        if (artist.isBlank() && track.isBlank()) return
+        val caps = capabilities.value
+        if (caps.version == 1 && !caps.enabled(if (external) "external_beta" else "similarity")) {
+            songs.value = emptyList()
+            loading.value = false
+            return
+        }
+        if (artist.isBlank() && track.isBlank() && seed.isBlank()) return
         searching = viewModelScope.launch {
             loading.value = true
             error.value = null
             // A new seed restarts the endless list.
             hasMore.value = true
             loadingMore.value = false
-            when (val result = similar.similar(artist, track)) {
+            when (val result = similar.similar(artist, track, seed, external)) {
                 is ServerResult.Ok -> {
                     songs.value = result.value
+                    hasMore.value = !similar.local || external
                     searched.value = true
                 }
 
@@ -280,7 +326,7 @@ class SimilarViewModel @Inject constructor(
         }
         loadingMore.value = true
         try {
-            val fresh = when (val result = similar.similar(seedArtist, seed.title)) {
+            val fresh = when (val result = similar.similar(seedArtist, seed.title, external = external)) {
                 is ServerResult.Ok -> result.value.filter { song -> songs.value.none { sameSong(it, song) } }
                 else -> emptyList()
             }
@@ -297,6 +343,7 @@ class SimilarViewModel @Inject constructor(
     fun pivot(song: RemoteSong) {
         artist = song.artist
         track = song.title
+        seed = library.library.value?.findSong(song)?.id.orEmpty()
         search()
     }
 
@@ -344,6 +391,7 @@ class SimilarViewModel @Inject constructor(
     private companion object {
         const val KEY_ARTIST = "artist"
         const val KEY_TRACK = "track"
+        const val KEY_SEED = "seed"
         const val STOP_TIMEOUT_MS = 5_000L
     }
 }

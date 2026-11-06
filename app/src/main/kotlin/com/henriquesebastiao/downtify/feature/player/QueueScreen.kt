@@ -86,6 +86,14 @@ data class QueueActions(
     val onClearQueued: () -> Unit = {},
     /** Play the item at `from` right after the item at `after` (player indices); `queued` = "Next in queue". */
     val onMove: (from: Int, after: Int, queued: Boolean) -> Unit = { _, _, _ -> },
+    val onToggleDj: () -> Unit = {},
+)
+
+data class QueueDjState(
+    val available: Boolean = false,
+    val ready: Boolean = false,
+    val active: Boolean = false,
+    val message: String = "",
 )
 
 /**
@@ -100,6 +108,7 @@ fun QueueScreen(
     actions: QueueActions,
     controls: NowPlayingActions,
     modifier: Modifier = Modifier,
+    dj: QueueDjState = QueueDjState(),
 ) {
     val now = nowPlayingRow(state) ?: return
     val listState = rememberLazyListState()
@@ -119,6 +128,26 @@ fun QueueScreen(
         ) {
             Column(Modifier.fillMaxSize().safeDrawingPadding()) {
                 TopBar(state.context, actions.onClose)
+                if (dj.available || state.dj != null) {
+                    TextButton(
+                        onClick = actions.onToggleDj,
+                        enabled = dj.ready || dj.active || state.dj != null,
+                        modifier = Modifier.padding(horizontal = Spacing.screen),
+                    ) {
+                        Text(if (dj.active || state.dj != null) "Désactiver le mode DJ" else "Mode DJ")
+                    }
+                    if (dj.message.isNotBlank() ||
+                        !dj.ready
+                    ) {
+                        Text(
+                            dj.message.ifBlank {
+                                "Disponible après validation du moteur sur le serveur."
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(horizontal = Spacing.screen),
+                        )
+                    }
+                }
                 LazyColumn(
                     state = listState,
                     contentPadding = PaddingValues(horizontal = Spacing.screen, vertical = Spacing.sm),
@@ -137,7 +166,23 @@ fun QueueScreen(
                             trailing = { PlayingBars(animate = state.isPlaying) },
                         )
                     }
-                    if (queued.isNotEmpty()) {
+                    if (state.dj != null && rest.isNotEmpty()) {
+                        item(key = "dj-next") {
+                            Column {
+                                QueueHeader("À suivre")
+                                QueueRow(
+                                    title = rest.first().title,
+                                    artist = rest.first().artist,
+                                    artworkUrl = null,
+                                    current = false,
+                                    onClick = {},
+                                    containerColor = rowColor,
+                                    trailing = {},
+                                )
+                            }
+                        }
+                    }
+                    if (state.dj == null && queued.isNotEmpty()) {
                         item(key = "queued-header") {
                             QueueHeader(
                                 stringResource(R.string.player_queue_next_in_queue),
@@ -147,7 +192,7 @@ fun QueueScreen(
                         }
                         entries(queued, actions, reorder, rowColor)
                     }
-                    if (rest.isNotEmpty()) {
+                    if (state.dj == null && rest.isNotEmpty()) {
                         item(key = "rest-header") { QueueHeader(nextFromLabel(state.context)) }
                         entries(rest, actions, reorder, rowColor)
                     }
@@ -406,6 +451,7 @@ private fun nowPlayingRow(state: PlayerState): NowRow? {
         return NowRow(track.displayTitle, track.displayArtist, cover)
     }
     return state.stream?.let { NowRow(it.title, it.artist, it.coverUrl.ifBlank { null }) }
+        ?: state.dj?.let { NowRow(it.title, it.artist, null) }
 }
 
 /**

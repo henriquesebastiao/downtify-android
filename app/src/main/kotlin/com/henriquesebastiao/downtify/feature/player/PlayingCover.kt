@@ -15,3 +15,4 @@ fun playingCoverUrl(state: PlayerState, size: Int = ServerUrls.COVER_SMALL): Str
     state.episode?.artworkUrl?.ifBlank { null }
         ?: state.stream?.coverUrl?.ifBlank { null }
         ?: state.track?.let { LocalCoverUrls.current.track(it.id.takeIf { _ -> it.hasCover }, size) }
+        ?: state.dj?.trackId?.let { LocalCoverUrls.current.track(it, size) }

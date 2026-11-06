@@ -565,4 +565,5 @@
     <string name="settings_normalization_louder">Mais alto</string>
     <string name="settings_normalization_maximum">Máximo</string>
     <string name="settings_normalization_level_hint">Aumenta o volume dentro do limite seguro de cada faixa. Os arquivos de áudio permanecem intactos.</string>
+    <string name="nav_music_ai">Sua música</string>
 </resources>

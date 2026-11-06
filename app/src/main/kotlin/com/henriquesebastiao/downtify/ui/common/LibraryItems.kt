@@ -279,7 +279,7 @@ data class TrackActions(
     val onAddToQueue: ((Track) -> Unit)? = null,
     val onGoToAlbum: ((Track) -> Unit)? = null,
     val onGoToArtist: ((Track) -> Unit)? = null,
-    val onFindSimilar: ((artist: String, title: String) -> Unit)? = null,
+    val onFindSimilar: ((artist: String, title: String, seed: String) -> Unit)? = null,
     /** Only for an admin's pairing while the server has the music trash on (see `LocalMoveToTrash`). */
     val onMoveToTrash: ((Track) -> Unit)? = null,
 )
@@ -291,6 +291,7 @@ private data class TrackMenuColors(val container: Color, val content: Color)
 @Composable
 private fun TrackMenu(track: Track, isLiked: Boolean, actions: TrackActions, colors: TrackMenuColors) {
     if (actions == TrackActions()) return
+    val startMix = LocalSongMix.current
     var open by remember { mutableStateOf(false) }
     Box {
         CircleButton(
@@ -301,6 +302,16 @@ private fun TrackMenu(track: Track, isLiked: Boolean, actions: TrackActions, col
             contentColor = colors.content,
         )
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            if (LocalMusicAiCapabilities.current.enabled("similarity")) {
+                DropdownMenuItem(
+                    text = { Text("Lancer un mix à partir de ce titre") },
+                    leadingIcon = { Icon(painterResource(DowntifyIcons.Explore), contentDescription = null) },
+                    onClick = {
+                        open = false
+                        startMix(track)
+                    },
+                )
+            }
             actions.onAddToQueue?.let { add ->
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.track_add_to_queue)) },
@@ -350,14 +361,16 @@ private fun TrackMenu(track: Track, isLiked: Boolean, actions: TrackActions, col
                     )
                 }
             }
-            if (track.displayArtist.isNotBlank() && track.displayTitle.isNotBlank()) {
+            if (track.displayArtist.isNotBlank() && track.displayTitle.isNotBlank() &&
+                LocalMusicAiCapabilities.current.similarityAvailable()
+            ) {
                 actions.onFindSimilar?.let { find ->
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.similar_find)) },
                         leadingIcon = { Icon(painterResource(DowntifyIcons.Explore), contentDescription = null) },
                         onClick = {
                             open = false
-                            find(track.displayArtist, track.displayTitle)
+                            find(track.displayArtist, track.displayTitle, track.id)
                         },
                     )
                 }

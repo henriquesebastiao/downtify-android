@@ -551,4 +551,5 @@
     <string name="settings_normalization_louder">По-силно</string>
     <string name="settings_normalization_maximum">Максимум</string>
     <string name="settings_normalization_level_hint">Увеличава звука до безопасната граница за всяка песен. Аудиофайловете не се променят.</string>
+    <string name="nav_music_ai">Вашата музика</string>
 </resources>

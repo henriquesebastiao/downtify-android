@@ -551,4 +551,5 @@
     <string name="settings_normalization_louder">Hangosabb</string>
     <string name="settings_normalization_maximum">Maximum</string>
     <string name="settings_normalization_level_hint">A hangerőt az egyes számok biztonságos határáig növeli. A hangfájlok változatlanok maradnak.</string>
+    <string name="nav_music_ai">Saját zenék</string>
 </resources>

@@ -15,12 +15,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
@@ -31,6 +33,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -45,7 +48,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import com.henriquesebastiao.downtify.R
 import com.henriquesebastiao.downtify.core.designsystem.component.Artwork
 import com.henriquesebastiao.downtify.core.designsystem.component.ArtworkTone
@@ -64,11 +70,19 @@ import com.henriquesebastiao.downtify.core.model.PlaybackContextType
 import com.henriquesebastiao.downtify.core.model.Playlist
 import com.henriquesebastiao.downtify.core.model.RecentContext
 import com.henriquesebastiao.downtify.core.network.ServerUrls
+import com.henriquesebastiao.downtify.feature.musicai.MusicAiViewModel
+import com.henriquesebastiao.downtify.feature.musicai.MusicForYouActions
+import com.henriquesebastiao.downtify.feature.musicai.musicDjThemeItems
+import com.henriquesebastiao.downtify.feature.musicai.musicForYouItems
 import com.henriquesebastiao.downtify.ui.common.CoverCard
 import com.henriquesebastiao.downtify.ui.common.LocalCoverUrls
+import com.henriquesebastiao.downtify.ui.common.LocalMusicAiCapabilities
 import com.henriquesebastiao.downtify.ui.common.PreviewData
 import com.henriquesebastiao.downtify.ui.common.albumSubtitle
 import com.henriquesebastiao.downtify.ui.common.plusBottomBars
+import com.henriquesebastiao.downtify.ui.common.similarityAvailable
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 
 @Composable
 fun HomeRoute(
@@ -82,8 +96,24 @@ fun HomeRoute(
     onOpenSimilar: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
+    onOpenMusicAi: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val musicAi: MusicAiViewModel = hiltViewModel()
+    val musicDj: com.henriquesebastiao.downtify.feature.musicai.MusicDjViewModel = hiltViewModel()
+    val djState by musicDj.state.collectAsStateWithLifecycle()
+    val aiState by musicAi.state.collectAsStateWithLifecycle()
+    val aiCaps by musicAi.capabilities.collectAsStateWithLifecycle()
+    LaunchedEffect(aiCaps.features) { musicAi.refreshPlaylists() }
+    val lifecycle = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycle, musicAi) {
+        lifecycle.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (isActive) {
+                musicAi.refreshPlaylists()
+                delay(60000)
+            }
+        }
+    }
     HomeScreen(
         state,
         onOpenSettings,
@@ -96,6 +126,25 @@ fun HomeRoute(
         onOpenPodcasts,
         onOpenSimilar,
         onOpenMenu = onOpenMenu,
+        forYouContent = {
+            musicDjThemeItems(aiCaps, djState, musicDj::continuous)
+            musicForYouItems(
+                aiState,
+                aiCaps,
+                MusicForYouActions(
+                    musicAi::refreshPlaylists,
+                    musicAi::forYou,
+                    musicAi::selectCadence,
+                    musicAi::mood,
+                    musicAi::play,
+                    musicAi::save,
+                    onOpenMusicAi,
+                    musicAi::clearSelection,
+                ),
+            )
+        },
+        forYouRefreshing = aiState.busy,
+        onRefreshForYou = musicAi::refreshPlaylists,
     )
 }
 
@@ -113,7 +162,14 @@ fun HomeScreen(
     onOpenPodcasts: () -> Unit = {},
     onOpenSimilar: () -> Unit = {},
     onOpenMenu: () -> Unit = {},
+    forYouContent: (LazyListScope.() -> Unit)? = null,
+    forYouRefreshing: Boolean = false,
+    onRefreshForYou: () -> Unit = {},
 ) {
+    val caps = LocalMusicAiCapabilities.current
+    val forYouAvailable = forYouContent != null && listOf("personalization", "daily", "weekly").any(caps::enabled)
+    var homeTab by rememberSaveable { mutableStateOf("for-you") }
+    val showForYou = forYouAvailable && homeTab == "for-you"
     Scaffold(
         modifier = modifier,
         contentWindowInsets = WindowInsets(0),
@@ -152,8 +208,8 @@ fun HomeScreen(
         },
     ) { padding ->
         PullToRefreshBox(
-            isRefreshing = state.refreshing,
-            onRefresh = onRefresh,
+            isRefreshing = if (showForYou) forYouRefreshing else state.refreshing,
+            onRefresh = if (showForYou) onRefreshForYou else onRefresh,
             modifier = Modifier.fillMaxSize().padding(padding),
         ) {
             LazyColumn(
@@ -163,41 +219,60 @@ fun HomeScreen(
                 item(key = "status") {
                     ServerStatusLine(state, Modifier.padding(horizontal = Spacing.screen, vertical = Spacing.sm))
                 }
-                when {
-                    state.loading -> item(key = "loading") {
-                        Box(Modifier.fillMaxWidth().padding(Spacing.xxl), contentAlignment = Alignment.Center) {
-                            LoadingIndicator()
-                        }
-                    }
-
-                    state.libraryEmpty -> item(key = "empty") {
-                        if (state.favoritePlaylists.isNotEmpty()) HomeAccess(state, onOpenRecent)
-                        EmptyState(
-                            icon = DowntifyIcons.Library,
-                            title = stringResource(R.string.home_empty_title),
-                            body = stringResource(R.string.home_empty_body),
-                            hero = true,
-                        )
-                    }
-
-                    else -> {
-                        if (state.jumpBackIn.isNotEmpty() || state.favoritePlaylists.isNotEmpty()) {
-                            item(key = "access") { HomeAccess(state, onOpenRecent) }
-                        }
-                        if (state.recentlyAdded.isNotEmpty()) {
-                            item(key = "recent") { RecentlyAdded(state.recentlyAdded, onOpenAlbum, onSeeAll) }
+                if (forYouAvailable) {
+                    item(key = "home-tabs") {
+                        Row(
+                            Modifier.padding(horizontal = Spacing.screen),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            FilterChip(selected = showForYou, onClick = {
+                                homeTab = "for-you"
+                            }, label = { Text("Pour vous") })
+                            FilterChip(selected = !showForYou, onClick = {
+                                homeTab = "library"
+                            }, label = { Text("Ma musique") })
                         }
                     }
                 }
-                if (!state.loading) {
-                    item(key = "shortcuts") {
-                        Shortcuts(
-                            showDiscover = state.showDiscover && !state.libraryEmpty,
-                            showPodcasts = state.showPodcasts,
-                            onOpenDiscover = onOpenDiscover,
-                            onOpenPodcasts = onOpenPodcasts,
-                            onOpenSimilar = onOpenSimilar,
-                        )
+                if (showForYou) {
+                    forYouContent?.invoke(this)
+                } else {
+                    when {
+                        state.loading -> item(key = "loading") {
+                            Box(Modifier.fillMaxWidth().padding(Spacing.xxl), contentAlignment = Alignment.Center) {
+                                LoadingIndicator()
+                            }
+                        }
+
+                        state.libraryEmpty -> item(key = "empty") {
+                            if (state.favoritePlaylists.isNotEmpty()) HomeAccess(state, onOpenRecent)
+                            EmptyState(
+                                icon = DowntifyIcons.Library,
+                                title = stringResource(R.string.home_empty_title),
+                                body = stringResource(R.string.home_empty_body),
+                                hero = true,
+                            )
+                        }
+
+                        else -> {
+                            if (state.jumpBackIn.isNotEmpty() || state.favoritePlaylists.isNotEmpty()) {
+                                item(key = "access") { HomeAccess(state, onOpenRecent) }
+                            }
+                            if (state.recentlyAdded.isNotEmpty()) {
+                                item(key = "recent") { RecentlyAdded(state.recentlyAdded, onOpenAlbum, onSeeAll) }
+                            }
+                        }
+                    }
+                    if (!state.loading) {
+                        item(key = "shortcuts") {
+                            Shortcuts(
+                                showDiscover = state.showDiscover && !state.libraryEmpty,
+                                showPodcasts = state.showPodcasts,
+                                onOpenDiscover = onOpenDiscover,
+                                onOpenPodcasts = onOpenPodcasts,
+                                onOpenSimilar = onOpenSimilar,
+                            )
+                        }
                     }
                 }
             }
@@ -252,12 +327,14 @@ private fun Shortcuts(
                 onClick = onOpenDiscover,
             )
         }
-        Shortcut(
-            icon = DowntifyIcons.Graphic,
-            title = stringResource(R.string.home_shortcut_similar),
-            body = stringResource(R.string.home_shortcut_similar_body),
-            onClick = onOpenSimilar,
-        )
+        if (LocalMusicAiCapabilities.current.similarityAvailable()) {
+            Shortcut(
+                icon = DowntifyIcons.Graphic,
+                title = stringResource(R.string.home_shortcut_similar),
+                body = stringResource(R.string.home_shortcut_similar_body),
+                onClick = onOpenSimilar,
+            )
+        }
         if (showPodcasts) {
             Shortcut(
                 icon = DowntifyIcons.Podcasts,

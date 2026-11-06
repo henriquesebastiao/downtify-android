@@ -10,6 +10,7 @@ import com.henriquesebastiao.downtify.core.model.PlaybackSnapshot
 import com.henriquesebastiao.downtify.core.model.Playlist
 import com.henriquesebastiao.downtify.core.model.SavedPlaybackItem
 import com.henriquesebastiao.downtify.core.model.Track
+import com.henriquesebastiao.downtify.core.network.dto.MusicAiCapabilitiesDto
 import com.henriquesebastiao.downtify.core.network.session.Session
 import com.henriquesebastiao.downtify.core.player.PlaybackService
 import io.mockk.coEvery
@@ -46,9 +47,14 @@ internal class CarServiceFixture {
             every { likedIds } returns MutableStateFlow(listOf("a"))
             every { successfulSync } returns MutableStateFlow(0)
         }
+        service.sleepTimer = com.henriquesebastiao.downtify.core.player.PlaybackSleepTimer()
         service.sessions = mockk(relaxed = true) {
             every { current } answers { association.value }
             every { session } returns association
+        }
+        service.musicAi = mockk(relaxed = true) {
+            every { session } returns association
+            every { capabilities } returns MutableStateFlow(MusicAiCapabilitiesDto())
         }
         service.playback = mockk(relaxed = true) {
             coEvery { load(any()) } coAnswers {

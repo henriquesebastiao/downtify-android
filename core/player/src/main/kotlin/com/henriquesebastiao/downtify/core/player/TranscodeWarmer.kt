@@ -7,6 +7,7 @@ import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import com.henriquesebastiao.downtify.core.model.EpisodeIds
+import com.henriquesebastiao.downtify.core.model.MediaIds
 import com.henriquesebastiao.downtify.core.model.StreamIds
 import java.io.IOException
 import kotlinx.coroutines.CoroutineScope
@@ -69,7 +70,7 @@ internal class TranscodeWarmer(
         // The track that plays next in the real order: shuffle and repeat included.
         val next = player.nextMediaItemIndex.takeIf { it != C.INDEX_UNSET } ?: return
         val trackId = player.getMediaItemAt(next).mediaId
-        if (trackId.isEmpty() || EpisodeIds.isEpisode(trackId) || StreamIds.isStream(trackId)) return
+        if (!MediaIds.isLibrary(trackId)) return
         scope.launch(Dispatchers.IO) { warm(trackId) }
     }
 

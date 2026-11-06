@@ -551,4 +551,5 @@
     <string name="settings_normalization_louder">Πιο δυνατά</string>
     <string name="settings_normalization_maximum">Μέγιστο</string>
     <string name="settings_normalization_level_hint">Αυξάνει την ένταση εντός του ασφαλούς ορίου κάθε τραγουδιού. Τα αρχεία ήχου δεν αλλάζουν.</string>
+    <string name="nav_music_ai">Η μουσική σας</string>
 </resources>
