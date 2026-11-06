@@ -81,6 +81,7 @@ internal class DjControlTracker(
         current = next
         retire(retired)
         (player as? androidx.media3.exoplayer.ExoPlayer)?.pauseAtEndOfMediaItems = next != null
+        (player as? LocalDjPlayer)?.setServerDjBarrier(next != null)
         if (next == null) return
         val handover =
             next.mode == "interactive" &&

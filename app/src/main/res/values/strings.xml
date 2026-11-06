@@ -560,4 +560,8 @@
     <string name="settings_normalization_louder">Louder</string>
     <string name="settings_normalization_maximum">Maximum</string>
     <string name="settings_normalization_level_hint">Raises playback volume within each track’s safe limit. Your audio files stay unchanged.</string>
+    <string name="music_dj_server">Server</string>
+    <string name="music_dj_device_beta">This device · Beta</string>
+    <string name="music_dj_local_description">Mix the current queue on this phone with short fades. Beat analysis is still in preparation. No model is downloaded automatically. Battery and audio quality await device testing.</string>
+    <string name="music_dj_server_description">The server prepares transitions. Your phone plays the authenticated audio stream.</string>
 </resources>

@@ -566,4 +566,8 @@
     <string name="settings_normalization_maximum">Maximum</string>
     <string name="settings_normalization_level_hint">Le volume augmente dans la limite propre à chaque titre. Vos fichiers restent inchangés.</string>
     <string name="nav_music_ai">Votre musique</string>
+    <string name="music_dj_server">Serveur</string>
+    <string name="music_dj_device_beta">Cet appareil · Bêta</string>
+    <string name="music_dj_local_description">Mixez la file actuelle sur ce téléphone avec des fondus courts. Le calage par analyse est encore en préparation. Aucun modèle n’est téléchargé automatiquement. Batterie et qualité audio restent à tester sur appareil.</string>
+    <string name="music_dj_server_description">Le serveur prépare les transitions. Le téléphone lit le flux audio authentifié.</string>
 </resources>

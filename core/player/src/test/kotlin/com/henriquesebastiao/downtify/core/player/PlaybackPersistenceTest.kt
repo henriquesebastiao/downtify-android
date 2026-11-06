@@ -92,7 +92,7 @@ class PlaybackPersistenceTest {
     }
 
     @Test
-    fun `restart restores exact queue and shuffle order paused without opening audio`() = runTest {
+    fun `facade restart restores exact queue and shuffle order paused without opening audio`() = runTest {
         val session = Session("https://new.example", "server", "Test", "device", "fixture")
         val sessions = mockk<SessionStore>(relaxed = true)
         every { sessions.current } returns session
@@ -117,8 +117,9 @@ class PlaybackPersistenceTest {
         }
         coEvery { repository.load(session.playbackOwner) } returns snapshot
         val source = mockk<DataSource.Factory>()
-        val player = ExoPlayer.Builder(RuntimeEnvironment.getApplication())
+        fun decoder() = ExoPlayer.Builder(RuntimeEnvironment.getApplication())
             .setLooper(Looper.getMainLooper()).setMediaSourceFactory(DefaultMediaSourceFactory(source)).build()
+        val player = LocalDjPlayer(decoder(), decoder(), backgroundScope)
         val persistence = PlaybackPersistence(player, repository, sessions, backgroundScope)
         try {
             persistence.start()

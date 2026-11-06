@@ -29,6 +29,8 @@ import kotlinx.coroutines.isActive
 
 @Composable
 fun MusicDjPanel(viewModel: MusicDjViewModel = hiltViewModel()) {
+    val openPlayer = com.henriquesebastiao.downtify.ui.common.LocalOpenPlayer.current
+    val listening by viewModel.listening.collectAsStateWithLifecycle()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val caps by viewModel.capabilities.collectAsStateWithLifecycle()
     val lifecycle = LocalLifecycleOwner.current
@@ -120,7 +122,9 @@ fun MusicDjPanel(viewModel: MusicDjViewModel = hiltViewModel()) {
                         viewModel.stop(session.id)
                     }, enabled = !state.busy) { Text("Arrêter le rendu") }
                 }
-                if (session.mode == "interactive" && session.state in setOf("playing", "paused")) {
+                if (listening == session.id && session.mode == "interactive" &&
+                    session.state in setOf("playing", "paused")
+                ) {
                     TextButton(onClick = {
                         viewModel.command(
                             session,
@@ -157,7 +161,7 @@ fun MusicDjPanel(viewModel: MusicDjViewModel = hiltViewModel()) {
                     else -> false
                 }
                 if (canPlay) {
-                    Button(onClick = { viewModel.play(session) }) { Text("Écouter le set") }
+                    Button(onClick = { viewModel.play(session, openPlayer) }) { Text("Écouter le set") }
                     if (session.mode ==
                         "prepared"
                     ) {

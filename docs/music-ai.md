@@ -27,9 +27,9 @@ upgrade; the Android app does not silently enable server modules.
 
 ## Resource use and boundaries
 
-Models and mixing run on the server, not on the phone. Android uses its existing
-Media3 audio decoder and authenticated HTTP stack. Live DJ segments bypass the
-persistent library cache; ordinary offline files retain their existing behavior.
+In server mode, models and mixing run on the server. Android uses its existing
+Media3 audio decoder and authenticated HTTP stack. Live DJ segments use a
+separate bounded DJ cache; ordinary offline files retain their existing behavior.
 There is no on-device model download or new model subscription. Additional phone
 CPU, memory, battery and mobile-data consumption have not yet been qualified.
 An HLS connection and foreground playback remain necessary for interactive DJ.
@@ -56,8 +56,43 @@ It does not qualify this new build, DJ playback, a real receiver or endurance.
 The latest DJ engine still lacks its real one-hour qualification. Qualified
 interactive use requires zero interruptions and rendering above 1.5× real time.
 A separate unqualified trial requires explicit server and user opt-in; it never
-marks an engine as qualified. No model is downloaded for the unavailable local
-DJ engine. Macrobenchmark is opt-in with `-PincludeBenchmarks=true`.
+marks an engine as qualified. No model is downloaded for the local prototype.
+Macrobenchmark is opt-in with `-PincludeBenchmarks=true`.
+
+## Device DJ and interruption cache beta
+
+Home → DJ → **This device · Beta** selects a device-only engine preference,
+initially off. Queue → **Mode DJ** arms it for local files in the current queue.
+Returning to Server or disabling Mode DJ stops preparation and retains the
+dominant original track and position. A process/account change never restores
+an armed local session. There is one MediaSession, one audio-focus owner and
+two bounded decoders; pause/noisy/focus loss stops both. Incoming decoder failure
+keeps the outgoing transport. Queue occurrence UIDs remain stable across deck
+changes. Native read-ahead follows the dominant decoder and queue persistence
+restores its shuffle order.
+
+This prototype performs short 1.2-second fades with sum-gain limiting. It does
+not yet run a beat model on Android. Analysis-informed plans have a tested API,
+but no device inference/model download is wired. Shuffle, repeat-one, podcasts,
+HLS and external streams keep normal playback. Physical quality, Bluetooth,
+thermal and battery testing remain pending; do not call this qualified AI DJ.
+
+The server-DJ cache is an app-private 64 MiB LRU disk cache, separate from normal
+offline/read-ahead caches. A cache identity includes the pairing generation and
+the segment's program date/time and sequence from a complete fresh manifest.
+Reused filenames from another render cannot return previous audio. A manifest
+without reliable identities bypasses the cache. Owner/module changes fence open
+readers and invalidate namespaces; partial data never becomes a complete chunk.
+Manifests are always fetched fresh, with bounded GET/HEAD retries on transient
+HTTP/network failures. Authorization failures are not retried. Whole-call
+timeout is 12 seconds and retries are limited to three within a nine-second
+window; cached/prebuffered audio can cover short outages, not indefinite offline DJ.
+
+Joining a prepared or interactive set attaches it to the common player and opens
+Now Playing. The mini player includes DJ content even when no library track,
+podcast or external stream is selected. An unjoined device offers Listen instead
+of renderer-only pause/resume controls. This is explicit joining, not automatic
+sound playback on every device.
 
 The physical optimized beta also passed a visual check of the four colored mood
 cards, native temporary-playlist view, save-dialog opening and editable name.

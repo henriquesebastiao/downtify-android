@@ -146,6 +146,7 @@ fun MusicStudioRoute(
     val caps by viewModel.capabilities.collectAsStateWithLifecycle()
     val queue: com.henriquesebastiao.downtify.feature.player.QueueDjViewModel = hiltViewModel()
     val queueMessage by queue.message.collectAsStateWithLifecycle()
+    val localDevice by queue.localDevice.collectAsStateWithLifecycle()
     LaunchedEffect(seed) {
         viewModel.refresh()
         if (seed.isNotBlank()) viewModel.seed(seed)
@@ -165,16 +166,47 @@ fun MusicStudioRoute(
                 )
                 TextButton(onClick = onSettings) { Text("Paramètres IA") }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    androidx.compose.material3.FilterChip(selected = true, onClick = {}, label = { Text("Serveur") })
-                    androidx.compose.material3.FilterChip(selected = false, enabled = false, onClick = {
-                    }, label = { Text("Cet appareil · Bêta") })
+                    androidx.compose.material3.FilterChip(
+                        selected = !localDevice,
+                        onClick = {
+                            queue.chooseDevice(false)
+                        },
+                        label = {
+                            Text(
+                                androidx.compose.ui.res.stringResource(
+                                    com.henriquesebastiao.downtify.R.string.music_dj_server,
+                                ),
+                            )
+                        },
+                    )
+                    androidx.compose.material3.FilterChip(
+                        selected = localDevice,
+                        onClick = {
+                            queue.chooseDevice(true)
+                        },
+                        label = {
+                            Text(
+                                androidx.compose.ui.res.stringResource(
+                                    com.henriquesebastiao.downtify.R.string.music_dj_device_beta,
+                                ),
+                            )
+                        },
+                    )
                 }
                 Text(
-                    "Le moteur local attend la validation de l’export ONNX et des performances sur votre appareil. " +
-                        "Aucun modèle n’est téléchargé. Le serveur reste disponible.",
+                    androidx.compose.ui.res.stringResource(
+                        if (localDevice) {
+                            com.henriquesebastiao.downtify.R.string.music_dj_local_description
+                        } else {
+                            com.henriquesebastiao.downtify.R.string.music_dj_server_description
+                        },
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                 )
-                TextButton(onClick = queue::toggle, enabled = caps.interactiveAvailable()) {
+                TextButton(
+                    onClick = queue::toggle,
+                    enabled = if (localDevice) caps.enabled("dj_interactive") else caps.interactiveAvailable(),
+                ) {
                     Text("Mode DJ sur la file")
                 }
                 if (queueMessage.isNotBlank()) Text(queueMessage)
@@ -184,7 +216,7 @@ fun MusicStudioRoute(
                     Text("Activez un mode DJ dans Paramètres → IA, puis autorisez-le sur le serveur.")
                 }
             }
-            musicDjThemeItems(caps, state, viewModel::continuous)
+            if (!localDevice) musicDjThemeItems(caps, state, viewModel::continuous)
             item { MusicDjPanel() }
         }
     }

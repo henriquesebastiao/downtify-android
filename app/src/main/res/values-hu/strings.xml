@@ -552,4 +552,8 @@
     <string name="settings_normalization_maximum">Maximum</string>
     <string name="settings_normalization_level_hint">A hangerőt az egyes számok biztonságos határáig növeli. A hangfájlok változatlanok maradnak.</string>
     <string name="nav_music_ai">Saját zenék</string>
+    <string name="music_dj_server">Kiszolgáló</string>
+    <string name="music_dj_device_beta">Ez az eszköz · Béta</string>
+    <string name="music_dj_local_description">A jelenlegi sor keverése ezen a telefonon rövid átmenetekkel. Az ütemelemzés még készül. Nincs automatikus modellletöltés. Az akkumulátor és a hangminőség tesztelése még hátravan.</string>
+    <string name="music_dj_server_description">A kiszolgáló előkészíti az átmeneteket. A telefon a hitelesített hangfolyamot játssza le.</string>
 </resources>

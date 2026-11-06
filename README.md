@@ -147,11 +147,20 @@ the main thread.
 
 The optimized beta build is non-debuggable and enables R8/resource shrinking;
 it uses a profileable manifest for physical-device benchmarks. Its audio
-allocator target is 64 MiB. Live HLS bypasses the persistent library audio cache.
+allocator target is 64 MiB across the two local decoders. Live HLS uses a separate
+64 MiB transient disk cache for immutable, authenticated segments; manifests stay fresh.
 These are configured budgets, not measured phone memory, battery or temperature.
-Model inference and transition rendering remain on the server; no on-device
-AI model is downloaded. The local engine remains unavailable pending ONNX and
-physical-device validation.
+Server mixing remains the initial choice. **This device · Beta** enables a local
+dual-deck prototype for the current queue, using the same player and audio session.
+It currently uses short fades; on-device beat-model inference is not integrated
+and no AI model is downloaded. Shuffle, repeat-one and remote streams retain
+ordinary playback. Phone quality, latency, temperature and battery remain unqualified.
+
+DJ sets now appear in the mini player and open Now Playing after joining. Direct
+controls are shown only after this device joins, avoiding a server-only resume.
+All 97 player-module tests and seven mini-player tests passed, including native
+shuffle restoration through the dual-deck facade. Detekt and formatting passed;
+these checks do not replace physical-device acceptance.
 
 Corrective player tests cover 25 repeated mode cycles, local pause intent,
 stale status fencing and dominant-title/source-time mapping. Server/web checks

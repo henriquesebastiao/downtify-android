@@ -11,13 +11,18 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 
 data class MusicDjUiState(
     val sessions: List<MusicDjSessionDto> = emptyList(),
@@ -34,6 +39,8 @@ class MusicDjViewModel @Inject constructor(
     private val mutable = MutableStateFlow(MusicDjUiState())
     val state = mutable.asStateFlow()
     val capabilities = music.capabilities
+    val listening = player.state.map { it.dj?.id }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
     private val mutex = Mutex()
     private var ownBusy = false
     private var pending: Pair<Triple<String, String, Int>, String>? = null
@@ -103,6 +110,10 @@ class MusicDjViewModel @Inject constructor(
     fun seed(id: String) = coordinator.startSeed(id)
 
     fun command(session: MusicDjSessionDto, operation: String, payload: Map<String, String> = emptyMap()) {
+        if (operation == "resume" && player.state.value.dj?.id != session.id) {
+            play(session)
+            return
+        }
         if (player.state.value.dj?.id == session.id && operation in setOf("pause", "resume")) {
             if (operation == "pause") player.pause() else player.resume()
             return
@@ -148,7 +159,7 @@ class MusicDjViewModel @Inject constructor(
         }
     }
 
-    fun play(session: MusicDjSessionDto) {
+    fun play(session: MusicDjSessionDto, onReady: () -> Unit = {}) {
         if (session.state !in setOf("ready", "playing", "paused") ||
             !music.capabilities.value.enabled("dj_" + session.mode)
         ) {
@@ -163,6 +174,8 @@ class MusicDjViewModel @Inject constructor(
                     owner == music.session.value
                 ) {
                     coordinator.listen(full, "Set DJ · ${full.theme}")
+                    val attached = withTimeoutOrNull(8000) { player.state.first { it.dj?.id == full.id } }
+                    if (attached != null && owner == music.session.value) onReady()
                 }
             } catch (error: MusicAiFailure) {
                 mutable.update { it.copy(message = musicAiFailureMessage(error)) }

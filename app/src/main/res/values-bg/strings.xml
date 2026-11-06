@@ -552,4 +552,8 @@
     <string name="settings_normalization_maximum">Максимум</string>
     <string name="settings_normalization_level_hint">Увеличава звука до безопасната граница за всяка песен. Аудиофайловете не се променят.</string>
     <string name="nav_music_ai">Вашата музика</string>
+    <string name="music_dj_server">Сървър</string>
+    <string name="music_dj_device_beta">Това устройство · Бета</string>
+    <string name="music_dj_local_description">Смесвайте текущата опашка на телефона с кратки плавни преходи. Анализът на ритъма е в подготовка. Няма автоматично изтегляне на модел. Батерията и качеството на звука предстои да се тестват.</string>
+    <string name="music_dj_server_description">Сървърът подготвя преходите. Телефонът възпроизвежда удостоверения аудиопоток.</string>
 </resources>

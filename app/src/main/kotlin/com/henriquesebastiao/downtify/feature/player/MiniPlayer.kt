@@ -40,7 +40,7 @@ fun MiniPlayer(
     val track = state.track
     val episode = state.episode
     val stream = state.stream
-    if (track == null && episode == null && stream == null) return
+    if (!state.hasMedia) return
     val coverUrl = playingCoverUrl(state)
     CoverTheme(coverUrl) {
         MiniPlayerCard(

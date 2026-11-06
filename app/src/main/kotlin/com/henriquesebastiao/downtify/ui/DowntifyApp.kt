@@ -267,6 +267,8 @@ private fun MainShell() {
                     val covered = if (miniPlayer || floatingBar) stackHeight else 0.dp
                     CompositionLocalProvider(
                         LocalBottomBarsInset provides covered,
+                        com.henriquesebastiao.downtify.ui.common.LocalOpenPlayer provides
+                            { scope.launch { expansion.expand() } },
                         com.henriquesebastiao.downtify.ui.common.LocalMusicAiCapabilities provides aiCapabilities,
                         com.henriquesebastiao.downtify.ui.common.LocalSongMix provides mixAction,
                         com.henriquesebastiao.downtify.ui.common.LocalSongDjMix provides djMixAction,
@@ -516,6 +518,7 @@ private fun NowPlayingOverlay(
     val djMessage by queueDj.message.collectAsStateWithLifecycle()
     val djArmed by queueDj.armed.collectAsStateWithLifecycle()
     val djBusy by queueDj.busy.collectAsStateWithLifecycle()
+    val localDjDevice by queueDj.localDevice.collectAsStateWithLifecycle()
     var lyricsOpen by rememberSaveable { mutableStateOf(false) }
     var queueOpen by rememberSaveable { mutableStateOf(false) }
     val open = expansion.expanded
@@ -619,8 +622,13 @@ private fun NowPlayingOverlay(
             ),
             controls = controls,
             dj = com.henriquesebastiao.downtify.feature.player.QueueDjState(
-                available = djCaps.enabled("dj_interactive") && djCaps.dj.queueSupported,
-                ready = djCaps.interactiveAvailable() && djCaps.dj.queueSupported,
+                available = djCaps.enabled("dj_interactive") && (localDjDevice || djCaps.dj.queueSupported),
+                ready = if (localDjDevice) {
+                    djCaps.enabled("dj_interactive")
+                } else {
+                    djCaps.interactiveAvailable() &&
+                        djCaps.dj.queueSupported
+                },
                 active = djArmed || djBusy,
                 message = djMessage,
             ),

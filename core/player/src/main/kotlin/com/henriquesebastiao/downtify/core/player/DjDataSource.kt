@@ -6,11 +6,12 @@ import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.TransferListener
 
-/** DJ bytes must always reach the authenticated server, including range requests after a seek. */
+/** Classic/offline files keep their cache; live DJ uses a separately owned segment cache. */
 @UnstableApi
 internal class DjDataSource(
     private val regular: DataSource.Factory,
     private val direct: DataSource.Factory,
+    private val live: DataSource.Factory = direct,
     private val liveResource: (Uri) -> Boolean = { false },
 ) : DataSource {
     private var active: DataSource? = null
@@ -21,7 +22,12 @@ internal class DjDataSource(
     }
     override fun open(dataSpec: DataSpec): Long {
         check(active == null)
-        val factory = if (DjMediaItems.idOf(dataSpec.uri) != null || liveResource(dataSpec.uri)) direct else regular
+        val address = DjMediaItems.addressOf(dataSpec.uri)
+        val factory = when {
+            address?.mode == "interactive" || liveResource(dataSpec.uri) -> live
+            address != null -> direct
+            else -> regular
+        }
         val source = factory.createDataSource()
         listeners.forEach(source::addTransferListener)
         active = source

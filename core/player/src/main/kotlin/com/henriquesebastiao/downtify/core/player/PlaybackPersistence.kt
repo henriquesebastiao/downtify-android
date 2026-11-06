@@ -26,7 +26,7 @@ import kotlinx.coroutines.withTimeout
 /** One service-owned checkpoint observer; polling never enumerates or serializes the queue. */
 @UnstableApi
 internal class PlaybackPersistence(
-    private val player: ExoPlayer,
+    private val player: Player,
     private val repository: PlaybackRepository,
     private val sessions: SessionStore,
     private val scope: CoroutineScope,
@@ -62,7 +62,9 @@ internal class PlaybackPersistence(
                         state.index,
                         state.positionMs,
                     )
-                    player.setShuffleOrder(DefaultShuffleOrder(state.shuffleOrder.toIntArray(), 0L))
+                    val restoredOrder = state.shuffleOrder.toIntArray()
+                    if (player is ExoPlayer) player.setShuffleOrder(DefaultShuffleOrder(restoredOrder, 0L))
+                    if (player is LocalDjPlayer) player.restoreShuffleOrder(restoredOrder)
                     player.shuffleModeEnabled = state.shuffle
                     player.repeatMode = state.repeatMode
                     player.setPlaybackSpeed(state.speed)

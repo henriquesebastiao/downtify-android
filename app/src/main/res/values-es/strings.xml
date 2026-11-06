@@ -566,4 +566,8 @@
     <string name="settings_normalization_maximum">Máximo</string>
     <string name="settings_normalization_level_hint">Aumenta el volumen dentro del límite seguro de cada canción. Los archivos de audio no cambian.</string>
     <string name="nav_music_ai">Tu música</string>
+    <string name="music_dj_server">Servidor</string>
+    <string name="music_dj_device_beta">Este dispositivo · Beta</string>
+    <string name="music_dj_local_description">Mezcla la cola actual en este teléfono con fundidos cortos. El análisis rítmico sigue en preparación. No se descarga ningún modelo automáticamente. Faltan pruebas de batería y sonido.</string>
+    <string name="music_dj_server_description">El servidor prepara las transiciones. El teléfono reproduce el audio autenticado.</string>
 </resources>

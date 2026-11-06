@@ -60,6 +60,7 @@ object PlayerModule {
         http: OkHttpDataSource.Factory,
         resolver: StreamResolver,
         store: AudioCacheStore,
+        dj: DjAudioCacheStore,
     ): DataSource.Factory {
         val regular = ResolvingDataSource.Factory(
             // file:// (offline copies) is read straight from disk; http(s) goes through the streaming cache.
@@ -74,7 +75,8 @@ object PlayerModule {
             resolver,
         )
         val direct = ResolvingDataSource.Factory(http, resolver)
-        return DataSource.Factory { DjDataSource(regular, direct, resolver::isDjHlsResource) }
+        val live = ResolvingDataSource.Factory(dj.factory, resolver)
+        return DataSource.Factory { DjDataSource(regular, direct, live, resolver::isDjHlsResource) }
     }
 
     @Provides

@@ -123,6 +123,8 @@ class PlaybackService : MediaLibraryService() {
 
     @Inject lateinit var syncCoordinator: SyncCoordinator
 
+    @Inject lateinit var localDj: LocalDjSettings
+    private var localFocus: LocalDjAudioFocus? = null
     private var session: MediaLibrarySession? = null
     private var artworkTracker: SessionArtworkTracker? = null
     private var listens: ListenTracker? = null
@@ -141,42 +143,7 @@ class PlaybackService : MediaLibraryService() {
     override fun onCreate() {
         super.onCreate()
         CarDiagnostics.service(true)
-        val normalizer = NormalizationAudioProcessor(
-            gainForTrack = loudness::gainDb,
-            isEnabled = { loudness.enabled.value },
-            gainRevision = { loudness.level.value.ordinal },
-        )
-        val renderers = object : DefaultRenderersFactory(this) {
-            override fun buildAudioSink(
-                context: Context,
-                enableFloatOutput: Boolean,
-                enableAudioTrackPlaybackParams: Boolean,
-            ): AudioSink = DefaultAudioSink.Builder(context)
-                .setAudioCapabilities(AudioCapabilities.DEFAULT_AUDIO_CAPABILITIES)
-                .setAudioProcessors(arrayOf(normalizer))
-                .setEnableFloatOutput(false)
-                .setAudioOffloadSupportProvider { _, _ -> AudioOffloadSupport.DEFAULT_UNSUPPORTED }
-                .build()
-        }
-        val player = ExoPlayer.Builder(this, renderers)
-            .setLoadControl(
-                androidx.media3.exoplayer.DefaultLoadControl.Builder()
-                    .setTargetBufferBytes(64 * 1024 * 1024)
-                    .setPrioritizeTimeOverSizeThresholds(false)
-                    .build(),
-            )
-            .setMediaSourceFactory(DefaultMediaSourceFactory(audioDataSource))
-            .setAudioAttributes(
-                AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(),
-                /* handleAudioFocus = */
-                true,
-            )
-            .setHandleAudioBecomingNoisy(true)
-            // For podcast episodes: the buttons in the app and the notification skip by these.
-            .setSeekBackIncrementMs(SKIP_BACK_MS)
-            .setSeekForwardIncrementMs(SKIP_FORWARD_MS)
-            .setWakeMode(C.WAKE_MODE_NETWORK)
-            .build()
+        val player = createSessionPlayer()
 
         val callback = SessionCallback()
         session = MediaLibrarySession.Builder(this, player, callback)
@@ -210,12 +177,71 @@ class PlaybackService : MediaLibraryService() {
             TranscodeWarmer(player, resolver, streamingClient, scope, enabled = {
                 !readAhead.enabled
             }).also { it.start() }
-        readAhead.start(player, scope)
+        scope.launch {
+            player.dominantDecoder.collect { decoder ->
+                readAhead.stop()
+                if (decoder is ExoPlayer) readAhead.start(decoder, scope)
+            }
+        }
         keepLikeButtonCurrent(player)
         stopDisabledDj(player)
         stopWhenSignedOut(player)
         removeDeletedLibraryTracks(player)
         persistence = PlaybackPersistence(player, playback, sessions, scope).also { it.start() }
+    }
+
+    private fun createSessionPlayer(): LocalDjPlayer {
+        val player = LocalDjPlayer(decoder(), decoder(), scope)
+        localFocus = LocalDjAudioFocus(this, player).also { it.start() }
+        scope.launch { player.transition.collect { localDj.publish(it) } }
+        scope.launch {
+            combine(localDj.device, localDj.armed, musicAi.capabilities) { device, armed, caps ->
+                if (caps.version > 0 && !caps.enabled("dj_interactive")) localDj.setArmed(false)
+                device && armed && caps.enabled("dj_interactive")
+            }.distinctUntilChanged().collect { player.setEnabled(it) }
+        }
+
+        return player
+    }
+
+    private fun decoder(): ExoPlayer {
+        val normalizer = NormalizationAudioProcessor(
+            gainForTrack = loudness::gainDb,
+            isEnabled = { loudness.enabled.value },
+            gainRevision = { loudness.level.value.ordinal },
+        )
+        val renderers = object : DefaultRenderersFactory(this) {
+            override fun buildAudioSink(
+                context: Context,
+                enableFloatOutput: Boolean,
+                enableAudioTrackPlaybackParams: Boolean,
+            ): AudioSink = DefaultAudioSink.Builder(context)
+                .setAudioCapabilities(AudioCapabilities.DEFAULT_AUDIO_CAPABILITIES)
+                .setAudioProcessors(arrayOf(normalizer))
+                .setEnableFloatOutput(false)
+                .setAudioOffloadSupportProvider { _, _ -> AudioOffloadSupport.DEFAULT_UNSUPPORTED }
+                .build()
+        }
+        return ExoPlayer.Builder(this, renderers)
+            .setLoadControl(
+                androidx.media3.exoplayer.DefaultLoadControl.Builder()
+                    .setBufferDurationsMs(15000, 60000, 1000, 2500)
+                    .setTargetBufferBytes(32 * 1024 * 1024)
+                    .setPrioritizeTimeOverSizeThresholds(false)
+                    .build(),
+            )
+            .setMediaSourceFactory(DefaultMediaSourceFactory(audioDataSource))
+            .setAudioAttributes(
+                AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(),
+                /* handleAudioFocus = */
+                false,
+            )
+            .setHandleAudioBecomingNoisy(false)
+            // For podcast episodes: the buttons in the app and the notification skip by these.
+            .setSeekBackIncrementMs(SKIP_BACK_MS)
+            .setSeekForwardIncrementMs(SKIP_FORWARD_MS)
+            .setWakeMode(C.WAKE_MODE_NETWORK)
+            .build()
     }
 
     /**
@@ -241,6 +267,7 @@ class PlaybackService : MediaLibraryService() {
 
     private fun stopDisabledDj(player: Player) {
         fun enforce() {
+            if (musicAi.capabilities.value.version == 0) return
             val id = player.currentMediaItem?.mediaId
             if (!DjIds.isDj(id)) return
             val reference = DjIds.referenceOf(id)
@@ -265,6 +292,8 @@ class PlaybackService : MediaLibraryService() {
             sessions.session.collect { paired ->
                 if (paired == null || paired.playbackOwner != expected) {
                     sleepTimer.set(null)
+                    localDj.setArmed(false)
+                    (player as? LocalDjPlayer)?.resetForOwner()
                     player.stop()
                     player.clearMediaItems()
                     stopSelf()
@@ -295,6 +324,9 @@ class PlaybackService : MediaLibraryService() {
         episodes?.stop()
         prefetch?.stop()
         warmer?.stop()
+        localFocus?.release()
+        localDj.setArmed(false)
+        localDj.publish(LocalDjTransition())
         scope.cancel()
         session?.run {
             player.release()
