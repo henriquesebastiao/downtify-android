@@ -20,6 +20,7 @@ import com.henriquesebastiao.downtify.ui.common.LocalSongMix
 @Composable
 fun PlayerOptions(track: Track?, sleepActive: Boolean, setSleepTimer: (Int?) -> Unit) {
     val startMix = LocalSongMix.current
+    val startDj = com.henriquesebastiao.downtify.ui.common.LocalSongDjMix.current
     var open by remember { mutableStateOf(false) }
     Box {
         CircleButton(DowntifyIcons.MoreVert, "Options de lecture", { open = true })
@@ -32,6 +33,15 @@ fun PlayerOptions(track: Track?, sleepActive: Boolean, setSleepTimer: (Int?) -> 
                         startMix(track)
                     },
                 )
+                HorizontalDivider()
+            }
+            if (track != null && LocalMusicAiCapabilities.current.enabled("dj_interactive") &&
+                LocalMusicAiCapabilities.current.enabled("similarity")
+            ) {
+                DropdownMenuItem(text = { Text("Lancer un mix DJ à partir de ce titre") }, onClick = {
+                    open = false
+                    startDj(track)
+                })
                 HorizontalDivider()
             }
             PlaybackSleepTimer.PRESETS.forEach { minutes ->

@@ -35,7 +35,7 @@ fun MusicDjPanel(viewModel: MusicDjViewModel = hiltViewModel()) {
     var theme by rememberSaveable { mutableStateOf("fete") }
     var count by rememberSaveable { mutableStateOf("12") }
     var mode by rememberSaveable { mutableStateOf("prepared") }
-    val ready = if (mode == "prepared") caps.dj.preparedReady else caps.dj.interactiveReady
+    val ready = if (mode == "prepared") caps.dj.preparedReady else caps.interactiveAvailable()
     LaunchedEffect(caps.features) {
         if (!caps.enabled("dj_" + mode)) mode = if (caps.enabled("dj_prepared")) "prepared" else "interactive"
     }
@@ -96,7 +96,10 @@ fun MusicDjPanel(viewModel: MusicDjViewModel = hiltViewModel()) {
         if (state.message.isNotEmpty()) Text(state.message)
         state.sessions.forEach { session ->
             Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-                Text("${session.theme} · ${session.tracks.size} titres", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "${session.theme} · ${session.trackCount ?: session.tracks.size} titres",
+                    style = MaterialTheme.typography.titleMedium,
+                )
                 Text(
                     when (session.state) {
                         "queued" -> "En attente"

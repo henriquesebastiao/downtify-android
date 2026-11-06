@@ -25,6 +25,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.launch
 
 val LocalSongMix = staticCompositionLocalOf<(Track) -> Unit> { {} }
+val LocalSongDjMix = staticCompositionLocalOf<(Track) -> Unit> { {} }
 
 @HiltViewModel
 class SongMixViewModel @Inject constructor(
@@ -32,6 +33,7 @@ class SongMixViewModel @Inject constructor(
     private val library: LibraryRepository,
     private val player: PlayerController,
     private val sessions: SessionStore,
+    private val dj: com.henriquesebastiao.downtify.core.player.DjPlaybackCoordinator,
 ) : ViewModel() {
     var busy by mutableStateOf(false)
         private set
@@ -40,6 +42,11 @@ class SongMixViewModel @Inject constructor(
 
     fun clearMessage() {
         message = null
+    }
+
+    fun startDj(seed: Track) {
+        dj.startSeed(seed.id)
+        message = "Préparation du mix DJ. Suivez son état dans la file du lecteur."
     }
 
     fun start(seed: Track) {
@@ -86,3 +93,6 @@ fun songMixAction(viewModel: SongMixViewModel = hiltViewModel()): (Track) -> Uni
     }
     return viewModel::start
 }
+
+@Composable
+fun songDjMixAction(viewModel: SongMixViewModel = hiltViewModel()): (Track) -> Unit = viewModel::startDj

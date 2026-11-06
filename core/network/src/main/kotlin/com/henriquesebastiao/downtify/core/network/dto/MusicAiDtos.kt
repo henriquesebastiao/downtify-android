@@ -10,6 +10,7 @@ import kotlinx.serialization.Serializable
     @SerialName("interactive_ready") val interactiveReady: Boolean = false,
     @SerialName("queue_supported") val queueSupported: Boolean = false,
     @SerialName("continuous_supported") val continuousSupported: Boolean = false,
+    @SerialName("interactive_trial_ready") val interactiveTrialReady: Boolean = false,
 )
 
 @Serializable data class MusicAiCapabilitiesDto(
@@ -20,8 +21,14 @@ import kotlinx.serialization.Serializable
     val model: MusicAiStatusDto = MusicAiStatusDto(),
     val dj: MusicAiStatusDto = MusicAiStatusDto(),
     val moods: List<String> = emptyList(),
+    @SerialName("home_cards") val homeCards: Boolean = false,
+    @SerialName("dj_request_cancel") val djRequestCancel: Boolean = false,
+    @SerialName("dj_light_status") val djLightStatus: Boolean = false,
+    @SerialName("dj_seed_mix") val djSeedMix: Boolean = false,
 ) {
     fun enabled(feature: String) = version == 1 && features[feature] == true
+    fun interactiveAvailable() =
+        enabled("dj_interactive") && (dj.interactiveReady || (enabled("dj_trial") && dj.interactiveTrialReady))
 }
 
 @Serializable data class MusicAiPreferencesDto(
@@ -38,6 +45,7 @@ import kotlinx.serialization.Serializable
     val album: String = "",
     val reason: String = "",
     val file: String = "",
+    val duration: Double = 0.0,
 )
 
 @Serializable data class MusicAiTracksDto(val tracks: List<MusicAiTrackDto> = emptyList(), val source: String = "local")
@@ -48,7 +56,12 @@ import kotlinx.serialization.Serializable
     val period: String,
     val count: Int,
     val created: Double = 0.0,
+    @SerialName("cover_track_ids") val coverTrackIds: List<String> = emptyList(),
+    val state: String = "ready",
+    val title: String = "",
 )
+
+@Serializable data class MusicAiHomeDto(val cards: List<MusicAiPlaylistDto> = emptyList())
 
 @Serializable data class MusicAiPlaylistsDto(val playlists: List<MusicAiPlaylistDto> = emptyList())
 

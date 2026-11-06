@@ -12,6 +12,9 @@ import kotlinx.serialization.Serializable
     @SerialName("queue_order") val queueOrder: Boolean = false,
     val continuous: Boolean = false,
     val style: String = "library",
+    @SerialName("seed_id") val seedId: String = "",
+    val trial: Boolean = false,
+    @SerialName("skip_seed") val skipSeed: Boolean = false,
 )
 
 @Serializable data class MusicDjTransitionDto(val reason: String = "")
@@ -21,6 +24,9 @@ import kotlinx.serialization.Serializable
     val start: Double = 0.0,
     val end: Double = 0.0,
     val transition: MusicDjTransitionDto? = null,
+    val cue: Double = 0.0,
+    val speed: Double = 1.0,
+    val occurrence: Int = -1,
 )
 
 @Serializable data class MusicDjSessionDto(
@@ -40,6 +46,8 @@ import kotlinx.serialization.Serializable
     val timeline: List<MusicDjMarkerDto> = emptyList(),
     @SerialName("media_origin") val mediaOrigin: Double? = null,
     val continuous: Boolean = false,
+    @SerialName("queue_order") val queueOrder: Boolean = false,
+    @SerialName("track_count") val trackCount: Int? = null,
 )
 
 @Serializable data class MusicDjSessionsDto(val sessions: List<MusicDjSessionDto> = emptyList())

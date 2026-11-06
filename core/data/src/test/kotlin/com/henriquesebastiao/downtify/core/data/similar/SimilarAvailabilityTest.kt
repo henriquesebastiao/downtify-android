@@ -42,7 +42,7 @@ class SimilarAvailabilityTest {
         every { sessions.current } answers { paired.value }
         every { sessions.session } returns paired
         val apis = ApiFactory(OkHttpClient())
-        ai = MusicAiRepository(sessions, apis, scope)
+        ai = MusicAiRepository(sessions, apis, mockk(relaxed = true), scope)
         similar = SimilarRepository(sessions, apis, ai)
     }
 
@@ -111,8 +111,16 @@ class SimilarAvailabilityTest {
         answer(200, """{"version":1,"features":{"similarity":true}}""")
         assertTrue(ai.refresh() is ServerResult.Ok)
         answer(503)
-        assertEquals(ServerResult.Failed(503), ai.refresh())
+        assertEquals(ServerResult.Failed(503), ai.refresh(force = true))
         assertEquals(1, ai.capabilities.value.version)
         assertTrue(ai.capabilities.value.enabled("similarity"))
+    }
+
+    @Test
+    fun `a warm capability cache avoids redundant foreground calls`() = runTest {
+        answer(200, """{"version":1,"features":{"similarity":true}}""")
+        assertTrue(ai.refresh() is ServerResult.Ok)
+        repeat(25) { assertTrue(ai.refresh() is ServerResult.Ok) }
+        assertEquals(1, server.requestCount)
     }
 }

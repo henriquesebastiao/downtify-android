@@ -8,16 +8,24 @@ import com.henriquesebastiao.downtify.core.data.musicai.MusicAiRepository
 import com.henriquesebastiao.downtify.core.data.sync.SyncCoordinator
 import com.henriquesebastiao.downtify.core.model.PlaybackContext
 import com.henriquesebastiao.downtify.core.model.PlaybackContextType
+import com.henriquesebastiao.downtify.core.model.Track
 import com.henriquesebastiao.downtify.core.network.dto.MusicAiPlaylistDto
 import com.henriquesebastiao.downtify.core.network.dto.MusicAiTrackDto
 import com.henriquesebastiao.downtify.core.player.PlayerController
+import com.henriquesebastiao.downtify.feature.collection.CollectionKind
+import com.henriquesebastiao.downtify.feature.collection.CollectionUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -31,6 +39,7 @@ data class MusicAiUiState(
     val source: String = "personalization",
     val busy: Boolean = false,
     val message: String = "",
+    val selectionId: String = "",
 )
 
 @HiltViewModel
@@ -43,6 +52,28 @@ class MusicAiViewModel @Inject constructor(
     val capabilities = music.capabilities
     private val mutable = MutableStateFlow(MusicAiUiState())
     val state = mutable.asStateFlow()
+    val collectionState = combine(state, library.library, library.likedIds, player.nowPlaying) {
+            selection,
+            snapshot,
+            liked,
+            playing,
+        ->
+        val tracks = snapshot?.tracks(selection.tracks.map { it.id }).orEmpty()
+        CollectionUiState(
+            kind = CollectionKind.Playlist,
+            loading = snapshot == null || (selection.busy && selection.tracks.isEmpty()),
+            title = selectionTitle(selection),
+            artist = "Playlist temporaire · ${if (selection.source == "weekly") "de la semaine" else "du jour"}",
+            tracks = tracks,
+            coverTrackId = tracks.firstOrNull { it.hasCover }?.id,
+            currentTrackId = playing.trackId,
+            isPlaying = playing.isPlaying,
+            isCurrentContext = selection.selectionId.isNotBlank() && playing.context == selectionContext(selection),
+            likedIds = liked.toSet(),
+        )
+    }.flowOn(
+        Dispatchers.Default,
+    ).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), CollectionUiState(kind = CollectionKind.Playlist))
     private var job: Job? = null
 
     init {
@@ -63,12 +94,7 @@ class MusicAiViewModel @Inject constructor(
             } catch (error: MusicAiFailure) {
                 mutable.update {
                     it.copy(
-                        message = when (error.status) {
-                            409 -> "Cette fonction est désactivée."
-                            503 -> "L’analyse sonore n’est pas encore prête."
-                            403 -> "Cette action nécessite un administrateur."
-                            else -> "Le serveur est indisponible. Réessayez."
-                        },
+                        message = musicAiFailureMessage(error),
                     )
                 }
             } finally {
@@ -109,6 +135,43 @@ class MusicAiViewModel @Inject constructor(
             )
         }
     }
+    fun refreshHome() = run {
+        music.refresh()
+        if (listOf("daily", "weekly", "personalization").any(capabilities.value::enabled)) {
+            val cards = music.home()
+            mutable.update {
+                it.copy(
+                    playlists = cards,
+                    message = if (music.homeStale) {
+                        "Actualisation différée ; vos dernières playlists restent disponibles."
+                    } else {
+                        ""
+                    },
+                )
+            }
+        }
+    }
+    fun openPlaylist(cadence: String, mood: String) = run {
+        mutable.update { it.copy(source = cadence, cadence = cadence, selectedMood = mood, tracks = emptyList()) }
+        music.refresh()
+        if (!capabilities.value.enabled(cadence)) {
+            mutable.update {
+                it.copy(message = "Cette fonction est désactivée. Retrouvez ses options dans Paramètres → IA.")
+            }
+        } else {
+            val tracks = music.playlist(cadence, mood)
+            mutable.update {
+                it.copy(
+                    tracks = tracks,
+                    source = cadence,
+                    cadence = cadence,
+                    selectedMood = mood,
+                    selectionId = java.util.UUID.randomUUID().toString(),
+                    message = if (tracks.isEmpty()) "Cette playlist est en préparation." else "",
+                )
+            }
+        }
+    }
     fun selectCadence(value: String) {
         if (value in listOf("daily", "weekly") && capabilities.value.enabled(value)) {
             mutable.update { it.copy(cadence = value) }
@@ -121,11 +184,26 @@ class MusicAiViewModel @Inject constructor(
     }
     fun forYou() = run {
         val tracks = music.recommendations()
-        mutable.update { it.copy(tracks = tracks, source = "personalization", selectedMood = "") }
+        mutable.update {
+            it.copy(
+                tracks = tracks,
+                source = "personalization",
+                selectedMood = "",
+                selectionId = java.util.UUID.randomUUID().toString(),
+            )
+        }
     }
     fun mood(cadence: String, mood: String) = run {
         val tracks = music.playlist(cadence, mood)
-        mutable.update { it.copy(tracks = tracks, source = cadence, cadence = cadence, selectedMood = mood) }
+        mutable.update {
+            it.copy(
+                tracks = tracks,
+                source = cadence,
+                cadence = cadence,
+                selectedMood = mood,
+                selectionId = java.util.UUID.randomUUID().toString(),
+            )
+        }
     }
     fun save(name: String) = run {
         val selection = mutable.value
@@ -152,8 +230,42 @@ class MusicAiViewModel @Inject constructor(
             player.play(
                 tracks,
                 tracks.indexOf(track).coerceAtLeast(0),
-                PlaybackContext(PlaybackContextType.Songs, "", ""),
+                selectionContext(mutable.value),
             )
         }
     }
+
+    fun playSelection(index: Int, shuffle: Boolean = false) {
+        val selection = mutable.value
+        val tracks = library.library.value?.tracks(selection.tracks.map { it.id }).orEmpty()
+        if (tracks.isNotEmpty()) {
+            player.play(
+                tracks,
+                index.coerceIn(tracks.indices),
+                selectionContext(selection),
+                shuffle,
+            )
+        }
+    }
+
+    fun playOrPause() {
+        if (collectionState.value.isCurrentContext) player.togglePlayPause() else playSelection(0)
+    }
+
+    fun addToQueue(track: Track) = player.addToQueue(track)
+    fun toggleLike(track: Track) {
+        viewModelScope.launch { library.setLiked(track.id, track.id !in library.likedIds.value) }
+    }
+
+    private fun selectionTitle(selection: MusicAiUiState) = if (selection.selectedMood.isBlank()) {
+        "À écouter maintenant"
+    } else {
+        mixTitle(
+            selection.source,
+            selection.selectedMood,
+        )
+    }
+
+    private fun selectionContext(selection: MusicAiUiState) =
+        PlaybackContext(PlaybackContextType.Songs, selection.selectionId, selectionTitle(selection))
 }

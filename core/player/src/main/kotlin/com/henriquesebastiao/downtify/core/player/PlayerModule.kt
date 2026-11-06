@@ -80,8 +80,11 @@ object PlayerModule {
     @Provides
     @Singleton
     @ArtworkDataSource
-    fun artworkDataSource(@ApplicationContext context: Context, http: OkHttpDataSource.Factory): DataSource.Factory =
-        DefaultDataSource.Factory(context, http)
+    fun artworkDataSource(
+        @ApplicationContext context: Context,
+        @com.henriquesebastiao.downtify.core.network.di.ArtworkClient client: OkHttpClient,
+    ): DataSource.Factory =
+        DefaultDataSource.Factory(context, OkHttpDataSource.Factory(client).setUserAgent(USER_AGENT))
 
     private const val USER_AGENT = "Downtify-Android"
 }

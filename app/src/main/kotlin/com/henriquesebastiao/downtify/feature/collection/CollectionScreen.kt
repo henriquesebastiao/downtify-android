@@ -144,6 +144,9 @@ fun CollectionScreen(
     onToggleOffline: () -> Unit = {},
     trackActions: TrackActions = TrackActions(),
     onToggleFavorite: () -> Unit = {},
+    headerArtwork: (@Composable () -> Unit)? = null,
+    headerExtras: (@Composable () -> Unit)? = null,
+    showOffline: Boolean = true,
 ) {
     val covers = LocalCoverUrls.current
     val coverUrl = state.playlist?.let { covers.playlist(it, state.coverTrackId, ServerUrls.COVER_LARGE) }
@@ -216,6 +219,9 @@ fun CollectionScreen(
                                 onPlayOrPause,
                                 onShuffle,
                                 onToggleOffline,
+                                headerArtwork,
+                                headerExtras,
+                                showOffline,
                             )
                         }
                     }
@@ -281,6 +287,9 @@ private fun Header(
     onPlayOrPause: () -> Unit,
     onShuffle: () -> Unit,
     onToggleOffline: () -> Unit,
+    headerArtwork: (@Composable () -> Unit)?,
+    headerExtras: (@Composable () -> Unit)?,
+    showOffline: Boolean,
 ) {
     val scheme = MaterialTheme.colorScheme
     Column(
@@ -291,20 +300,24 @@ private fun Header(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Spacing.lg),
     ) {
-        Artwork(
-            url = coverUrl,
-            contentDescription = null,
-            shape = DowntifyShape.Artwork,
-            placeholderIcon = if (state.kind ==
-                CollectionKind.Liked
-            ) {
-                DowntifyIcons.FavoriteFilled
-            } else {
-                DowntifyIcons.Album
-            },
-            tone = if (state.kind == CollectionKind.Liked) ArtworkTone.Primary else ArtworkTone.Neutral,
-            modifier = Modifier.size(COVER_SIZE),
-        )
+        if (headerArtwork != null) {
+            headerArtwork()
+        } else {
+            Artwork(
+                url = coverUrl,
+                contentDescription = null,
+                shape = DowntifyShape.Artwork,
+                placeholderIcon = if (state.kind ==
+                    CollectionKind.Liked
+                ) {
+                    DowntifyIcons.FavoriteFilled
+                } else {
+                    DowntifyIcons.Album
+                },
+                tone = if (state.kind == CollectionKind.Liked) ArtworkTone.Primary else ArtworkTone.Neutral,
+                modifier = Modifier.size(COVER_SIZE),
+            )
+        }
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(Spacing.sm),
@@ -327,7 +340,8 @@ private fun Header(
             }
             Details(state)
         }
-        Actions(state, title, onPlayOrPause, onShuffle, onToggleOffline)
+        headerExtras?.invoke()
+        Actions(state, title, onPlayOrPause, onShuffle, onToggleOffline, showOffline)
     }
 }
 
@@ -356,6 +370,7 @@ private fun Actions(
     onPlayOrPause: () -> Unit,
     onShuffle: () -> Unit,
     onToggleOffline: () -> Unit,
+    showOffline: Boolean,
 ) {
     val playing = state.isCurrentContext && state.isPlaying
     val scheme = MaterialTheme.colorScheme
@@ -367,11 +382,13 @@ private fun Actions(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {
-        OfflineChip(
-            offline = state.offline,
-            enabled = state.tracks.isNotEmpty() || state.offline.kept,
-            onClick = { if (state.offline.kept) confirmRemove = true else onToggleOffline() },
-        )
+        if (showOffline) {
+            OfflineChip(
+                offline = state.offline,
+                enabled = state.tracks.isNotEmpty() || state.offline.kept,
+                onClick = { if (state.offline.kept) confirmRemove = true else onToggleOffline() },
+            )
+        }
         Spacer(Modifier.weight(1f))
         CircleButton(
             DowntifyIcons.Shuffle,

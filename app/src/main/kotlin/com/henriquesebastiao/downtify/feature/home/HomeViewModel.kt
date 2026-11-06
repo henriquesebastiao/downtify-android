@@ -14,9 +14,11 @@ import com.henriquesebastiao.downtify.core.model.Playlist
 import com.henriquesebastiao.downtify.core.model.RecentContext
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 
 enum class ServerStatus { Streaming, Syncing, Unreachable, DifferentServer }
@@ -76,10 +78,12 @@ class HomeViewModel @Inject constructor(
             showDiscover = info?.capabilities?.discover == true,
             showPodcasts = info?.capabilities?.podcasts == true,
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), HomeUiState())
+    }.flowOn(
+        Dispatchers.Default,
+    ).stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), HomeUiState())
 
     /** Pull to refresh: the server rescans its folder, then the app syncs. */
-    fun refresh() = sync.requestSync(refresh = true)
+    fun refresh() = sync.requestSync()
 
     private companion object {
         const val JUMP_BACK_IN_SIZE = 6

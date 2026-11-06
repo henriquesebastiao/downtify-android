@@ -75,6 +75,6 @@ class SongMixViewModelTest {
             every { library } returns MutableStateFlow<LibrarySnapshot?>(LibrarySnapshot.Empty)
         }
         private val sessions = mockk<SessionStore> { every { current } returns mockk(relaxed = true) }
-        val viewModel = SongMixViewModel(ai, library, player, sessions)
+        val viewModel = SongMixViewModel(ai, library, player, sessions, mockk(relaxed = true))
     }
 }

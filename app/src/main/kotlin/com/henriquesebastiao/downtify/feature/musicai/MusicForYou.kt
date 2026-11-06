@@ -34,15 +34,15 @@ import com.henriquesebastiao.downtify.core.network.dto.MusicAiCapabilitiesDto
 import com.henriquesebastiao.downtify.core.network.dto.MusicAiPlaylistDto
 import com.henriquesebastiao.downtify.core.network.dto.MusicAiTrackDto
 
-private val moodNames = mapOf(
+internal val moodNames = mapOf(
     "calme" to "Calme",
     "concentration" to "Concentration",
-    "energie" to "Énergie",
+    "energie" to "Motivation",
     "fete" to "Fête",
     "melancolie" to "Mélancolie",
     "detente" to "Détente",
 )
-private val moodColors = mapOf(
+internal val moodColors = mapOf(
     "calme" to Color(0xFF4F46E5),
     "concentration" to Color(0xFF334155),
     "energie" to Color(0xFFC2410C),
@@ -50,7 +50,7 @@ private val moodColors = mapOf(
     "melancolie" to Color(0xFF1D4ED8),
     "detente" to Color(0xFF0F766E),
 )
-private fun mixTitle(cadence: String, mood: String) =
+internal fun mixTitle(cadence: String, mood: String) =
     "${if (cadence == "daily") "Mix du jour" else "Mix de la semaine"} · ${moodNames[mood].orEmpty()}"
 private fun selectionTitle(state: MusicAiUiState) =
     if (state.selectedMood.isBlank()) "À écouter maintenant" else mixTitle(state.source, state.selectedMood)
@@ -101,7 +101,7 @@ fun LazyListScope.musicDjThemeItems(
                             TextButton(
                                 onClick = { onStart(theme, style) },
                                 enabled =
-                                    !state.busy && caps.dj.interactiveReady,
+                                    !state.busy && caps.interactiveAvailable(),
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
                                 Column {
@@ -113,9 +113,9 @@ fun LazyListScope.musicDjThemeItems(
                     }
                 }
             }
-            if (!caps.dj.interactiveReady) {
+            if (!caps.interactiveAvailable()) {
                 Text(
-                    "Disponible après validation du moteur sur le serveur.",
+                    "Activez un moteur qualifié ou l’essai bêta volontaire dans Paramètres → IA.",
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
@@ -176,7 +176,7 @@ private fun LazyListScope.musicCatalogItems(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             for (card in pair) {
-                MusicMixCard(card, !state.busy && caps.model.ready, {
+                MusicMixCard(card, !state.busy, {
                     actions.mood(card.cadence, card.mood)
                 }, Modifier.weight(1f))
             }

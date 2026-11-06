@@ -159,6 +159,12 @@ class PlaybackService : MediaLibraryService() {
                 .build()
         }
         val player = ExoPlayer.Builder(this, renderers)
+            .setLoadControl(
+                androidx.media3.exoplayer.DefaultLoadControl.Builder()
+                    .setTargetBufferBytes(64 * 1024 * 1024)
+                    .setPrioritizeTimeOverSizeThresholds(false)
+                    .build(),
+            )
             .setMediaSourceFactory(DefaultMediaSourceFactory(audioDataSource))
             .setAudioAttributes(
                 AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(),

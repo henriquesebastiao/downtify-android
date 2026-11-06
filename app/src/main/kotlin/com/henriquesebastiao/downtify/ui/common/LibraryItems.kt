@@ -292,6 +292,7 @@ private data class TrackMenuColors(val container: Color, val content: Color)
 private fun TrackMenu(track: Track, isLiked: Boolean, actions: TrackActions, colors: TrackMenuColors) {
     if (actions == TrackActions()) return
     val startMix = LocalSongMix.current
+    val startDj = LocalSongDjMix.current
     var open by remember { mutableStateOf(false) }
     Box {
         CircleButton(
@@ -311,6 +312,14 @@ private fun TrackMenu(track: Track, isLiked: Boolean, actions: TrackActions, col
                         startMix(track)
                     },
                 )
+            }
+            if (LocalMusicAiCapabilities.current.enabled("dj_interactive") &&
+                LocalMusicAiCapabilities.current.enabled("similarity")
+            ) {
+                DropdownMenuItem(text = { Text("Lancer un mix DJ à partir de ce titre") }, onClick = {
+                    open = false
+                    startDj(track)
+                })
             }
             actions.onAddToQueue?.let { add ->
                 DropdownMenuItem(

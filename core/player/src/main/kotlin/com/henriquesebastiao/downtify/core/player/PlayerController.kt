@@ -18,6 +18,7 @@ import com.henriquesebastiao.downtify.core.data.di.ApplicationScope
 import com.henriquesebastiao.downtify.core.data.library.LibraryRepository
 import com.henriquesebastiao.downtify.core.data.library.RecentsRepository
 import com.henriquesebastiao.downtify.core.data.playback.playbackOwner
+import com.henriquesebastiao.downtify.core.model.DjIds
 import com.henriquesebastiao.downtify.core.model.PlaybackContext
 import com.henriquesebastiao.downtify.core.model.PodcastEpisode
 import com.henriquesebastiao.downtify.core.model.PodcastShow
@@ -72,6 +73,8 @@ class PlayerController @Inject constructor(
     private var controller: MediaController? = null
     private var ticker: Job? = null
     private val mutableState = MutableStateFlow(PlayerState())
+    private val mutableSelectionVersion = MutableStateFlow(0L)
+    val selectionVersion = mutableSelectionVersion.asStateFlow()
     private val mutableEvents = MutableSharedFlow<PlayerEvent>(extraBufferCapacity = 1)
 
     /** Everything, position ticks included (twice a second while playing): collect it only where shown. */
@@ -146,6 +149,7 @@ class PlayerController @Inject constructor(
     /** Voice intents use the same local search resolver as Android Auto. Never search or download online. */
     suspend fun playLibrarySearch(query: String) {
         if (query.isBlank()) return
+        mutableSelectionVersion.value++
         val owner = withContext(Dispatchers.IO) { sessions.current?.playbackOwner } ?: return
         val player = connect()
         if (sessions.current?.playbackOwner != owner) return
@@ -185,6 +189,7 @@ class PlayerController @Inject constructor(
 
     fun play(tracks: List<Track>, startIndex: Int, from: PlaybackContext, shuffle: Boolean = false) {
         if (tracks.isEmpty()) return
+        mutableSelectionVersion.value++
         main.launch {
             val player = connect()
             val baseUrl = sessions.current?.baseUrl
@@ -208,6 +213,7 @@ class PlayerController @Inject constructor(
      */
     fun playStreams(entries: List<StreamEntry>, startIndex: Int, from: PlaybackContext, shuffle: Boolean = false) {
         if (entries.isEmpty()) return
+        mutableSelectionVersion.value++
         main.launch {
             val player = connect()
             val start = if (shuffle && startIndex == 0) {
@@ -240,6 +246,7 @@ class PlayerController @Inject constructor(
 
     /** Plays a downloaded episode from where the server says the user stopped. */
     fun playEpisode(episode: PodcastEpisode, show: PodcastShow) {
+        mutableSelectionVersion.value++
         val baseUrl = sessions.current?.baseUrl ?: return
         val item = MediaItems.episode(episode, show, baseUrl) ?: return
         main.launch {
@@ -263,7 +270,7 @@ class PlayerController @Inject constructor(
     fun setSpeed(speed: Float) = command { it.setPlaybackSpeed(speed) }
 
     fun togglePlayPause() = command {
-        if (it.isPlaying) {
+        if (it.playWhenReady) {
             it.pause()
         } else {
             if (it.playbackState == Player.STATE_IDLE) it.prepare()
@@ -275,12 +282,46 @@ class PlayerController @Inject constructor(
     fun pause() = command { it.pause() }
 
     /** Insert a render without discarding the classic queue. All media uses the same session. */
-    fun playDj(id: String, title: String, durationMs: Long, mode: String = "prepared") {
+    fun playDj(
+        id: String,
+        title: String,
+        durationMs: Long,
+        mode: String = "prepared",
+        expectedSelection: Long? = null,
+        sessionPlan: com.henriquesebastiao.downtify.core.network.dto.MusicDjSessionDto? = null,
+    ) {
         val owner = sessions.current?.playbackOwner ?: return
-        val item = DjMediaItems.from(id, title, durationMs, mode)
+        val initialItem = DjMediaItems.from(id, title, durationMs, mode)
         main.launch {
             val player = connect()
             if (sessions.current?.playbackOwner != owner) return@launch
+            if (expectedSelection != null && mutableSelectionVersion.value != expectedSelection) return@launch
+            mutableSelectionVersion.value++
+            val previous = player.currentMediaItem?.mediaMetadata?.extras
+            val wasDj = DjIds.referenceOf(player.currentMediaItem?.mediaId) != null
+            val extras = Bundle().apply {
+                putInt(
+                    "djClassicIndex",
+                    if (wasDj) {
+                        previous?.getInt(
+                            "djClassicIndex",
+                        ) ?: 0
+                    } else {
+                        player.currentMediaItemIndex.coerceAtLeast(0)
+                    },
+                )
+                putLong(
+                    "djClassicPosition",
+                    if (wasDj) previous?.getLong("djClassicPosition") ?: 0 else player.currentPosition.coerceAtLeast(0),
+                )
+                putInt("djQueueAnchor", getInt("djClassicIndex"))
+                if (mode == "interactive") putBoolean("djStartOnLoad", true)
+            }
+            val base = initialItem.buildUpon().setMediaMetadata(
+                initialItem.mediaMetadata.buildUpon().setExtras(extras).build(),
+            ).build()
+            val item =
+                sessionPlan?.let { DjTimeline.metadata(base, it, 0, sessions.current?.baseUrl.orEmpty()) } ?: base
             val existing = (0 until player.mediaItemCount).firstOrNull {
                 player.getMediaItemAt(it).mediaId ==
                     item.mediaId
@@ -294,16 +335,90 @@ class PlayerController @Inject constructor(
         }
     }
 
-    fun queueDj(id: String, title: String, durationMs: Long) = command {
+    fun queueDj(
+        id: String,
+        title: String,
+        durationMs: Long,
+        sessionPlan: com.henriquesebastiao.downtify.core.network.dto.MusicDjSessionDto? = null,
+        preserveQueue: Boolean = true,
+    ) = command {
         val item = DjMediaItems.from(id, title, durationMs, "interactive")
-        val extras = Bundle().apply { putBoolean("djStartOnLoad", true) }
+        val extras = Bundle().apply {
+            putBoolean("djStartOnLoad", true)
+            putBoolean("djOwnQueue", preserveQueue)
+            putInt("djClassicIndex", it.currentMediaItemIndex + 1)
+            putInt("djQueueAnchor", it.currentMediaItemIndex + 1)
+            putLong("djClassicPosition", 0)
+        }
+        val base = item.buildUpon().setMediaMetadata(item.mediaMetadata.buildUpon().setExtras(extras).build()).build()
+        val planned =
+            sessionPlan?.let { plan -> DjTimeline.metadata(base, plan, 0, sessions.current?.baseUrl.orEmpty()) } ?: base
         it.addMediaItem(
             (it.currentMediaItemIndex + 1).coerceIn(0, it.mediaItemCount),
-            item.buildUpon().setMediaMetadata(item.mediaMetadata.buildUpon().setExtras(extras).build()).build(),
+            planned,
         )
     }
 
     fun exitDj(id: String) = command {
+        val current = it.currentMediaItem
+        if (DjIds.referenceOf(current?.mediaId)?.id == id && current != null) {
+            val extras = current.mediaMetadata.extras
+            val absolute = DjTimeline.position(it, extras?.getLong("djOrigin") ?: 0)
+            val point = DjTimeline.resumePoint(current, absolute)
+            val classic = (0 until it.mediaItemCount).map(it::getMediaItemAt).filter { row ->
+                DjIds.referenceOf(row.mediaId) ==
+                    null
+            }
+            val anchor = extras?.getInt("djQueueAnchor") ?: 0
+            val preferred = anchor + (point?.occurrence ?: 0)
+            var selection = classic
+            var index = if (point != null) {
+                if (classic.getOrNull(preferred)?.mediaId ==
+                    point.id
+                ) {
+                    preferred
+                } else {
+                    classic.indexOfFirst { row -> row.mediaId == point.id }
+                }
+            } else {
+                (extras?.getInt("djClassicIndex") ?: 0).coerceIn(0, (classic.size - 1).coerceAtLeast(0))
+            }
+            if (point != null &&
+                (extras?.getBoolean("djOwnQueue") != true || extras.getBoolean("djQueueOrder") != true || index < 0)
+            ) {
+                val rows = DjTimeline.resumeRows(current)
+                val fallback = DjTimeline.fallbackItems(current, sessions.current?.baseUrl.orEmpty())
+                val items = rows.withIndex().mapNotNull { (ordinal, row) ->
+                    val media =
+                        library.library.value?.byId?.get(row.id)?.let { track ->
+                            MediaItems.from(track, sessions.current?.baseUrl)
+                        }
+                            ?: fallback[row.id]
+                    media?.let { ordinal to it }
+                }
+                val occurrence =
+                    rows.indexOfFirst { row ->
+                        row.occurrence >= 0 && row.occurrence == point.occurrence
+                    }.takeIf { ordinal ->
+                        ordinal >=
+                            0
+                    }
+                        ?: point.occurrence
+                selection = items.map { pair -> pair.second }
+                index = items.indexOfFirst { pair -> pair.first == occurrence }
+            }
+            val wantsPlay = it.playWhenReady
+            if (selection.isNotEmpty() && index >= 0) {
+                it.setMediaItems(selection, index, point?.sourceMs ?: extras?.getLong("djClassicPosition") ?: 0)
+                it.setPlaybackSpeed(1f)
+                it.prepare()
+                it.playWhenReady = wantsPlay
+            } else {
+                it.pause()
+                it.clearMediaItems()
+            }
+            return@command
+        }
         for (index in (0 until it.mediaItemCount).reversed()) {
             if (com.henriquesebastiao.downtify.core.model.DjIds.referenceOf(it.getMediaItemAt(index).mediaId)?.id ==
                 id
@@ -335,7 +450,10 @@ class PlayerController @Inject constructor(
         mutableState.update { s -> s.copy(positionMs = positionMs) }
     }
 
-    fun skipTo(index: Int) = command { it.seekToDefaultPosition(index) }
+    fun skipTo(index: Int) {
+        mutableSelectionVersion.value++
+        command { it.seekToDefaultPosition(index) }
+    }
 
     /** "Add to queue": plays after the current song and anything queued before it. */
     fun addToQueue(track: Track) {

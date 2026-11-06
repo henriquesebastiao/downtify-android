@@ -41,6 +41,7 @@ private val features = linkedMapOf(
     "external_beta" to "Découverte externe — bêta",
     "dj_prepared" to "Sets DJ préparés",
     "dj_interactive" to "DJ en temps réel",
+    "dj_trial" to "DJ non qualifié — essai bêta volontaire",
 )
 
 @OptIn(ExperimentalMaterial3Api::class)

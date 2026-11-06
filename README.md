@@ -121,19 +121,42 @@ Android Auto stability: see [the diagnostic and receiver acceptance checklist](d
 
 ## Experimental local music AI and DJ beta
 
-+The optional matching-server integration adds For you playlists, mixes based on
-+a song, thematic continuous DJ and a DJ button on the current queue. The normal
-+player retains pause, next, volume and a 5–60 minute sleep timer, while showing
-+the current/next DJ title and transition progress. Playlist menus use three recent
-+destinations followed by a bounded selector.
-+
-+**All AI modules default off on new installations and accounts.** The server does
-+the model inference and mixing; Android downloads no AI model. Existing explicit
-+preferences are preserved. The latest server engine still requires its one-hour
-+real playback qualification before ordinary interactive sessions are available.
-+
-+Debug assembly, 454 unit tests (two skipped), Spotless, Detekt and Lint passed for
-+the delivered beta. Physical-device background acceptance and phone battery/CPU/
-+memory/data measurements remain pending. See [beta behavior, resource use and
-+limits](docs/music-ai.md).
-+
+**All server AI modules and the additional unqualified-DJ trial default off
+for new installations/accounts.** Existing explicit preferences are preserved.
+
+My music keeps the normal library visible. Four daily playlist cards sit under
+favorite playlists: Relaxation, Focus, Motivation and Calm. See all opens daily
+and weekly selections. The daily cards use local vector artwork with mood colors.
+Each selection opens the same native playlist screen as a saved playlist.
+Save a named, stable copy from its header; automatic renewal never changes it. A dedicated DJ shortcut sits beside Discover, Similar
+tracks and Podcasts. Song/player menus distinguish a classic mix from a DJ mix;
+the current queue retains its DJ button.
+
+One application-scoped coordinator owns preparation and transitions into the
+existing Media3 foreground service and MediaSession. Pause is local and
+immediate; delayed renderer statuses cannot restart playback. Generations,
+account ownership and request cancellation fence obsolete preparations. Leaving
+DJ maps the dominant audible title back to its original source time.
+
+Known capabilities and home cards have a small private cache scoped to the
+pairing. Foreground/cache invalidation replaces redundant timers. Commands,
+catalog queries, images and audio use separate network dispatchers. Error
+messages distinguish connection, authentication, incompatible responses,
+disabled features, missing analysis and a busy engine. Home sorting runs off
+the main thread.
+
+The optimized beta build is non-debuggable and enables R8/resource shrinking;
+it uses a profileable manifest for physical-device benchmarks. Its audio
+allocator target is 64 MiB. Live HLS bypasses the persistent library audio cache.
+These are configured budgets, not measured phone memory, battery or temperature.
+Model inference and transition rendering remain on the server; no on-device
+AI model is downloaded. The local engine remains unavailable pending ONNX and
+physical-device validation.
+
+Corrective player tests cover 25 repeated mode cycles, local pause intent,
+stale status fencing and dominant-title/source-time mapping. Server/web checks
+and a synthetic 50,000-entry home comparison are documented in the matching
+[server PR](https://github.com/henriquesebastiao/downtify/pull/547).
+Actual Pixel startup/latency, Bluetooth/background/network recovery, thermal
+behavior, comparative listening and the sustained one-hour qualification are
+still pending. This remains a draft beta. See [behavior and limits](docs/music-ai.md).

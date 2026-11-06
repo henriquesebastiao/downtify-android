@@ -59,6 +59,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import com.henriquesebastiao.downtify.AppState
 import com.henriquesebastiao.downtify.MainViewModel
 import com.henriquesebastiao.downtify.R
@@ -176,6 +177,7 @@ private fun MainShell() {
     // Now Playing, open or closed or anywhere between: it grows out of the mini player and shrinks back into it.
     val expansion = rememberPlayerExpansion()
     val mixAction = com.henriquesebastiao.downtify.ui.common.songMixAction()
+    val djMixAction = com.henriquesebastiao.downtify.ui.common.songDjMixAction()
     val scope = rememberCoroutineScope()
     LaunchedEffect(hasMedia) { if (!hasMedia) expansion.snapTo(open = false) }
     // The side menu, opened from Home's menu button.
@@ -267,6 +269,7 @@ private fun MainShell() {
                         LocalBottomBarsInset provides covered,
                         com.henriquesebastiao.downtify.ui.common.LocalMusicAiCapabilities provides aiCapabilities,
                         com.henriquesebastiao.downtify.ui.common.LocalSongMix provides mixAction,
+                        com.henriquesebastiao.downtify.ui.common.LocalSongDjMix provides djMixAction,
                     ) {
                         Box(Modifier.fillMaxSize().then(content)) {
                             MoveToTrashHost(onMessage = { text -> scope.launch { snackbar.showSnackbar(text) } }) {
@@ -301,6 +304,7 @@ private fun MainShell() {
                 CompositionLocalProvider(
                     com.henriquesebastiao.downtify.ui.common.LocalMusicAiCapabilities provides aiCapabilities,
                     com.henriquesebastiao.downtify.ui.common.LocalSongMix provides mixAction,
+                    com.henriquesebastiao.downtify.ui.common.LocalSongDjMix provides djMixAction,
                 ) {
                     NowPlayingOverlay(
                         expansion = expansion,
@@ -335,7 +339,11 @@ private fun AppNavHost(navController: NavHostController, onOpenMenu: () -> Unit)
                 onOpenDiscover = { navController.navigate(DiscoverDestination) },
                 onOpenPodcasts = { navController.navigate(PodcastsDestination) },
                 onOpenSimilar = { navController.navigate(SimilarRoute()) },
-                onOpenMusicAi = { navController.navigate(com.henriquesebastiao.downtify.ui.navigation.MusicAiRoute) },
+                onOpenForYou = { navController.navigate(com.henriquesebastiao.downtify.ui.navigation.ForYouRoute()) },
+                onOpenMoodPlaylist = { cadence, mood ->
+                    navController.navigate(com.henriquesebastiao.downtify.ui.navigation.ForYouRoute(cadence, mood))
+                },
+                onOpenDj = { navController.navigate(com.henriquesebastiao.downtify.ui.navigation.MusicDjRoute()) },
             )
         }
         composable<SearchDestination> {
@@ -366,6 +374,32 @@ private fun AppNavHost(navController: NavHostController, onOpenMenu: () -> Unit)
         }
         composable<com.henriquesebastiao.downtify.ui.navigation.MusicAiRoute> {
             com.henriquesebastiao.downtify.feature.musicai.MusicAiRoute(onBack = navController::popBackStack)
+        }
+        composable<com.henriquesebastiao.downtify.ui.navigation.ForYouRoute> { entry ->
+            val args = entry.toRoute<com.henriquesebastiao.downtify.ui.navigation.ForYouRoute>()
+            com.henriquesebastiao.downtify.feature.musicai.MusicPlaylistsRoute(
+                navController::popBackStack,
+                {
+                    navController.navigate(com.henriquesebastiao.downtify.ui.navigation.MusicAiRoute)
+                },
+                args.cadence,
+                args.mood,
+                onOpenPlaylist = { c, m ->
+                    navController.navigate(com.henriquesebastiao.downtify.ui.navigation.ForYouRoute(c, m))
+                },
+                onArtist = toArtist,
+                onAlbum = toAlbum,
+            )
+        }
+        composable<com.henriquesebastiao.downtify.ui.navigation.MusicDjRoute> { entry ->
+            val args = entry.toRoute<com.henriquesebastiao.downtify.ui.navigation.MusicDjRoute>()
+            com.henriquesebastiao.downtify.feature.musicai.MusicStudioRoute(
+                navController::popBackStack,
+                {
+                    navController.navigate(com.henriquesebastiao.downtify.ui.navigation.MusicAiRoute)
+                },
+                args.seed,
+            )
         }
         composable<DiscoverDestination> {
             DiscoverRoute(
@@ -586,7 +620,7 @@ private fun NowPlayingOverlay(
             controls = controls,
             dj = com.henriquesebastiao.downtify.feature.player.QueueDjState(
                 available = djCaps.enabled("dj_interactive") && djCaps.dj.queueSupported,
-                ready = djCaps.dj.interactiveReady && djCaps.dj.queueSupported,
+                ready = djCaps.interactiveAvailable() && djCaps.dj.queueSupported,
                 active = djArmed || djBusy,
                 message = djMessage,
             ),

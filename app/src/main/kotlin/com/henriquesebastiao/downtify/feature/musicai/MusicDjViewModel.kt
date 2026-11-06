@@ -10,7 +10,6 @@ import com.henriquesebastiao.downtify.core.player.PlayerController
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.util.UUID
 import javax.inject.Inject
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -30,14 +29,24 @@ data class MusicDjUiState(
 class MusicDjViewModel @Inject constructor(
     private val music: MusicAiRepository,
     private val player: PlayerController,
+    private val coordinator: com.henriquesebastiao.downtify.core.player.DjPlaybackCoordinator,
 ) : ViewModel() {
     private val mutable = MutableStateFlow(MusicDjUiState())
     val state = mutable.asStateFlow()
     val capabilities = music.capabilities
     private val mutex = Mutex()
+    private var ownBusy = false
     private var pending: Pair<Triple<String, String, Int>, String>? = null
 
     init {
+        viewModelScope.launch {
+            coordinator.message.collectLatest { message ->
+                if (message.isNotBlank()) mutable.update { it.copy(message = message) }
+            }
+        }
+        viewModelScope.launch {
+            coordinator.busy.collectLatest { busy -> mutable.update { it.copy(busy = ownBusy || busy) } }
+        }
         viewModelScope.launch {
             music.session.drop(1).collectLatest {
                 mutable.value = MusicDjUiState()
@@ -75,7 +84,7 @@ class MusicDjViewModel @Inject constructor(
         ) {
             music.capabilities.value.dj.preparedReady
         } else {
-            music.capabilities.value.dj.interactiveReady
+            music.capabilities.value.interactiveAvailable()
         }
         if (!music.capabilities.value.enabled("dj_" + mode) || !ready) {
             return@action
@@ -87,30 +96,21 @@ class MusicDjViewModel @Inject constructor(
         pending = null
     }
 
-    fun stop(id: String) = action { music.djStop(id) }
-    fun continuous(theme: String, style: String) = action {
-        val owner = music.session.value
-        val caps = music.capabilities.value
-        if (!caps.enabled("dj_interactive") || !caps.dj.interactiveReady || !caps.dj.continuousSupported) return@action
-        val created = music.djContinuous(theme, style, UUID.randomUUID().toString())
-        mutable.update { it.copy(message = "Préparation du DJ continu ; votre écoute reste disponible.") }
-        repeat(450) {
-            delay(2000)
-            if (owner != music.session.value) return@action
-            if (!music.capabilities.value.enabled("dj_interactive")) return@action
-            val session = music.djSession(created.id)
-            if (session.state in setOf("failed", "stopped", "cancelled")) throw MusicAiFailure()
-            if (session.state == "playing") {
-                player.playDj(session.id, "DJ continu · $theme", 0, "interactive")
-                mutable.update { it.copy(message = "DJ continu lancé dans le lecteur.") }
-                return@action
-            }
+    fun stop(id: String) {
+        if (player.state.value.dj?.id == id) coordinator.stop() else action { music.djStop(id) }
+    }
+    fun continuous(theme: String, style: String) = coordinator.startTheme(theme, style)
+    fun seed(id: String) = coordinator.startSeed(id)
+
+    fun command(session: MusicDjSessionDto, operation: String, payload: Map<String, String> = emptyMap()) {
+        if (player.state.value.dj?.id == session.id && operation in setOf("pause", "resume")) {
+            if (operation == "pause") player.pause() else player.resume()
+            return
         }
-        music.djStop(created.id)
-        mutable.update { it.copy(message = "Préparation trop longue. Essayez une sélection plus petite.") }
+        action { commandRemote(session, operation, payload) }
     }
 
-    fun command(session: MusicDjSessionDto, operation: String, payload: Map<String, String> = emptyMap()) = action {
+    private suspend fun commandRemote(session: MusicDjSessionDto, operation: String, payload: Map<String, String>) {
         val result = music.djCommand(session.id, operation, payload)
         if (player.state.value.dj?.id == session.id) {
             if (operation == "pause") player.pause()
@@ -129,6 +129,7 @@ class MusicDjViewModel @Inject constructor(
 
     private fun action(work: suspend () -> Unit) {
         if (mutable.value.busy) return
+        ownBusy = true
         mutable.update { it.copy(busy = true, message = "") }
         viewModelScope.launch {
             try {
@@ -137,16 +138,12 @@ class MusicDjViewModel @Inject constructor(
             } catch (error: MusicAiFailure) {
                 mutable.update {
                     it.copy(
-                        message = when (error.status) {
-                            409 -> "Le module DJ est désactivé."
-                            429 -> "Deux sets sont déjà en attente."
-                            503 -> "Le moteur DJ se prépare encore."
-                            else -> "La demande n’a pas abouti. Vous pouvez réessayer."
-                        },
+                        message = musicAiFailureMessage(error),
                     )
                 }
             } finally {
-                mutable.update { it.copy(busy = false) }
+                ownBusy = false
+                mutable.update { it.copy(busy = coordinator.busy.value) }
             }
         }
     }
@@ -157,7 +154,20 @@ class MusicDjViewModel @Inject constructor(
         ) {
             return
         }
-        player.playDj(session.id, "Set DJ · ${session.theme}", (session.duration * 1000).toLong(), session.mode)
+        val selection = player.selectionVersion.value
+        val owner = music.session.value
+        viewModelScope.launch {
+            try {
+                val full = if (session.tracks.isEmpty()) music.djSession(session.id) else session
+                if (selection == player.selectionVersion.value &&
+                    owner == music.session.value
+                ) {
+                    coordinator.listen(full, "Set DJ · ${full.theme}")
+                }
+            } catch (error: MusicAiFailure) {
+                mutable.update { it.copy(message = musicAiFailureMessage(error)) }
+            }
+        }
     }
 
     fun seek(session: MusicDjSessionDto, seconds: Double) {

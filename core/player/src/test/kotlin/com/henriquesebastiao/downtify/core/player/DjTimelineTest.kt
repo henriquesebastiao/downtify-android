@@ -5,6 +5,7 @@ import com.henriquesebastiao.downtify.core.network.dto.MusicDjMarkerDto
 import com.henriquesebastiao.downtify.core.network.dto.MusicDjSessionDto
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -43,5 +44,35 @@ class DjTimelineTest {
         assertEquals("Next", dj.title)
         assertEquals(90000L, dj.start)
         assertEquals("", dj.nextTitle)
+    }
+
+    @Test fun `returning to normal chooses the dominant deck and its original source position`() {
+        val value = session.copy(
+            timeline = listOf(
+                MusicDjMarkerDto("one", 0.0, 100.0, cue = 10.0),
+                MusicDjMarkerDto("two", 90.0, 200.0, cue = 5.0, speed = 1.02),
+            ),
+        )
+        val item = DjTimeline.metadata(
+            DjMediaItems.from(id, "Set", 0, "interactive"),
+            value,
+            97000,
+            "https://fixture.test",
+        )
+        val point = requireNotNull(DjTimeline.resumePoint(item, 97000))
+        assertEquals("two", point.id)
+        assertEquals(12140L, point.sourceMs)
+        assertEquals(1, point.occurrence)
+        assertEquals("one", DjTimeline.resumePoint(item, 93000)?.id)
+    }
+
+    @Test fun `unchanged metadata reuses the same media item instead of rebuilding the player timeline`() {
+        val item = DjTimeline.metadata(
+            DjMediaItems.from(id, "Set", 0, "interactive"),
+            session,
+            20000,
+            "https://fixture.test",
+        )
+        assertSame(item, DjTimeline.metadata(item, session, 22000, "https://fixture.test"))
     }
 }

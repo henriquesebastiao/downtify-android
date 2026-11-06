@@ -19,6 +19,9 @@ import retrofit2.http.Query
 
 /** Optional versioned endpoints; pairing and authentication use the normal client. */
 interface MusicAiApi : MusicDjApi {
+    @GET("api/v1/music-ai/home")
+    suspend fun home(): com.henriquesebastiao.downtify.core.network.dto.MusicAiHomeDto
+
     @GET("api/v1/music-ai/capabilities")
     suspend fun capabilities(): MusicAiCapabilitiesDto
 
