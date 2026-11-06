@@ -297,26 +297,7 @@ class PlayerController @Inject constructor(
             if (sessions.current?.playbackOwner != owner) return@launch
             if (expectedSelection != null && mutableSelectionVersion.value != expectedSelection) return@launch
             mutableSelectionVersion.value++
-            val previous = player.currentMediaItem?.mediaMetadata?.extras
-            val wasDj = DjIds.referenceOf(player.currentMediaItem?.mediaId) != null
-            val extras = Bundle().apply {
-                putInt(
-                    "djClassicIndex",
-                    if (wasDj) {
-                        previous?.getInt(
-                            "djClassicIndex",
-                        ) ?: 0
-                    } else {
-                        player.currentMediaItemIndex.coerceAtLeast(0)
-                    },
-                )
-                putLong(
-                    "djClassicPosition",
-                    if (wasDj) previous?.getLong("djClassicPosition") ?: 0 else player.currentPosition.coerceAtLeast(0),
-                )
-                putInt("djQueueAnchor", getInt("djClassicIndex"))
-                if (mode == "interactive") putBoolean("djStartOnLoad", true)
-            }
+            val extras = djClassicExtras(player, mode)
             val base = initialItem.buildUpon().setMediaMetadata(
                 initialItem.mediaMetadata.buildUpon().setExtras(extras).build(),
             ).build()
@@ -332,6 +313,29 @@ class PlayerController @Inject constructor(
             player.setPlaybackSpeed(1f)
             player.prepare()
             player.play()
+        }
+    }
+
+    private fun djClassicExtras(player: Player, mode: String): Bundle {
+        val previous = player.currentMediaItem?.mediaMetadata?.extras
+        val wasDj = DjIds.referenceOf(player.currentMediaItem?.mediaId) != null
+        return Bundle().apply {
+            putInt(
+                "djClassicIndex",
+                if (wasDj) {
+                    previous?.getInt(
+                        "djClassicIndex",
+                    ) ?: 0
+                } else {
+                    player.currentMediaItemIndex.coerceAtLeast(0)
+                },
+            )
+            putLong(
+                "djClassicPosition",
+                if (wasDj) previous?.getLong("djClassicPosition") ?: 0 else player.currentPosition.coerceAtLeast(0),
+            )
+            putInt("djQueueAnchor", getInt("djClassicIndex"))
+            if (mode == "interactive") putBoolean("djStartOnLoad", true)
         }
     }
 
@@ -359,74 +363,88 @@ class PlayerController @Inject constructor(
         )
     }
 
-    fun exitDj(id: String) = command {
-        val current = it.currentMediaItem
+    fun exitDj(id: String) = command { player ->
+        val current = player.currentMediaItem
         if (DjIds.referenceOf(current?.mediaId)?.id == id && current != null) {
-            val extras = current.mediaMetadata.extras
-            val absolute = DjTimeline.position(it, extras?.getLong("djOrigin") ?: 0)
-            val point = DjTimeline.resumePoint(current, absolute)
-            val classic = (0 until it.mediaItemCount).map(it::getMediaItemAt).filter { row ->
-                DjIds.referenceOf(row.mediaId) ==
-                    null
-            }
-            val anchor = extras?.getInt("djQueueAnchor") ?: 0
-            val preferred = anchor + (point?.occurrence ?: 0)
-            var selection = classic
-            var index = if (point != null) {
-                if (classic.getOrNull(preferred)?.mediaId ==
-                    point.id
-                ) {
-                    preferred
-                } else {
-                    classic.indexOfFirst { row -> row.mediaId == point.id }
-                }
-            } else {
-                (extras?.getInt("djClassicIndex") ?: 0).coerceIn(0, (classic.size - 1).coerceAtLeast(0))
-            }
-            if (point != null &&
-                (extras?.getBoolean("djOwnQueue") != true || extras.getBoolean("djQueueOrder") != true || index < 0)
-            ) {
-                val rows = DjTimeline.resumeRows(current)
-                val fallback = DjTimeline.fallbackItems(current, sessions.current?.baseUrl.orEmpty())
-                val items = rows.withIndex().mapNotNull { (ordinal, row) ->
-                    val media =
-                        library.library.value?.byId?.get(row.id)?.let { track ->
-                            MediaItems.from(track, sessions.current?.baseUrl)
-                        }
-                            ?: fallback[row.id]
-                    media?.let { ordinal to it }
-                }
-                val occurrence =
-                    rows.indexOfFirst { row ->
-                        row.occurrence >= 0 && row.occurrence == point.occurrence
-                    }.takeIf { ordinal ->
-                        ordinal >=
-                            0
-                    }
-                        ?: point.occurrence
-                selection = items.map { pair -> pair.second }
-                index = items.indexOfFirst { pair -> pair.first == occurrence }
-            }
-            val wantsPlay = it.playWhenReady
-            if (selection.isNotEmpty() && index >= 0) {
-                it.setMediaItems(selection, index, point?.sourceMs ?: extras?.getLong("djClassicPosition") ?: 0)
-                it.setPlaybackSpeed(1f)
-                it.prepare()
-                it.playWhenReady = wantsPlay
-            } else {
-                it.pause()
-                it.clearMediaItems()
-            }
+            restoreClassic(player, current)
             return@command
         }
-        for (index in (0 until it.mediaItemCount).reversed()) {
-            if (com.henriquesebastiao.downtify.core.model.DjIds.referenceOf(it.getMediaItemAt(index).mediaId)?.id ==
-                id
-            ) {
-                if (index == it.currentMediaItemIndex) it.pause()
-                it.removeMediaItem(index)
+        for (index in (0 until player.mediaItemCount).reversed()) {
+            if (DjIds.referenceOf(player.getMediaItemAt(index).mediaId)?.id == id) {
+                if (index == player.currentMediaItemIndex) player.pause()
+                player.removeMediaItem(index)
             }
         }
+    }
+
+    private fun restoreClassic(player: Player, current: MediaItem) {
+        val extras = current.mediaMetadata.extras
+        val absolute = DjTimeline.position(player, extras?.getLong("djOrigin") ?: 0)
+        val point = DjTimeline.resumePoint(current, absolute)
+        val (selection, index) = classicSelection(player, current, point)
+        val wantsPlay = player.playWhenReady
+        if (selection.isNotEmpty() && index >= 0) {
+            player.setMediaItems(selection, index, point?.sourceMs ?: extras?.getLong("djClassicPosition") ?: 0)
+            player.setPlaybackSpeed(1f)
+            player.prepare()
+            player.playWhenReady = wantsPlay
+        } else {
+            player.pause()
+            player.clearMediaItems()
+        }
+    }
+
+    private fun classicSelection(
+        player: Player,
+        current: MediaItem,
+        point: DjResumePoint?,
+    ): Pair<List<MediaItem>, Int> {
+        val extras = current.mediaMetadata.extras
+        val classic = (0 until player.mediaItemCount).map(player::getMediaItemAt).filter { row ->
+            DjIds.referenceOf(row.mediaId) ==
+                null
+        }
+        val anchor = extras?.getInt("djQueueAnchor") ?: 0
+        val preferred = anchor + (point?.occurrence ?: 0)
+        val index = if (point != null) {
+            if (classic.getOrNull(preferred)?.mediaId ==
+                point.id
+            ) {
+                preferred
+            } else {
+                classic.indexOfFirst { row -> row.mediaId == point.id }
+            }
+        } else {
+            (extras?.getInt("djClassicIndex") ?: 0).coerceIn(0, (classic.size - 1).coerceAtLeast(0))
+        }
+        val needsRenderQueue = extras?.getBoolean("djOwnQueue") != true ||
+            extras.getBoolean("djQueueOrder") != true || index < 0
+        if (point != null && needsRenderQueue) {
+            return renderedSelection(current, point)
+        }
+        return classic to index
+    }
+
+    private fun renderedSelection(current: MediaItem, point: DjResumePoint): Pair<List<MediaItem>, Int> {
+        val rows = DjTimeline.resumeRows(current)
+        val fallback = DjTimeline.fallbackItems(current, sessions.current?.baseUrl.orEmpty())
+        val items = rows.withIndex().mapNotNull { (ordinal, row) ->
+            val media =
+                library.library.value?.byId?.get(row.id)?.let { track ->
+                    MediaItems.from(track, sessions.current?.baseUrl)
+                }
+                    ?: fallback[row.id]
+            media?.let { ordinal to it }
+        }
+        val occurrence =
+            rows.indexOfFirst { row ->
+                row.occurrence >= 0 && row.occurrence == point.occurrence
+            }.takeIf { ordinal ->
+                ordinal >=
+                    0
+            }
+                ?: point.occurrence
+        return items.map { pair -> pair.second } to items.indexOfFirst { pair -> pair.first == occurrence }
     }
 
     fun resume() = command {

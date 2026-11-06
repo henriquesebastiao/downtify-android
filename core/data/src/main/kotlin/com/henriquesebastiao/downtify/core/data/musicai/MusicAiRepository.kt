@@ -55,6 +55,8 @@ class MusicAiFailure(val status: Int? = null, cause: Exception? = null) :
 }
 
 /** No local profile: the server owns preferences and derives recommendations for its account. */
+// One owner-scoped facade mirrors the independent wire endpoints.
+@Suppress("TooManyFunctions")
 @Singleton
 class MusicAiRepository @Inject constructor(
     private val sessions: SessionStore,
@@ -170,8 +172,7 @@ class MusicAiRepository @Inject constructor(
         val value = if (response.code() == 304) {
             previous?.value
         } else {
-            if (!response.isSuccessful) throw MusicAiFailure(response.code())
-            response.body()
+            playbackBody(response)
         }
         if (value == null) throw MusicAiFailure(cause = SerializationException("Missing playback response"))
         if (sessions.current ==
@@ -255,9 +256,9 @@ class MusicAiRepository @Inject constructor(
         val owner = sessions.current ?: throw MusicAiFailure()
         val ownerKey = cache.scope(owner)
         val now = System.nanoTime() / 1_000_000
-        if (cachedHomeOwner == ownerKey && cachedHome != null && now - homeAt in 0..60_000 &&
-            homeAt != 0L
-        ) {
+        val sameCache = cachedHomeOwner == ownerKey && cachedHome != null
+        val fresh = now - homeAt in 0..60_000 && homeAt != 0L
+        if (sameCache && fresh) {
             return@withLock cachedHome.orEmpty()
         }
         try {
@@ -274,11 +275,15 @@ class MusicAiRepository @Inject constructor(
             cards
         } catch (error: MusicAiFailure) {
             val old = cachedHome
-            if (cachedHomeOwner == ownerKey && old != null && sessions.current == owner &&
-                error.kind in setOf(MusicAiFailureKind.Network, MusicAiFailureKind.Timeout, MusicAiFailureKind.NotReady)
-            ) {
+            val available = old?.takeIf { cachedHomeOwner == ownerKey && sessions.current == owner }
+            val transient = error.kind in setOf(
+                MusicAiFailureKind.Network,
+                MusicAiFailureKind.Timeout,
+                MusicAiFailureKind.NotReady,
+            )
+            if (available != null && transient) {
                 homeStale = true
-                old
+                available
             } else {
                 throw error
             }
@@ -333,4 +338,11 @@ class MusicAiRepository @Inject constructor(
                 throw MusicAiFailure(cause = error)
             }
         }
+}
+
+private fun playbackBody(
+    response: retrofit2.Response<com.henriquesebastiao.downtify.core.network.dto.MusicDjSessionDto>,
+): com.henriquesebastiao.downtify.core.network.dto.MusicDjSessionDto? {
+    if (!response.isSuccessful) throw MusicAiFailure(response.code())
+    return response.body()
 }

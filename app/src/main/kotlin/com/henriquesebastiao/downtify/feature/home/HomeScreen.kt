@@ -131,7 +131,6 @@ fun HomeRoute(
             }
         },
         onOpenDj = onOpenDj,
-        forYouRefreshing = aiState.busy,
         onRefreshForYou = musicAi::refreshHome,
     )
 }
@@ -152,7 +151,6 @@ fun HomeScreen(
     onOpenMenu: () -> Unit = {},
     onOpenDj: () -> Unit = {},
     forYouContent: (LazyListScope.() -> Unit)? = null,
-    forYouRefreshing: Boolean = false,
     onRefreshForYou: () -> Unit = {},
 ) {
     Scaffold(

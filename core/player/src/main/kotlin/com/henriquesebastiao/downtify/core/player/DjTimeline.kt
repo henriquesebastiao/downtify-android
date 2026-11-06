@@ -39,15 +39,7 @@ internal object DjTimeline {
         val plan = NetworkJson.encodeToString(ListSerializer(MusicDjMarkerDto.serializer()), session.timeline)
         val tracks = NetworkJson.encodeToString(ListSerializer(MusicAiTrackDto.serializer()), session.tracks)
         val previous = item.mediaMetadata
-        if (previous.extras?.getString(
-                "djResumePlan",
-            ) == plan && previous.extras?.getString("djResumeTracks") == tracks &&
-            previous.extras?.getString("djTrackId") == track.id &&
-            previous.title?.toString() == track.title && previous.artist?.toString() == track.artist &&
-            previous.extras?.getLong("djOrigin") == (session.mediaOrigin?.times(1000)?.toLong() ?: 0)
-        ) {
-            return item
-        }
+        if (sameMetadata(previous, session, track, plan, tracks)) return item
         val extras = Bundle(item.mediaMetadata.extras ?: Bundle.EMPTY).apply {
             putString("djResumePlan", plan)
             putString("djResumeTracks", tracks)
@@ -67,6 +59,21 @@ internal object DjTimeline {
                 .setArtworkUri(Uri.parse(ServerUrls.cover(baseUrl, track.id, ServerUrls.COVER_LARGE)))
                 .setExtras(extras).build(),
         ).build()
+    }
+
+    private fun sameMetadata(
+        previous: androidx.media3.common.MediaMetadata,
+        session: MusicDjSessionDto,
+        track: MusicAiTrackDto,
+        plan: String,
+        tracks: String,
+    ): Boolean {
+        val samePlan = previous.extras?.getString("djResumePlan") == plan &&
+            previous.extras?.getString("djResumeTracks") == tracks
+        val sameTrack = previous.extras?.getString("djTrackId") == track.id &&
+            previous.title?.toString() == track.title && previous.artist?.toString() == track.artist
+        val sameOrigin = previous.extras?.getLong("djOrigin") == (session.mediaOrigin?.times(1000)?.toLong() ?: 0)
+        return samePlan && sameTrack && sameOrigin
     }
 
     fun resumeRows(item: MediaItem): List<MusicDjMarkerDto> = runCatching {

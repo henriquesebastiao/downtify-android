@@ -46,7 +46,6 @@ fun DailyMusicShelf(
     onOpen: (String, String) -> Unit,
     onSeeAll: () -> Unit,
 ) {
-    val covers = LocalCoverUrls.current
     Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Pour vous", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
@@ -161,7 +160,8 @@ fun MusicStudioRoute(
         ) {
             item {
                 Text(
-                    "Créez un mix préparé ou continu à partir de votre musique. Les transitions et les titres restent dans votre lecteur habituel.",
+                    "Créez un mix préparé ou continu à partir de votre musique. " +
+                        "Les transitions et les titres restent dans votre lecteur habituel.",
                 )
                 TextButton(onClick = onSettings) { Text("Paramètres IA") }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -170,7 +170,8 @@ fun MusicStudioRoute(
                     }, label = { Text("Cet appareil · Bêta") })
                 }
                 Text(
-                    "Le moteur local attend la validation de l’export ONNX et des performances sur votre appareil. Aucun modèle n’est téléchargé. Le serveur reste disponible.",
+                    "Le moteur local attend la validation de l’export ONNX et des performances sur votre appareil. " +
+                        "Aucun modèle n’est téléchargé. Le serveur reste disponible.",
                     style = MaterialTheme.typography.bodySmall,
                 )
                 TextButton(onClick = queue::toggle, enabled = caps.interactiveAvailable()) {

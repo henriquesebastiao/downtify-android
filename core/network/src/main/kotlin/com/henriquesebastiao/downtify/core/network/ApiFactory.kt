@@ -77,9 +77,8 @@ class ApiFactory @Inject constructor(@DefaultClient private val client: OkHttpCl
             0,
             okhttp3.Interceptor { chain ->
                 val active = current()
-                if (active == null || active.token != owner.token || active.baseUrl != owner.baseUrl ||
-                    !AuthInterceptor.belongsTo(chain.request().url, owner.baseUrl)
-                ) {
+                val sameOwner = active?.let { it.token == owner.token && it.baseUrl == owner.baseUrl } == true
+                if (!sameOwner || !AuthInterceptor.belongsTo(chain.request().url, owner.baseUrl)) {
                     throw IOException("Playback owner changed")
                 }
                 chain.proceed(

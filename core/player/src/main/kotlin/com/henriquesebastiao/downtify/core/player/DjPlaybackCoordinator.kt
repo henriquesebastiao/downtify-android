@@ -5,6 +5,7 @@ import com.henriquesebastiao.downtify.core.data.library.LibraryRepository
 import com.henriquesebastiao.downtify.core.data.musicai.MusicAiFailure
 import com.henriquesebastiao.downtify.core.data.musicai.MusicAiRepository
 import com.henriquesebastiao.downtify.core.network.dto.MusicDjSessionDto
+import com.henriquesebastiao.downtify.core.network.session.Session
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -111,7 +112,7 @@ class DjPlaybackCoordinator @Inject constructor(
                         }
                     }
                 } else if ((mutableBusy.value || mutableArmed.value) &&
-                    (state.mediaKey != originKey || state.currentIndex != originIndex)
+                    leftOrigin(state.mediaKey, state.currentIndex)
                 ) {
                     cancel(true)
                 }
@@ -120,9 +121,7 @@ class DjPlaybackCoordinator @Inject constructor(
     }
 
     fun toggleQueue() {
-        if (activeId != null || player.state.value.dj != null || mutableBusy.value ||
-            mutableArmed.value
-        ) {
+        if (hasDjWork()) {
             stop()
             return
         }
@@ -137,9 +136,7 @@ class DjPlaybackCoordinator @Inject constructor(
     }
 
     fun startTheme(theme: String, style: String) {
-        if (activeId != null || mutableBusy.value || mutableArmed.value ||
-            player.state.value.dj != null
-        ) {
+        if (hasDjWork()) {
             stop()
             return
         }
@@ -157,9 +154,7 @@ class DjPlaybackCoordinator @Inject constructor(
         val selection = player.selectionVersion.value
         scope.launch {
             val classic = withTimeoutOrNull(2000) { player.state.first { it.dj == null } } ?: return@launch
-            if (mine != generation || owner != music.session.value ||
-                selection != player.selectionVersion.value
-            ) {
+            if (!matches(Preparation(owner, mine, selection, ""))) {
                 return@launch
             }
             val defer = classic.track?.id == seed
@@ -169,6 +164,18 @@ class DjPlaybackCoordinator @Inject constructor(
         }
     }
 
+    private data class Preparation(val owner: Session?, val generation: Long, val selection: Long, val request: String)
+
+    private fun leftOrigin(key: String?, index: Int) = key != originKey || index != originIndex
+
+    private fun hasDjWork(): Boolean {
+        val pending = mutableBusy.value || mutableArmed.value
+        return activeId != null || player.state.value.dj != null || pending
+    }
+
+    private fun matches(token: Preparation) = token.generation == generation &&
+        token.owner == music.session.value && token.selection == player.selectionVersion.value
+
     private fun prepare(
         title: String,
         defer: Boolean,
@@ -176,121 +183,127 @@ class DjPlaybackCoordinator @Inject constructor(
         create: suspend (String) -> MusicDjSessionDto,
     ) {
         val owner = music.session.value ?: return
-        val mine = ++generation
-        val selection = player.selectionVersion.value
+        val token = Preparation(owner, ++generation, player.selectionVersion.value, UUID.randomUUID().toString())
         originKey = player.state.value.mediaKey
         originIndex = player.state.value.currentIndex
-        val request = UUID.randomUUID().toString()
-        pendingRequest = request
+        pendingRequest = token.request
         mutableBusy.value = true
         mutablePhase.value = DjPhase.Preparing
         mutableMessage.value = "Préparation des transitions ; votre écoute continue."
-        preparation = scope.launch {
-            var created: String? = null
-            try {
-                val caps = music.capabilities.value
-                if (!caps.interactiveAvailable()) {
-                    mutableMessage.value =
-                        "Activez le DJ direct dans Paramètres → IA. Le moteur doit être disponible ou autorisé en essai bêta."
-                    return@launch
-                }
-                val result = create(request)
-                created = result.id
-                if (mine != generation || owner != music.session.value || selection != player.selectionVersion.value) {
-                    if (owner == music.session.value) music.djStop(result.id)
-                    return@launch
-                }
-                pendingId = result.id
-                repeat(450) {
-                    delay(2000)
-                    if (mine != generation || owner != music.session.value ||
-                        selection != player.selectionVersion.value
-                    ) {
-                        return@launch
-                    }
-                    val current = music.djSession(result.id)
-                    if (current.state in setOf("failed", "stopped", "cancelled", "deleted")) throw MusicAiFailure()
-                    if (current.state in setOf("playing", "paused")) {
-                        if (defer) {
-                            if (current.state == "playing") music.djCommand(current.id, "pause")
-                            if (mine != generation || selection != player.selectionVersion.value) return@launch
-                            mutableArmed.value = true
-                            mutablePhase.value = DjPhase.Ready
-                            player.queueDj(
-                                current.id,
-                                title,
-                                (current.duration * 1000).toLong(),
-                                sessionPlan = current,
-                                preserveQueue = preserveQueue,
-                            )
-                            mutableMessage.value = "Mode DJ prêt · relais au prochain titre."
-                        } else {
-                            pendingId = null
-                            pendingRequest = null
-                            activeId = current.id
-                            activeMode = current.mode
-                            activeSelection = selection + 1
-                            mutableBusy.value = false
-                            mutablePhase.value = DjPhase.Ready
-                            player.playDj(
-                                current.id,
-                                title,
-                                (current.duration * 1000).toLong(),
-                                "interactive",
-                                expectedSelection = selection,
-                                sessionPlan = current,
-                            )
-                            mutableMessage.value = "DJ actif dans le lecteur."
-                        }
-                        return@launch
-                    }
-                }
-                if (owner == music.session.value) music.djStop(result.id)
-                mutableMessage.value = "Préparation trop longue. La lecture classique reste disponible."
-            } catch (error: CancellationException) {
-                if (created != null &&
-                    owner == music.session.value
-                ) {
-                    scope.launch {
-                        try {
-                            music.djStop(created)
-                        } catch (_: MusicAiFailure) { }
-                    }
-                }
-                throw error
-            } catch (_: MusicAiFailure) {
-                if (mine == generation) {
-                    mutableMessage.value =
-                        "Le DJ est temporairement indisponible. Votre lecture classique reste disponible."
-                    if (created == null &&
-                        owner == music.session.value
-                    ) {
-                        scope.launch {
-                            try {
-                                music.djCancelRequest(request)
-                            } catch (_: MusicAiFailure) { }
-                        }
-                    }
-                    if (created != null &&
-                        owner == music.session.value
-                    ) {
-                        scope.launch {
-                            try {
-                                music.djStop(created)
-                            } catch (_: MusicAiFailure) { }
-                        }
-                    }
-                }
-            } finally {
-                if (mine == generation) {
-                    mutableBusy.value = false
-                    if (!mutableArmed.value && mutablePhase.value != DjPhase.Active) {
-                        pendingId = null
-                        pendingRequest = null
-                        mutablePhase.value = DjPhase.Classic
-                    }
+        preparation = scope.launch { performPreparation(token, title, defer, preserveQueue, create) }
+    }
+
+    private suspend fun performPreparation(
+        token: Preparation,
+        title: String,
+        defer: Boolean,
+        preserveQueue: Boolean,
+        create: suspend (String) -> MusicDjSessionDto,
+    ) {
+        var created: String? = null
+        try {
+            if (!music.capabilities.value.interactiveAvailable()) {
+                mutableMessage.value = "Activez le DJ direct dans Paramètres → IA. " +
+                    "Le moteur doit être disponible ou autorisé en essai bêta."
+                return
+            }
+            val result = create(token.request)
+            created = result.id
+            if (!matches(token)) {
+                if (token.owner == music.session.value) music.djStop(result.id)
+                return
+            }
+            pendingId = result.id
+            if (awaitReady(token, result.id, title, defer, preserveQueue)) return
+            if (token.owner == music.session.value) music.djStop(result.id)
+            mutableMessage.value = "Préparation trop longue. La lecture classique reste disponible."
+        } catch (error: CancellationException) {
+            if (created != null) cleanupPreparation(token, created)
+            throw error
+        } catch (_: MusicAiFailure) {
+            if (token.generation == generation) {
+                mutableMessage.value = "Le DJ est temporairement indisponible. " +
+                    "Votre lecture classique reste disponible."
+                cleanupPreparation(token, created)
+            }
+        } finally {
+            if (token.generation == generation) {
+                mutableBusy.value = false
+                if (!mutableArmed.value && mutablePhase.value != DjPhase.Active) {
+                    pendingId = null
+                    pendingRequest = null
+                    mutablePhase.value = DjPhase.Classic
                 }
             }
+        }
+    }
+
+    private suspend fun awaitReady(
+        token: Preparation,
+        id: String,
+        title: String,
+        defer: Boolean,
+        preserveQueue: Boolean,
+    ): Boolean {
+        repeat(450) {
+            delay(2000)
+            if (!matches(token)) return true
+            val current = music.djSession(id)
+            if (current.state in setOf("failed", "stopped", "cancelled", "deleted")) throw MusicAiFailure()
+            if (current.state in setOf("playing", "paused")) {
+                activateReady(token, current, title, defer, preserveQueue)
+                return true
+            }
+        }
+        return false
+    }
+
+    private suspend fun activateReady(
+        token: Preparation,
+        current: MusicDjSessionDto,
+        title: String,
+        defer: Boolean,
+        preserveQueue: Boolean,
+    ) {
+        if (defer) {
+            if (current.state == "playing") music.djCommand(current.id, "pause")
+            if (!matches(token)) return
+            mutableArmed.value = true
+            mutablePhase.value = DjPhase.Ready
+            player.queueDj(
+                current.id,
+                title,
+                (current.duration * 1000).toLong(),
+                sessionPlan = current,
+                preserveQueue = preserveQueue,
+            )
+            mutableMessage.value = "Mode DJ prêt · relais au prochain titre."
+        } else {
+            pendingId = null
+            pendingRequest = null
+            activeId = current.id
+            activeMode = current.mode
+            activeSelection = token.selection + 1
+            mutableBusy.value = false
+            mutablePhase.value = DjPhase.Ready
+            player.playDj(
+                current.id,
+                title,
+                (current.duration * 1000).toLong(),
+                "interactive",
+                expectedSelection = token.selection,
+                sessionPlan = current,
+            )
+            mutableMessage.value = "DJ actif dans le lecteur."
+        }
+    }
+
+    private fun cleanupPreparation(token: Preparation, created: String?) {
+        if (token.owner != music.session.value) return
+        scope.launch {
+            try {
+                if (created == null) music.djCancelRequest(token.request) else music.djStop(created)
+            } catch (_: MusicAiFailure) { }
         }
     }
 

@@ -55,7 +55,8 @@ class TemporaryMusicPlaylistTest {
     }
 
     @Ignore(
-        "Robolectric dialog focus does not become idle; opening and name editing checked on physical Android 17, confirmation still needs instrumentation",
+        "Robolectric dialog focus does not become idle; opening/name editing checked on physical Android 17; " +
+            "confirmation still needs instrumentation",
     )
     @Test
     fun `temporary selection uses native playlist controls and saves its named copy`() {

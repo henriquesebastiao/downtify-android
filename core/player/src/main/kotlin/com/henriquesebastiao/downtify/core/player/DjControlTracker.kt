@@ -6,6 +6,7 @@ import com.henriquesebastiao.downtify.core.data.musicai.MusicAiFailure
 import com.henriquesebastiao.downtify.core.data.musicai.MusicAiRepository
 import com.henriquesebastiao.downtify.core.model.DjIds
 import com.henriquesebastiao.downtify.core.model.DjReference
+import com.henriquesebastiao.downtify.core.network.session.Session
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -49,9 +50,7 @@ internal class DjControlTracker(
         val mine = generation
         scope.launch {
             commands.withLock {
-                if (music.session.value != owner || !music.capabilities.value.enabled("dj_interactive") ||
-                    mine != generation || current != reference
-                ) {
+                if (!isCurrent(reference, mine, owner) || !music.capabilities.value.enabled("dj_interactive")) {
                     return@withLock
                 }
                 try {
@@ -80,29 +79,7 @@ internal class DjControlTracker(
         val mine = ++generation
         terminal = false
         current = next
-        if (retired != null) {
-            // System/car controllers can replace media without creating the app coordinator.
-            // Retire only the old transport, after fencing callbacks with the new generation.
-            for (index in (0 until player.mediaItemCount).reversed()) {
-                if (index != player.currentMediaItemIndex &&
-                    DjIds.referenceOf(player.getMediaItemAt(index).mediaId) == retired
-                ) {
-                    player.removeMediaItem(index)
-                }
-            }
-            val owner = music.session.value
-            if (retired.mode == "interactive") {
-                scope.launch {
-                    commands.withLock {
-                        if (owner == music.session.value && current != retired) {
-                            try {
-                                music.djStop(retired.id)
-                            } catch (_: MusicAiFailure) { }
-                        }
-                    }
-                }
-            }
-        }
+        retire(retired)
         (player as? androidx.media3.exoplayer.ExoPlayer)?.pauseAtEndOfMediaItems = next != null
         if (next == null) return
         val handover =
@@ -110,6 +87,10 @@ internal class DjControlTracker(
                 player.currentMediaItem?.mediaMetadata?.extras?.getBoolean("djStartOnLoad") == true &&
                 player.playWhenReady
         if (handover) command(next, "resume")
+        watch(next, mine, handover)
+    }
+
+    private fun watch(next: DjReference, mine: Long, handover: Boolean) {
         val owner = music.session.value
         ticker = scope.launch {
             while (isActive && current == next && owner == music.session.value) {
@@ -134,6 +115,35 @@ internal class DjControlTracker(
         }
     }
 
+    private fun retire(retired: DjReference?) {
+        if (retired != null) {
+            // System/car controllers can replace media without creating the app coordinator.
+            // Retire only the old transport, after fencing callbacks with the new generation.
+            for (index in (0 until player.mediaItemCount).reversed()) {
+                if (index != player.currentMediaItemIndex &&
+                    DjIds.referenceOf(player.getMediaItemAt(index).mediaId) == retired
+                ) {
+                    player.removeMediaItem(index)
+                }
+            }
+            val owner = music.session.value
+            if (retired.mode == "interactive") {
+                scope.launch {
+                    commands.withLock {
+                        if (owner == music.session.value && current != retired) {
+                            try {
+                                music.djStop(retired.id)
+                            } catch (_: MusicAiFailure) { }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun isCurrent(reference: DjReference, mine: Long, owner: Session?) =
+        owner == music.session.value && mine == generation && current == reference
+
     private suspend fun reconcile(reference: DjReference, mine: Long) {
         try {
             val owner = music.session.value
@@ -146,9 +156,7 @@ internal class DjControlTracker(
             } else {
                 music.djSession(reference.id)
             }
-            if (mine != generation || owner != music.session.value || current != reference ||
-                !music.capabilities.value.enabled("dj_" + reference.mode)
-            ) {
+            if (!isCurrent(reference, mine, owner) || !music.capabilities.value.enabled("dj_" + reference.mode)) {
                 return
             }
             latest = session
