@@ -176,10 +176,20 @@ private fun MainShell() {
     }
     // Now Playing, open or closed or anywhere between: it grows out of the mini player and shrinks back into it.
     val expansion = rememberPlayerExpansion()
-    val mixAction = com.henriquesebastiao.downtify.ui.common.songMixAction()
-    val djMixAction = com.henriquesebastiao.downtify.ui.common.songDjMixAction()
+    val songMix: com.henriquesebastiao.downtify.ui.common.SongMixViewModel = hiltViewModel()
+    val mixAction = com.henriquesebastiao.downtify.ui.common.songMixAction(songMix)
+    val djMixAction = com.henriquesebastiao.downtify.ui.common.songDjMixAction(songMix)
     val scope = rememberCoroutineScope()
     LaunchedEffect(hasMedia) { if (!hasMedia) expansion.snapTo(open = false) }
+    com.henriquesebastiao.downtify.ui.common.SongDjStatusDialog(
+        status = songMix.djStatus,
+        onDismiss = songMix::dismissDjStatus,
+        onCancel = songMix::cancelDjMix,
+        onOpenPlayer = {
+            songMix.dismissDjStatus()
+            scope.launch { expansion.expand() }
+        },
+    )
     // The side menu, opened from Home's menu button.
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     var currentTab by rememberSaveable { mutableStateOf(TopLevelDestination.Home) }
@@ -518,10 +528,15 @@ private fun NowPlayingOverlay(
     val djMessage by queueDj.message.collectAsStateWithLifecycle()
     val djArmed by queueDj.armed.collectAsStateWithLifecycle()
     val djBusy by queueDj.busy.collectAsStateWithLifecycle()
+    val djChecking by queueDj.checking.collectAsStateWithLifecycle()
+    val djPhase by queueDj.phase.collectAsStateWithLifecycle()
+    val djAvailability by queueDj.availability.collectAsStateWithLifecycle()
     val localDjDevice by queueDj.localDevice.collectAsStateWithLifecycle()
     var lyricsOpen by rememberSaveable { mutableStateOf(false) }
     var queueOpen by rememberSaveable { mutableStateOf(false) }
     val open = expansion.expanded
+
+    LaunchedEffect(queueOpen) { if (queueOpen) queueDj.onQueueShown() }
 
     LaunchedEffect(open) {
         if (!open) {
@@ -622,15 +637,15 @@ private fun NowPlayingOverlay(
             ),
             controls = controls,
             dj = com.henriquesebastiao.downtify.feature.player.QueueDjState(
-                available = djCaps.enabled("dj_interactive") && (localDjDevice || djCaps.dj.queueSupported),
-                ready = if (localDjDevice) {
-                    djCaps.enabled("dj_interactive")
-                } else {
-                    djCaps.interactiveAvailable() &&
-                        djCaps.dj.queueSupported
-                },
+                available = djCaps.version == 1 || djArmed || djBusy,
+                ready = djAvailability.ready,
                 active = djArmed || djBusy,
                 message = djMessage,
+                checking = djChecking,
+                preparing = djPhase == com.henriquesebastiao.downtify.core.player.DjPhase.Preparing,
+                waiting = djPhase == com.henriquesebastiao.downtify.core.player.DjPhase.Ready,
+                local = localDjDevice,
+                reason = djAvailability.reason,
             ),
         )
     }

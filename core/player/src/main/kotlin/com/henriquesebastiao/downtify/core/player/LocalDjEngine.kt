@@ -74,9 +74,15 @@ internal class LocalDjEngine(first: Player, second: Player, private val onDomina
     }
 
     fun setPlaying(value: Boolean) {
-        blend?.wantedPlay = value
-        active.playWhenReady = value
-        if (blend != null) standby.playWhenReady = value else standby.pause()
+        val mixing = blend
+        if (mixing == null) {
+            active.playWhenReady = value
+            standby.pause()
+        } else {
+            mixing.wantedPlay = value
+            mixing.armed.outgoing.playWhenReady = value
+            mixing.armed.incoming.playWhenReady = value && !waitingForOutgoing(mixing.armed)
+        }
     }
 
     fun setVolume(value: Float, remember: Boolean = true) {
@@ -193,10 +199,12 @@ internal class LocalDjEngine(first: Player, second: Player, private val onDomina
             pair.incoming.pause()
             return
         }
+        if (!outgoingReady(pair)) return
         if (pair.incoming.playbackState != Player.STATE_READY) {
             failIncoming(pair)
             return
         }
+        pair.incoming.playWhenReady = true
         val progress = progress(pair)
         setBlendGains(pair, progress)
         if (progress >= 0.5f && !value.switched) {
@@ -213,6 +221,32 @@ internal class LocalDjEngine(first: Player, second: Player, private val onDomina
             pair.plan.fallback,
         )
         if (progress >= 1f) finish(pair)
+    }
+
+    private fun waitingForOutgoing(pair: Armed) = pair.outgoing.currentMediaItemIndex == pair.outgoingIndex &&
+        pair.outgoing.playbackState == Player.STATE_BUFFERING
+
+    private fun outgoingReady(pair: Armed): Boolean {
+        if (pair.outgoing.playerError != null) {
+            // A failed decoder cannot provide the fade clock. Promote only audio
+            // already ready; otherwise stop instead of retrying a silent overlap.
+            if (pair.incoming.playbackState == Player.STATE_READY) {
+                pair.incoming.playWhenReady = true
+                finish(pair)
+            } else {
+                pair.outgoing.pause()
+                failIncoming(pair)
+            }
+            publishWaiting(LocalDjFallback.DecoderFailure)
+            return false
+        }
+        if (waitingForOutgoing(pair)) {
+            // Keep playback intent, but do not let the other clock drift while
+            // progress is frozen. A later pulse resumes only if intent is play.
+            pair.incoming.pause()
+            return false
+        }
+        return true
     }
 
     private fun progress(pair: Armed): Float {

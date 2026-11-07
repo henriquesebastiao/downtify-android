@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -94,7 +95,15 @@ data class QueueDjState(
     val ready: Boolean = false,
     val active: Boolean = false,
     val message: String = "",
-)
+    val checking: Boolean = false,
+    val preparing: Boolean = false,
+    val waiting: Boolean = false,
+    val local: Boolean = false,
+    val reason: String = "",
+) {
+    val visible: Boolean
+        get() = available || checking || message.isNotBlank() || reason.isNotBlank()
+}
 
 /**
  * The queue, as Spotify shows it: what's playing, the songs the user queued
@@ -128,20 +137,33 @@ fun QueueScreen(
         ) {
             Column(Modifier.fillMaxSize().safeDrawingPadding()) {
                 TopBar(state.context, actions.onClose)
-                if (dj.available || state.dj != null) {
+                if (dj.visible || state.dj != null) {
                     TextButton(
                         onClick = actions.onToggleDj,
-                        enabled = dj.ready || dj.active || state.dj != null,
+                        enabled = !dj.checking || dj.active || state.dj != null,
                         modifier = Modifier.padding(horizontal = Spacing.screen),
                     ) {
-                        Text(if (dj.active || state.dj != null) "Désactiver le mode DJ" else "Mode DJ")
+                        Text(
+                            when {
+                                dj.preparing -> "Annuler la préparation DJ"
+                                dj.waiting -> "Annuler le relais DJ"
+                                dj.active || state.dj != null -> "Désactiver le mode DJ"
+                                dj.checking -> "Vérification du DJ…"
+                                !dj.ready -> "Vérifier le DJ"
+                                dj.local -> "Activer le DJ sur cet appareil"
+                                else -> "Activer le DJ sur cette file"
+                            },
+                        )
+                    }
+                    if (dj.checking || dj.preparing) {
+                        LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = Spacing.screen))
                     }
                     if (dj.message.isNotBlank() ||
                         !dj.ready
                     ) {
                         Text(
                             dj.message.ifBlank {
-                                "Disponible après validation du moteur sur le serveur."
+                                dj.reason.ifBlank { "Vérifiez les réglages DJ dans Paramètres → IA." }
                             },
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(horizontal = Spacing.screen),

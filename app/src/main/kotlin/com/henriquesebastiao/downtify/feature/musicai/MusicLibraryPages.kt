@@ -147,6 +147,12 @@ fun MusicStudioRoute(
     val queue: com.henriquesebastiao.downtify.feature.player.QueueDjViewModel = hiltViewModel()
     val queueMessage by queue.message.collectAsStateWithLifecycle()
     val localDevice by queue.localDevice.collectAsStateWithLifecycle()
+    val queueChecking by queue.checking.collectAsStateWithLifecycle()
+    val queueArmed by queue.armed.collectAsStateWithLifecycle()
+    val queueBusy by queue.busy.collectAsStateWithLifecycle()
+    val queueAvailability by queue.availability.collectAsStateWithLifecycle()
+    val queuePhase by queue.phase.collectAsStateWithLifecycle()
+    LaunchedEffect(queue) { queue.onQueueShown() }
     LaunchedEffect(seed) {
         viewModel.refresh()
         if (seed.isNotBlank()) viewModel.seed(seed)
@@ -205,11 +211,33 @@ fun MusicStudioRoute(
                 )
                 TextButton(
                     onClick = queue::toggle,
-                    enabled = if (localDevice) caps.enabled("dj_interactive") else caps.interactiveAvailable(),
+                    enabled = !queueChecking || queueArmed || queueBusy,
                 ) {
-                    Text("Mode DJ sur la file")
+                    Text(
+                        when {
+                            queuePhase == com.henriquesebastiao.downtify.core.player.DjPhase.Preparing ->
+                                "Annuler la préparation DJ"
+
+                            queuePhase == com.henriquesebastiao.downtify.core.player.DjPhase.Ready ->
+                                "Annuler le relais DJ"
+
+                            queueArmed || queueBusy ||
+                                queuePhase == com.henriquesebastiao.downtify.core.player.DjPhase.Active ->
+                                "Désactiver le mode DJ"
+
+                            queueChecking -> "Vérification du DJ…"
+
+                            queueAvailability.ready -> "Activer le DJ sur la file"
+
+                            else -> "Vérifier le DJ"
+                        },
+                    )
                 }
-                if (queueMessage.isNotBlank()) Text(queueMessage)
+                if (queueChecking || queueBusy) {
+                    androidx.compose.material3.LinearProgressIndicator(Modifier.fillMaxWidth())
+                }
+                val queueDetail = queueMessage.ifBlank { queueAvailability.reason }
+                if (queueDetail.isNotBlank()) Text(queueDetail)
                 if (!caps.enabled("dj_prepared") &&
                     !caps.enabled("dj_interactive")
                 ) {

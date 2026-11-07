@@ -158,8 +158,13 @@ ordinary playback. Phone quality, latency, temperature and battery remain unqual
 
 DJ sets now appear in the mini player and open Now Playing after joining. Direct
 controls are shown only after this device joins, avoiding a server-only resume.
-All 97 player-module tests and seven mini-player tests passed, including native
-shuffle restoration through the dual-deck facade. Detekt and formatting passed;
+The beta3 queue rechecks server capabilities and reports the actual availability
+reason. Preparation can be cancelled, and a pending relay is distinct from active
+DJ playback. The song-menu action uses the selected engine and shows persistent
+progress, errors and an entry to the common player instead of an optimistic toast.
+All 114 player-module tests and 216 app tests passed, with three app tests
+explicitly skipped. They include seven mini-player checks and native shuffle
+restoration through the dual-deck facade. Detekt and formatting passed;
 these checks do not replace physical-device acceptance.
 
 Corrective player tests cover 25 repeated mode cycles, local pause intent,

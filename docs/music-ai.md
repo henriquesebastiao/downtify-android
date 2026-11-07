@@ -94,6 +94,32 @@ podcast or external stream is selected. An unjoined device offers Listen instead
 of renderer-only pause/resume controls. This is explicit joining, not automatic
 sound playback on every device.
 
+The 0.4.0-beta2 device-fade correction coordinates both decoder clocks when
+the outgoing track buffers: the incoming track pauses instead of advancing
+with a frozen gain, and resumes only if playback is still requested. A manual
+pause or disarm cannot be undone by recovery. An outgoing decoder error switches
+only to an incoming track already ready, or stops the overlap cleanly.
+Seven real SimpleBasePlayer event regressions cover this behavior: four failed
+before the fix and all seven pass after it. The complete player module passes
+104 tests, with formatting and Detekt checks. This is automated evidence;
+physical network, Bluetooth/Auto, thermal and battery acceptance remain pending.
+
+The 0.4.0-beta3 correction refreshes capabilities when opening the queue and
+before preparing a DJ session. An unavailable queue control can recheck the
+server and explains its gate instead of remaining silently grey. The control
+distinguishes preparation, a relay waiting for the current title to finish and
+active playback. Cancellation remains available during preparation and a relay.
+The unqualified server trial still requires both the module and explicit trial
+permission; a device-selected local engine does not require server qualification.
+
+The song-menu DJ action uses the selected engine. Its persistent progress dialog
+reports preparation, failure and readiness, with cancellation and an entry to
+the common player. Closing that dialog does not cancel a mix. Device seed mixes
+resolve only authorized local-library tracks, confirm the resulting queue before
+arming transitions, and reject late work after selection/account/engine changes.
+This fixes control and feedback; it does not qualify the Android fade prototype
+as on-device beat-model inference or establish physical-device performance.
+
 The physical optimized beta also passed a visual check of the four colored mood
 cards, native temporary-playlist view, save-dialog opening and editable name.
 That check cancelled the save and did not create a library playlist. Targeted
