@@ -48,6 +48,9 @@ internal class CarServiceFixture {
             every { successfulSync } returns MutableStateFlow(0)
         }
         service.sleepTimer = com.henriquesebastiao.downtify.core.player.PlaybackSleepTimer()
+        service.localDj = com.henriquesebastiao.downtify.core.player.LocalDjSettings(
+            org.robolectric.RuntimeEnvironment.getApplication(),
+        )
         service.sessions = mockk(relaxed = true) {
             every { current } answers { association.value }
             every { session } returns association
