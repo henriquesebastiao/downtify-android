@@ -59,6 +59,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import com.henriquesebastiao.downtify.AppState
 import com.henriquesebastiao.downtify.MainViewModel
 import com.henriquesebastiao.downtify.R
@@ -175,8 +176,20 @@ private fun MainShell() {
     }
     // Now Playing, open or closed or anywhere between: it grows out of the mini player and shrinks back into it.
     val expansion = rememberPlayerExpansion()
+    val songMix: com.henriquesebastiao.downtify.ui.common.SongMixViewModel = hiltViewModel()
+    val mixAction = com.henriquesebastiao.downtify.ui.common.songMixAction(songMix)
+    val djMixAction = com.henriquesebastiao.downtify.ui.common.songDjMixAction(songMix)
     val scope = rememberCoroutineScope()
     LaunchedEffect(hasMedia) { if (!hasMedia) expansion.snapTo(open = false) }
+    com.henriquesebastiao.downtify.ui.common.SongDjStatusDialog(
+        status = songMix.djStatus,
+        onDismiss = songMix::dismissDjStatus,
+        onCancel = songMix::cancelDjMix,
+        onOpenPlayer = {
+            songMix.dismissDjStatus()
+            scope.launch { expansion.expand() }
+        },
+    )
     // The side menu, opened from Home's menu button.
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     var currentTab by rememberSaveable { mutableStateOf(TopLevelDestination.Home) }
@@ -213,6 +226,8 @@ private fun MainShell() {
     // The same instance MoveToTrashHost uses: whether this pairing gets the music trash.
     val trash: MoveToTrashViewModel = hiltViewModel()
     val trashOn by trash.canManage.collectAsStateWithLifecycle()
+    val musicAi: com.henriquesebastiao.downtify.feature.musicai.MusicAiViewModel = hiltViewModel()
+    val aiCapabilities by musicAi.capabilities.collectAsStateWithLifecycle()
     AppDrawer(
         drawerState = drawerState,
         selected = DrawerDestination.entries.firstOrNull { destination?.hasRoute(it.route::class) == true },
@@ -220,7 +235,9 @@ private fun MainShell() {
             scope.launch { drawerState.close() }
             navController.navigate(item.route) { launchSingleTop = true }
         },
-        destinations = DrawerDestination.entries.filter { trashOn || !it.trashOnly },
+        destinations = DrawerDestination.entries.filter {
+            (trashOn || !it.trashOnly) && (!it.musicAiOnly || aiCapabilities.version == 1)
+        },
     ) {
         Box(Modifier.fillMaxSize()) {
             NavigationSuiteScaffold(
@@ -258,7 +275,14 @@ private fun MainShell() {
                     }
                     var stackHeight by remember { mutableStateOf(0.dp) }
                     val covered = if (miniPlayer || floatingBar) stackHeight else 0.dp
-                    CompositionLocalProvider(LocalBottomBarsInset provides covered) {
+                    CompositionLocalProvider(
+                        LocalBottomBarsInset provides covered,
+                        com.henriquesebastiao.downtify.ui.common.LocalOpenPlayer provides
+                            { scope.launch { expansion.expand() } },
+                        com.henriquesebastiao.downtify.ui.common.LocalMusicAiCapabilities provides aiCapabilities,
+                        com.henriquesebastiao.downtify.ui.common.LocalSongMix provides mixAction,
+                        com.henriquesebastiao.downtify.ui.common.LocalSongDjMix provides djMixAction,
+                    ) {
                         Box(Modifier.fillMaxSize().then(content)) {
                             MoveToTrashHost(onMessage = { text -> scope.launch { snackbar.showSnackbar(text) } }) {
                                 AppNavHost(navController, onOpenMenu = { scope.launch { drawerState.open() } })
@@ -289,17 +313,23 @@ private fun MainShell() {
                 }
             }
             if (hasMedia) {
-                NowPlayingOverlay(
-                    expansion = expansion,
-                    player = player,
-                    attached = floatingBar,
-                    onOpen = { scope.launch { expansion.expand() } },
-                    onClose = { scope.launch { expansion.collapse() } },
-                    onNavigate = { route ->
-                        scope.launch { expansion.collapse() }
-                        navController.navigate(route) { launchSingleTop = true }
-                    },
-                )
+                CompositionLocalProvider(
+                    com.henriquesebastiao.downtify.ui.common.LocalMusicAiCapabilities provides aiCapabilities,
+                    com.henriquesebastiao.downtify.ui.common.LocalSongMix provides mixAction,
+                    com.henriquesebastiao.downtify.ui.common.LocalSongDjMix provides djMixAction,
+                ) {
+                    NowPlayingOverlay(
+                        expansion = expansion,
+                        player = player,
+                        attached = floatingBar,
+                        onOpen = { scope.launch { expansion.expand() } },
+                        onClose = { scope.launch { expansion.collapse() } },
+                        onNavigate = { route ->
+                            scope.launch { expansion.collapse() }
+                            navController.navigate(route) { launchSingleTop = true }
+                        },
+                    )
+                }
             }
         }
     }
@@ -321,6 +351,11 @@ private fun AppNavHost(navController: NavHostController, onOpenMenu: () -> Unit)
                 onOpenDiscover = { navController.navigate(DiscoverDestination) },
                 onOpenPodcasts = { navController.navigate(PodcastsDestination) },
                 onOpenSimilar = { navController.navigate(SimilarRoute()) },
+                onOpenForYou = { navController.navigate(com.henriquesebastiao.downtify.ui.navigation.ForYouRoute()) },
+                onOpenMoodPlaylist = { cadence, mood ->
+                    navController.navigate(com.henriquesebastiao.downtify.ui.navigation.ForYouRoute(cadence, mood))
+                },
+                onOpenDj = { navController.navigate(com.henriquesebastiao.downtify.ui.navigation.MusicDjRoute()) },
             )
         }
         composable<SearchDestination> {
@@ -349,6 +384,35 @@ private fun AppNavHost(navController: NavHostController, onOpenMenu: () -> Unit)
         composable<SimilarRoute> {
             SimilarScreenRoute(onBack = navController::popBackStack)
         }
+        composable<com.henriquesebastiao.downtify.ui.navigation.MusicAiRoute> {
+            com.henriquesebastiao.downtify.feature.musicai.MusicAiRoute(onBack = navController::popBackStack)
+        }
+        composable<com.henriquesebastiao.downtify.ui.navigation.ForYouRoute> { entry ->
+            val args = entry.toRoute<com.henriquesebastiao.downtify.ui.navigation.ForYouRoute>()
+            com.henriquesebastiao.downtify.feature.musicai.MusicPlaylistsRoute(
+                navController::popBackStack,
+                {
+                    navController.navigate(com.henriquesebastiao.downtify.ui.navigation.MusicAiRoute)
+                },
+                args.cadence,
+                args.mood,
+                onOpenPlaylist = { c, m ->
+                    navController.navigate(com.henriquesebastiao.downtify.ui.navigation.ForYouRoute(c, m))
+                },
+                onArtist = toArtist,
+                onAlbum = toAlbum,
+            )
+        }
+        composable<com.henriquesebastiao.downtify.ui.navigation.MusicDjRoute> { entry ->
+            val args = entry.toRoute<com.henriquesebastiao.downtify.ui.navigation.MusicDjRoute>()
+            com.henriquesebastiao.downtify.feature.musicai.MusicStudioRoute(
+                navController::popBackStack,
+                {
+                    navController.navigate(com.henriquesebastiao.downtify.ui.navigation.MusicAiRoute)
+                },
+                args.seed,
+            )
+        }
         composable<DiscoverDestination> {
             DiscoverRoute(
                 onBack = navController::popBackStack,
@@ -370,7 +434,7 @@ private fun AppNavHost(navController: NavHostController, onOpenMenu: () -> Unit)
                     onArtist = toArtist,
                     onPlaylist = toPlaylist,
                     onLiked = { navController.navigate(LikedRoute) },
-                    onSimilar = { artist, title -> navController.navigate(SimilarRoute(artist, title)) },
+                    onSimilar = { artist, title, seed -> navController.navigate(SimilarRoute(artist, title, seed)) },
                 ),
             )
         }
@@ -391,6 +455,7 @@ private fun AppNavHost(navController: NavHostController, onOpenMenu: () -> Unit)
             SettingsRoute(
                 onBack = navController::popBackStack,
                 onOpenAbout = { navController.navigate(AboutDestination) },
+                onOpenAi = { navController.navigate(com.henriquesebastiao.downtify.ui.navigation.MusicAiRoute) },
             )
         }
         composable<AboutDestination> {
@@ -457,9 +522,21 @@ private fun NowPlayingOverlay(
     val serverName by player.serverName.collectAsStateWithLifecycle()
     val lyrics by player.lyrics.collectAsStateWithLifecycle()
     val lyricsOffset by player.lyricsOffset.collectAsStateWithLifecycle()
+    val sleepDeadline by player.sleepDeadline.collectAsStateWithLifecycle()
+    val queueDj: com.henriquesebastiao.downtify.feature.player.QueueDjViewModel = hiltViewModel()
+    val djCaps by queueDj.capabilities.collectAsStateWithLifecycle()
+    val djMessage by queueDj.message.collectAsStateWithLifecycle()
+    val djArmed by queueDj.armed.collectAsStateWithLifecycle()
+    val djBusy by queueDj.busy.collectAsStateWithLifecycle()
+    val djChecking by queueDj.checking.collectAsStateWithLifecycle()
+    val djPhase by queueDj.phase.collectAsStateWithLifecycle()
+    val djAvailability by queueDj.availability.collectAsStateWithLifecycle()
+    val localDjDevice by queueDj.localDevice.collectAsStateWithLifecycle()
     var lyricsOpen by rememberSaveable { mutableStateOf(false) }
     var queueOpen by rememberSaveable { mutableStateOf(false) }
     val open = expansion.expanded
+
+    LaunchedEffect(queueOpen) { if (queueOpen) queueDj.onQueueShown() }
 
     LaunchedEffect(open) {
         if (!open) {
@@ -483,6 +560,7 @@ private fun NowPlayingOverlay(
     val controls = remember(player, onClose, onNavigate) {
         NowPlayingActions(
             onCollapse = onClose,
+            onSleepTimer = player.setSleepTimer,
             onTogglePlay = player::togglePlayPause,
             onNext = player::next,
             onPrevious = player::previous,
@@ -529,6 +607,7 @@ private fun NowPlayingOverlay(
         full = { coverModifier ->
             NowPlayingScreen(
                 state = state,
+                sleepActive = sleepDeadline != null,
                 isLiked = isLiked,
                 serverName = serverName,
                 downloadJob = streamJob,
@@ -554,8 +633,20 @@ private fun NowPlayingOverlay(
                 onRemove = player::removeFromQueue,
                 onClearQueued = player::clearQueued,
                 onMove = player::moveInQueue,
+                onToggleDj = queueDj::toggle,
             ),
             controls = controls,
+            dj = com.henriquesebastiao.downtify.feature.player.QueueDjState(
+                available = djCaps.version == 1 || djArmed || djBusy,
+                ready = djAvailability.ready,
+                active = djArmed || djBusy,
+                message = djMessage,
+                checking = djChecking,
+                preparing = djPhase == com.henriquesebastiao.downtify.core.player.DjPhase.Preparing,
+                waiting = djPhase == com.henriquesebastiao.downtify.core.player.DjPhase.Ready,
+                local = localDjDevice,
+                reason = djAvailability.reason,
+            ),
         )
     }
 

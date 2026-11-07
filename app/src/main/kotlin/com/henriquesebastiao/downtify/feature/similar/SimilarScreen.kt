@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -58,6 +59,17 @@ import com.henriquesebastiao.downtify.ui.common.plusBottomBars
 @Composable
 fun SimilarRoute(onBack: () -> Unit, modifier: Modifier = Modifier, viewModel: SimilarViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val caps by viewModel.capabilities.collectAsStateWithLifecycle()
+    val localEnabled = caps.version != 1 || caps.enabled("similarity")
+    val externalAvailable = caps.version == 1 && caps.enabled("external_beta")
+    if (!localEnabled && !externalAvailable) {
+        EmptyState(
+            icon = DowntifyIcons.Explore,
+            title = "Les musiques similaires sont désactivées dans vos préférences ou sur ce serveur.",
+            action = { TextButton(onClick = onBack) { Text(stringResource(R.string.action_back)) } },
+        )
+        return
+    }
     val snackbar = remember { SnackbarHostState() }
     val resources = LocalContext.current.resources
     LaunchedEffect(viewModel) {
@@ -89,6 +101,10 @@ fun SimilarRoute(onBack: () -> Unit, modifier: Modifier = Modifier, viewModel: S
         onShowLyrics = viewModel::showLyrics,
         snackbarHostState = snackbar,
         modifier = modifier,
+        localEnabled = localEnabled,
+        externalAvailable = externalAvailable,
+        external = viewModel.external,
+        onExternalChange = viewModel::onExternalChange,
     )
     val lyrics by viewModel.lyricsFor.collectAsStateWithLifecycle()
     lyrics?.let {
@@ -115,6 +131,10 @@ fun SimilarScreen(
     onToggleLike: (Track) -> Unit = {},
     onShowLyrics: (Track) -> Unit = {},
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+    localEnabled: Boolean = true,
+    externalAvailable: Boolean = false,
+    external: Boolean = false,
+    onExternalChange: (Boolean) -> Unit = {},
 ) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     Scaffold(
@@ -131,6 +151,16 @@ fun SimilarScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
+            if (externalAvailable) {
+                Row(Modifier.padding(horizontal = Spacing.screen)) {
+                    TextButton(onClick = { onExternalChange(false) }, enabled = localEnabled && external) {
+                        Text(if (external) "Bibliothèque" else "Bibliothèque · sélectionnée")
+                    }
+                    TextButton(onClick = { onExternalChange(true) }, enabled = !external) {
+                        Text(if (external) "Externe — bêta · sélectionné" else "Externe — bêta")
+                    }
+                }
+            }
             Column(
                 Modifier.fillMaxWidth().padding(bottom = Spacing.sm),
                 verticalArrangement = Arrangement.spacedBy(Spacing.sm),

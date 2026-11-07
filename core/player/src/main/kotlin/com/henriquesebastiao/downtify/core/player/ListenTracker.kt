@@ -4,6 +4,7 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import com.henriquesebastiao.downtify.core.data.listens.ListenReporter
+import com.henriquesebastiao.downtify.core.model.DjIds
 import com.henriquesebastiao.downtify.core.model.EpisodeIds
 import com.henriquesebastiao.downtify.core.model.ListenCounter
 import com.henriquesebastiao.downtify.core.model.StreamIds
@@ -58,7 +59,11 @@ internal class ListenTracker(
         val id = player.currentMediaItem?.mediaId ?: return
         if (id != trackId) newPlay(id)
         // Podcast episodes and streams don't count as listens (they're not tracks the server knows).
-        if (EpisodeIds.isEpisode(id) || StreamIds.isStream(id)) return
+        if (EpisodeIds.isEpisode(id) || StreamIds.isStream(id) ||
+            DjIds.isDj(id)
+        ) {
+            return
+        }
         val duration = player.duration.takeIf { it != C.TIME_UNSET }
             ?: player.mediaMetadata.durationMs
             ?: return

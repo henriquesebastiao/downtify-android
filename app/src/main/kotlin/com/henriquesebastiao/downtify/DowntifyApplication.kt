@@ -13,7 +13,7 @@ import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.crossfade
 import com.henriquesebastiao.downtify.core.data.offline.OfflineRepository
 import com.henriquesebastiao.downtify.core.data.sync.SyncCoordinator
-import com.henriquesebastiao.downtify.core.network.di.DefaultClient
+import com.henriquesebastiao.downtify.core.network.di.ArtworkClient
 import dagger.Lazy
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
@@ -32,7 +32,7 @@ class DowntifyApplication :
     @Inject lateinit var offline: OfflineRepository
 
     @Inject
-    @DefaultClient
+    @ArtworkClient
     lateinit var httpClient: Lazy<OkHttpClient>
 
     override val workManagerConfiguration: Configuration

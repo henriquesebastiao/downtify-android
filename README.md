@@ -118,3 +118,59 @@ These are designs, not code: Downtify implements them in its own components (`:c
 GPL-3.0 — see [LICENSE](LICENSE).
 
 Android Auto stability: see [the diagnostic and receiver acceptance checklist](docs/android-auto.md#stability-follow-up-full-phone-freeze-report). Launcher visibility and unit tests alone do not validate a full-phone freeze fix.
+
+## Experimental local music AI and DJ beta
+
+**All server AI modules and the additional unqualified-DJ trial default off
+for new installations/accounts.** Existing explicit preferences are preserved.
+
+My music keeps the normal library visible. Four daily playlist cards sit under
+favorite playlists: Relaxation, Focus, Motivation and Calm. See all opens daily
+and weekly selections. The daily cards use local vector artwork with mood colors.
+Each selection opens the same native playlist screen as a saved playlist.
+Save a named, stable copy from its header; automatic renewal never changes it. A dedicated DJ shortcut sits beside Discover, Similar
+tracks and Podcasts. Song/player menus distinguish a classic mix from a DJ mix;
+the current queue retains its DJ button.
+
+One application-scoped coordinator owns preparation and transitions into the
+existing Media3 foreground service and MediaSession. Pause is local and
+immediate; delayed renderer statuses cannot restart playback. Generations,
+account ownership and request cancellation fence obsolete preparations. Leaving
+DJ maps the dominant audible title back to its original source time.
+
+Known capabilities and home cards have a small private cache scoped to the
+pairing. Foreground/cache invalidation replaces redundant timers. Commands,
+catalog queries, images and audio use separate network dispatchers. Error
+messages distinguish connection, authentication, incompatible responses,
+disabled features, missing analysis and a busy engine. Home sorting runs off
+the main thread.
+
+The optimized beta build is non-debuggable and enables R8/resource shrinking;
+it uses a profileable manifest for physical-device benchmarks. Its audio
+allocator target is 64 MiB across the two local decoders. Live HLS uses a separate
+64 MiB transient disk cache for immutable, authenticated segments; manifests stay fresh.
+These are configured budgets, not measured phone memory, battery or temperature.
+Server mixing remains the initial choice. **This device · Beta** enables a local
+dual-deck prototype for the current queue, using the same player and audio session.
+It currently uses short fades; on-device beat-model inference is not integrated
+and no AI model is downloaded. Shuffle, repeat-one and remote streams retain
+ordinary playback. Phone quality, latency, temperature and battery remain unqualified.
+
+DJ sets now appear in the mini player and open Now Playing after joining. Direct
+controls are shown only after this device joins, avoiding a server-only resume.
+The beta3 queue rechecks server capabilities and reports the actual availability
+reason. Preparation can be cancelled, and a pending relay is distinct from active
+DJ playback. The song-menu action uses the selected engine and shows persistent
+progress, errors and an entry to the common player instead of an optimistic toast.
+All 114 player-module tests and 216 app tests passed, with three app tests
+explicitly skipped. They include seven mini-player checks and native shuffle
+restoration through the dual-deck facade. Detekt and formatting passed;
+these checks do not replace physical-device acceptance.
+
+Corrective player tests cover 25 repeated mode cycles, local pause intent,
+stale status fencing and dominant-title/source-time mapping. Server/web checks
+and a synthetic 50,000-entry home comparison are documented in the matching
+[server PR](https://github.com/henriquesebastiao/downtify/pull/547).
+Actual Pixel startup/latency, Bluetooth/background/network recovery, thermal
+behavior, comparative listening and the sustained one-hour qualification are
+still pending. This remains a draft beta. See [behavior and limits](docs/music-ai.md).

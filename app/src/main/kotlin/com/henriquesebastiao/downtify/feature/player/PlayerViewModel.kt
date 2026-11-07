@@ -49,7 +49,10 @@ class PlayerViewModel @Inject constructor(
     server: ServerRepository,
     private val catalog: CatalogRepository,
     queue: ServerQueueRepository,
+    private val sleepTimer: com.henriquesebastiao.downtify.core.player.PlaybackSleepTimer,
 ) : ViewModel() {
+    val sleepDeadline = sleepTimer.deadline
+    val setSleepTimer: (Int?) -> Unit = sleepTimer::set
     val state: StateFlow<PlayerState> = player.state
 
     val hasMedia: StateFlow<Boolean> = player.hasMedia

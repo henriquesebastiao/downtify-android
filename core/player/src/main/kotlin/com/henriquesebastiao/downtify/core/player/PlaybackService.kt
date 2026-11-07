@@ -42,7 +42,9 @@ import com.henriquesebastiao.downtify.core.data.playback.PlaybackRepository
 import com.henriquesebastiao.downtify.core.data.playback.playbackOwner
 import com.henriquesebastiao.downtify.core.data.podcasts.PodcastsRepository
 import com.henriquesebastiao.downtify.core.data.sync.SyncCoordinator
+import com.henriquesebastiao.downtify.core.model.DjIds
 import com.henriquesebastiao.downtify.core.model.EpisodeIds
+import com.henriquesebastiao.downtify.core.model.MediaIds
 import com.henriquesebastiao.downtify.core.model.PlayQueue
 import com.henriquesebastiao.downtify.core.model.StreamIds
 import com.henriquesebastiao.downtify.core.network.di.StreamingClient
@@ -85,7 +87,11 @@ class PlaybackService : MediaLibraryService() {
 
     @Inject lateinit var library: LibraryRepository
 
+    @Inject lateinit var sleepTimer: PlaybackSleepTimer
+
     @Inject lateinit var reporter: ListenReporter
+
+    @Inject lateinit var musicAi: com.henriquesebastiao.downtify.core.data.musicai.MusicAiRepository
 
     @Inject lateinit var activityReporter: PlaybackActivityReporter
 
@@ -117,9 +123,13 @@ class PlaybackService : MediaLibraryService() {
 
     @Inject lateinit var syncCoordinator: SyncCoordinator
 
+    @Inject lateinit var localDj: LocalDjSettings
+    private var localFocus: LocalDjAudioFocus? = null
     private var session: MediaLibrarySession? = null
     private var artworkTracker: SessionArtworkTracker? = null
     private var listens: ListenTracker? = null
+    private var aiListens: MusicAiListenTracker? = null
+    private var djControls: DjControlTracker? = null
     private var activity: ActivityTracker? = null
     private var episodes: EpisodeProgressTracker? = null
     private var prefetch: StreamPrefetchTracker? = null
@@ -128,10 +138,73 @@ class PlaybackService : MediaLibraryService() {
     private val likeCommand = SessionCommand(ACTION_TOGGLE_LIKE, Bundle.EMPTY)
     private val addToQueueCommand = SessionCommand(ACTION_ADD_TO_QUEUE, Bundle.EMPTY)
     private val moveInQueueCommand = SessionCommand(ACTION_MOVE_IN_QUEUE, Bundle.EMPTY)
+    private val djNextCommand = SessionCommand(ACTION_DJ_NEXT, Bundle.EMPTY)
 
     override fun onCreate() {
         super.onCreate()
         CarDiagnostics.service(true)
+        val player = createSessionPlayer()
+
+        val callback = SessionCallback()
+        session = MediaLibrarySession.Builder(this, player, callback)
+            .setBitmapLoader(
+                CacheBitmapLoader(
+                    DataSourceBitmapLoader(DataSourceBitmapLoader.DEFAULT_EXECUTOR_SERVICE.get(), artworkDataSource),
+                ),
+            )
+            .apply { launchIntent()?.let(::setSessionActivity) }
+            .build()
+
+        callback.observe(checkNotNull(session))
+        scope.launch { sleepTimer.run { player.pause() } }
+        syncCoordinator.setMediaServiceActive(true)
+        scope.launch {
+            withContext(Dispatchers.IO) { sessions.ensureLoaded() }
+            artworkTracker = SessionArtworkTracker(player, artwork, sessions, network, scope).also { it.start() }
+        }
+
+        setMediaNotificationProvider(
+            DefaultMediaNotificationProvider(this).apply { setSmallIcon(R.drawable.ic_notification) },
+        )
+
+        listens = ListenTracker(player, reporter, scope).also { it.start() }
+        aiListens = MusicAiListenTracker(player, musicAi, scope).also { it.start() }
+        djControls = DjControlTracker(player, musicAi, scope).also { it.start() }
+        activity = ActivityTracker(player, activityReporter, scope).also { it.start() }
+        episodes = EpisodeProgressTracker(player, podcasts, scope).also { it.start() }
+        prefetch = StreamPrefetchTracker(player, catalog, scope, enabled = { !readAhead.enabled }).also { it.start() }
+        warmer =
+            TranscodeWarmer(player, resolver, streamingClient, scope, enabled = {
+                !readAhead.enabled
+            }).also { it.start() }
+        scope.launch {
+            player.dominantDecoder.collect { decoder ->
+                readAhead.stop()
+                if (decoder is ExoPlayer) readAhead.start(decoder, scope)
+            }
+        }
+        keepLikeButtonCurrent(player)
+        stopDisabledDj(player)
+        stopWhenSignedOut(player)
+        removeDeletedLibraryTracks(player)
+        persistence = PlaybackPersistence(player, playback, sessions, scope).also { it.start() }
+    }
+
+    private fun createSessionPlayer(): LocalDjPlayer {
+        val player = LocalDjPlayer(decoder(), decoder(), scope)
+        localFocus = LocalDjAudioFocus(this, player).also { it.start() }
+        scope.launch { player.transition.collect { localDj.publish(it) } }
+        scope.launch {
+            combine(localDj.device, localDj.armed, musicAi.capabilities) { device, armed, caps ->
+                if (caps.version > 0 && !caps.enabled("dj_interactive")) localDj.setArmed(false)
+                device && armed && caps.enabled("dj_interactive")
+            }.distinctUntilChanged().collect { player.setEnabled(it) }
+        }
+
+        return player
+    }
+
+    private fun decoder(): ExoPlayer {
         val normalizer = NormalizationAudioProcessor(
             gainForTrack = loudness::gainDb,
             isEnabled = { loudness.enabled.value },
@@ -149,54 +222,26 @@ class PlaybackService : MediaLibraryService() {
                 .setAudioOffloadSupportProvider { _, _ -> AudioOffloadSupport.DEFAULT_UNSUPPORTED }
                 .build()
         }
-        val player = ExoPlayer.Builder(this, renderers)
+        return ExoPlayer.Builder(this, renderers)
+            .setLoadControl(
+                androidx.media3.exoplayer.DefaultLoadControl.Builder()
+                    .setBufferDurationsMs(15000, 60000, 1000, 2500)
+                    .setTargetBufferBytes(32 * 1024 * 1024)
+                    .setPrioritizeTimeOverSizeThresholds(false)
+                    .build(),
+            )
             .setMediaSourceFactory(DefaultMediaSourceFactory(audioDataSource))
             .setAudioAttributes(
                 AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(),
                 /* handleAudioFocus = */
-                true,
+                false,
             )
-            .setHandleAudioBecomingNoisy(true)
+            .setHandleAudioBecomingNoisy(false)
             // For podcast episodes: the buttons in the app and the notification skip by these.
             .setSeekBackIncrementMs(SKIP_BACK_MS)
             .setSeekForwardIncrementMs(SKIP_FORWARD_MS)
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .build()
-
-        val callback = SessionCallback()
-        session = MediaLibrarySession.Builder(this, player, callback)
-            .setBitmapLoader(
-                CacheBitmapLoader(
-                    DataSourceBitmapLoader(DataSourceBitmapLoader.DEFAULT_EXECUTOR_SERVICE.get(), artworkDataSource),
-                ),
-            )
-            .apply { launchIntent()?.let(::setSessionActivity) }
-            .build()
-
-        callback.observe(checkNotNull(session))
-        syncCoordinator.setMediaServiceActive(true)
-        scope.launch {
-            withContext(Dispatchers.IO) { sessions.ensureLoaded() }
-            artworkTracker = SessionArtworkTracker(player, artwork, sessions, network, scope).also { it.start() }
-        }
-
-        setMediaNotificationProvider(
-            DefaultMediaNotificationProvider(this).apply { setSmallIcon(R.drawable.ic_notification) },
-        )
-
-        listens = ListenTracker(player, reporter, scope).also { it.start() }
-        activity = ActivityTracker(player, activityReporter, scope).also { it.start() }
-        episodes = EpisodeProgressTracker(player, podcasts, scope).also { it.start() }
-        prefetch = StreamPrefetchTracker(player, catalog, scope, enabled = { !readAhead.enabled }).also { it.start() }
-        warmer =
-            TranscodeWarmer(player, resolver, streamingClient, scope, enabled = {
-                !readAhead.enabled
-            }).also { it.start() }
-        readAhead.start(player, scope)
-        keepLikeButtonCurrent(player)
-        stopWhenSignedOut(player)
-        removeDeletedLibraryTracks(player)
-        persistence = PlaybackPersistence(player, playback, sessions, scope).also { it.start() }
     }
 
     /**
@@ -220,6 +265,25 @@ class PlaybackService : MediaLibraryService() {
             }.launchIn(scope)
     }
 
+    private fun stopDisabledDj(player: Player) {
+        fun enforce() {
+            if (musicAi.capabilities.value.version == 0) return
+            val id = player.currentMediaItem?.mediaId
+            if (!DjIds.isDj(id)) return
+            val reference = DjIds.referenceOf(id)
+            if (reference == null || !musicAi.capabilities.value.enabled("dj_" + reference.mode)) player.pause()
+        }
+        musicAi.capabilities.onEach { enforce() }.launchIn(scope)
+        player.addListener(object : Player.Listener {
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                if (isPlaying) enforce()
+            }
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                enforce()
+            }
+        })
+    }
+
     /** Unpaired (here or from the web): the queue belongs to a server the app can't reach anymore. */
     private fun stopWhenSignedOut(player: Player) {
         scope.launch {
@@ -227,6 +291,9 @@ class PlaybackService : MediaLibraryService() {
             val expected = sessions.current?.playbackOwner
             sessions.session.collect { paired ->
                 if (paired == null || paired.playbackOwner != expected) {
+                    sleepTimer.set(null)
+                    localDj.setArmed(false)
+                    (player as? LocalDjPlayer)?.resetForOwner()
                     player.stop()
                     player.clearMediaItems()
                     stopSelf()
@@ -244,16 +311,22 @@ class PlaybackService : MediaLibraryService() {
     }
 
     override fun onDestroy() {
+        sleepTimer.set(null)
         CarDiagnostics.service(false)
         syncCoordinator.setMediaServiceActive(false)
         artworkTracker?.stop()
         readAhead.stop()
         persistence?.stop()
         listens?.stop()
+        aiListens?.stop()
+        djControls?.stop()
         activity?.stop()
         episodes?.stop()
         prefetch?.stop()
         warmer?.stop()
+        localFocus?.release()
+        localDj.setArmed(false)
+        localDj.publish(LocalDjTransition())
         scope.cancel()
         session?.run {
             player.release()
@@ -286,7 +359,9 @@ class PlaybackService : MediaLibraryService() {
         // Songs get a heart; an episode or a stream has nothing to like.
         combine(currentId, library.likedIds) { id, liked ->
             when {
-                EpisodeIds.isEpisode(id) || StreamIds.isStream(id) -> null
+                EpisodeIds.isEpisode(id) || StreamIds.isStream(id) ||
+                    DjIds.isDj(id) -> null
+
                 else -> id != null && id in liked
             }
         }
@@ -394,7 +469,7 @@ class PlaybackService : MediaLibraryService() {
             }
             val commands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon()
             if (own(controller)) {
-                commands.add(likeCommand).add(addToQueueCommand).add(moveInQueueCommand)
+                commands.add(likeCommand).add(addToQueueCommand).add(moveInQueueCommand).add(djNextCommand)
             } else {
                 commands.add(likeCommand)
             }
@@ -413,20 +488,18 @@ class PlaybackService : MediaLibraryService() {
             }
             if (customCommand.customAction == ACTION_TOGGLE_LIKE) {
                 val id = session.player.currentMediaItem?.mediaId
-                if (id != null && !EpisodeIds.isEpisode(id) && !StreamIds.isStream(id)) {
+                if (id != null && MediaIds.isLibrary(id)) {
                     val liked = id in library.likedIds.value
                     scope.launch { library.setLiked(id, !liked) }
                 }
                 return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
             }
+            if (customCommand.customAction == ACTION_DJ_NEXT) {
+                val reference = DjIds.referenceOf(session.player.currentMediaItem?.mediaId)
+                return requestDjNext(reference)
+            }
             if (customCommand.customAction == ACTION_ADD_TO_QUEUE) {
-                val track = args.getString(EXTRA_TRACK_ID)?.let { library.library.value?.byId?.get(it) }
-                    ?: return Futures.immediateFuture(SessionResult(SessionError.ERROR_BAD_VALUE))
-                addToQueue(
-                    session.player as ExoPlayer,
-                    MediaItems.from(track, sessions.current?.baseUrl, queued = true),
-                )
-                return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                return requestQueueAdd(session, args)
             }
             if (customCommand.customAction == ACTION_MOVE_IN_QUEUE) {
                 moveInQueue(
@@ -438,6 +511,31 @@ class PlaybackService : MediaLibraryService() {
                 return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
             }
             return super.onCustomCommand(session, controller, customCommand, args)
+        }
+
+        private fun requestDjNext(
+            reference: com.henriquesebastiao.downtify.core.model.DjReference?,
+        ): ListenableFuture<SessionResult> {
+            if (reference?.mode !=
+                "interactive"
+            ) {
+                return Futures.immediateFuture(SessionResult(SessionError.ERROR_BAD_VALUE))
+            }
+            return scope.future {
+                try {
+                    musicAi.djCommand(reference.id, "next")
+                    SessionResult(SessionResult.RESULT_SUCCESS)
+                } catch (_: com.henriquesebastiao.downtify.core.data.musicai.MusicAiFailure) {
+                    SessionResult(SessionError.ERROR_IO)
+                }
+            }
+        }
+
+        private fun requestQueueAdd(session: MediaSession, args: Bundle): ListenableFuture<SessionResult> {
+            val track = args.getString(EXTRA_TRACK_ID)?.let { library.library.value?.byId?.get(it) }
+                ?: return Futures.immediateFuture(SessionResult(SessionError.ERROR_BAD_VALUE))
+            addToQueue(session.player as ExoPlayer, MediaItems.from(track, sessions.current?.baseUrl, queued = true))
+            return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
         }
 
         /**
@@ -453,6 +551,22 @@ class PlaybackService : MediaLibraryService() {
             val snapshot = library.library.value
             val baseUrl = sessions.current?.baseUrl
             val resolved = mediaItems.mapNotNull { item ->
+                if (DjIds.isDj(item.mediaId)) {
+                    val reference = DjIds.referenceOf(item.mediaId)
+                    return@mapNotNull if (reference != null &&
+                        musicAi.capabilities.value.enabled("dj_" + reference.mode)
+                    ) {
+                        DjMediaItems.from(
+                            reference.id,
+                            item.mediaMetadata.title?.toString().orEmpty(),
+                            item.mediaMetadata.durationMs ?: 0,
+                            reference.mode,
+                        ).buildUpon()
+                            .setMediaMetadata(item.mediaMetadata).build()
+                    } else {
+                        null
+                    }
+                }
                 // An episode carries its file's address in the request metadata.
                 if (EpisodeIds.isEpisode(item.mediaId)) {
                     return@mapNotNull item.requestMetadata.mediaUri?.let { item.buildUpon().setUri(it).build() }
@@ -475,6 +589,7 @@ class PlaybackService : MediaLibraryService() {
         const val ACTION_TOGGLE_LIKE = "com.henriquesebastiao.downtify.TOGGLE_LIKE"
         const val ACTION_ADD_TO_QUEUE = "com.henriquesebastiao.downtify.ADD_TO_QUEUE"
         const val ACTION_MOVE_IN_QUEUE = "com.henriquesebastiao.downtify.MOVE_IN_QUEUE"
+        const val ACTION_DJ_NEXT = "com.henriquesebastiao.downtify.DJ_NEXT"
         const val EXTRA_TRACK_ID = "track_id"
         const val EXTRA_FROM = "from"
         const val EXTRA_AFTER = "after"
