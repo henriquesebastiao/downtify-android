@@ -184,7 +184,7 @@ fun MiniPlayerButton(
             CircularProgressIndicator(
                 color = if (main) scheme.onPrimary else scheme.onPrimaryContainer,
                 strokeWidth = 2.5.dp,
-                modifier = Modifier.size(22.dp),
+                modifier = Modifier.size(22.dp).semantics { this.contentDescription = contentDescription },
             )
         } else {
             Icon(painterResource(icon), contentDescription = contentDescription)
@@ -308,7 +308,7 @@ private fun TransportButton(
             CircularProgressIndicator(
                 color = if (filled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer,
                 strokeWidth = 3.dp,
-                modifier = Modifier.size(iconSize),
+                modifier = Modifier.size(iconSize).semantics { this.contentDescription = label },
             )
         } else {
             Icon(painterResource(icon), contentDescription = label, modifier = Modifier.size(iconSize))
