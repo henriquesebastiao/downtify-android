@@ -10,6 +10,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -350,27 +351,17 @@ private fun AddressStep(
                 placeholder = { Text("http://192.168.1.20:8000", style = DowntifyType.dataInput) },
                 leadingIcon = { Icon(painterResource(DowntifyIcons.Server), contentDescription = null) },
                 trailingIcon = {
-                    if (state.clientCertificate != null) {
-                        IconButton(onClick = onClearClientCertificate) {
+                    if (state.address.isNotEmpty()) {
+                        IconButton(onClick = { onAddressChange("") }) {
                             Icon(
                                 painterResource(DowntifyIcons.Close),
-                                contentDescription = stringResource(R.string.connect_client_certificate_clear),
-                            )
-                        }
-                    } else {
-                        IconButton(onClick = onSelectClientCertificate) {
-                            Icon(
-                                painterResource(DowntifyIcons.Terms),
-                                contentDescription = stringResource(R.string.connect_client_certificate),
+                                contentDescription = null,
                             )
                         }
                     }
                 },
                 supportingText = {
-                    val hint = state.clientCertificate?.let {
-                        stringResource(R.string.connect_client_certificate_selected, it)
-                    } ?: stringResource(R.string.connect_address_hint)
-                    Text(errorText(state.error) ?: hint)
+                    Text(errorText(state.error) ?: stringResource(R.string.connect_address_hint))
                 },
                 isError = state.error != null,
                 singleLine = true,
@@ -382,6 +373,11 @@ private fun AddressStep(
                 ),
                 keyboardActions = KeyboardActions(onGo = { if (state.canConnect) onConnect() }),
                 modifier = Modifier.fillMaxWidth(),
+            )
+            ClientCertificateOption(
+                certificateAlias = state.clientCertificate,
+                onSelect = onSelectClientCertificate,
+                onClear = onClearClientCertificate,
             )
             if (state.cleartextWarning) {
                 Notice(stringResource(R.string.connect_cleartext_warning), DowntifyIcons.Warning)
@@ -903,4 +899,75 @@ private val UppercaseTransformation = VisualTransformation { text ->
     // Identity offsets need the same length; a few letters (ß → SS) grow when uppercased.
     val upper = text.text.uppercase().takeIf { it.length == text.text.length } ?: text.text
     TransformedText(AnnotatedString(upper), OffsetMapping.Identity)
+}
+
+@Composable
+private fun ClientCertificateOption(
+    certificateAlias: String?,
+    onSelect: () -> Unit,
+    onClear: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val isSelected = certificateAlias != null
+    Surface(
+        onClick = onSelect,
+        shape = MaterialTheme.shapes.medium,
+        color = if (isSelected) scheme.secondaryContainer.copy(alpha = 0.4f) else scheme.surfaceContainerLow,
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (isSelected) scheme.primary.copy(alpha = 0.6f) else scheme.outlineVariant.copy(alpha = 0.5f),
+        ),
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+        ) {
+            Icon(
+                painter = painterResource(if (isSelected) DowntifyIcons.LockOpen else DowntifyIcons.Terms),
+                contentDescription = null,
+                tint = if (isSelected) scheme.primary else scheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Text(
+                    text = stringResource(R.string.connect_client_certificate),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = scheme.onSurfaceVariant,
+                )
+                Text(
+                    text = certificateAlias ?: stringResource(R.string.settings_client_certificate_none),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (isSelected) scheme.onSecondaryContainer else scheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            if (isSelected) {
+                IconButton(
+                    onClick = onClear,
+                    modifier = Modifier.size(32.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(DowntifyIcons.Close),
+                        contentDescription = stringResource(R.string.connect_client_certificate_clear),
+                        tint = scheme.onSecondaryContainer,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            } else {
+                Icon(
+                    painter = painterResource(DowntifyIcons.ChevronRight),
+                    contentDescription = null,
+                    tint = scheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
+    }
 }
