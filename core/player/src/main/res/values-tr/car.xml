@@ -13,5 +13,10 @@
     <string name="car_choose_result">Birden çok sonuç: arama sonuçlarından bir parça seçin.</string>
     <string name="player_like">Beğenilen parçalara ekle</string>
     <string name="player_unlike">Beğenilen parçalardan kaldır</string>
+    <string name="player_shuffle_on">Karışık açık</string>
+    <string name="player_shuffle_off">Karışık kapalı</string>
+    <string name="player_repeat_off">Tekrar kapalı</string>
+    <string name="player_repeat_all">Tümünü tekrarla</string>
+    <string name="player_repeat_one">Bir şarkıyı tekrarla</string>
     <string name="car_refine_search">Çok fazla sonuç. Aramanızı daraltın.</string>
 </resources>

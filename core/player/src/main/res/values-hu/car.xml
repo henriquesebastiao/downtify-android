@@ -13,5 +13,10 @@
     <string name="car_choose_result">Több találat: válassz számot a keresési eredményekből.</string>
     <string name="player_like">Hozzáadás a kedvelt számokhoz</string>
     <string name="player_unlike">Eltávolítás a kedvelt számok közül</string>
+    <string name="player_shuffle_on">Véletlen sorrend be</string>
+    <string name="player_shuffle_off">Véletlen sorrend ki</string>
+    <string name="player_repeat_off">Ismétlés ki</string>
+    <string name="player_repeat_all">Összes ismétlése</string>
+    <string name="player_repeat_one">Egy szám ismétlése</string>
     <string name="car_refine_search">Túl sok találat. Pontosítsd a keresést.</string>
 </resources>
