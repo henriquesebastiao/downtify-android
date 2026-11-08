@@ -41,11 +41,16 @@ fun chooseClientCertificate(
                 }
             }
         },
-        /* keyTypes = */ null,
-        /* issuers = */ null,
-        /* host = */ uri?.host,
-        /* port = */ uri?.port ?: -1,
-        /* alias = */ currentAlias,
+        /* keyTypes = */
+        null,
+        /* issuers = */
+        null,
+        /* host = */
+        uri?.host,
+        /* port = */
+        uri?.port ?: -1,
+        /* alias = */
+        currentAlias,
     )
 }
 

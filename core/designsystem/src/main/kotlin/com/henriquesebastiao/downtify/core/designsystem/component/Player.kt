@@ -181,10 +181,13 @@ fun MiniPlayerButton(
         modifier = modifier.size(48.dp),
     ) {
         if (buffering) {
+            val progressColor = if (main) scheme.onPrimary else scheme.onPrimaryContainer
             CircularProgressIndicator(
-                color = if (main) scheme.onPrimary else scheme.onPrimaryContainer,
+                color = progressColor,
                 strokeWidth = 2.5.dp,
-                modifier = Modifier.size(22.dp).semantics { this.contentDescription = contentDescription },
+                modifier = Modifier
+                    .size(22.dp)
+                    .semantics { this.contentDescription = contentDescription },
             )
         } else {
             Icon(painterResource(icon), contentDescription = contentDescription)
@@ -305,10 +308,17 @@ private fun TransportButton(
 ) {
     val content: @Composable RowScope.() -> Unit = {
         if (buffering) {
+            val progressColor = if (filled) {
+                MaterialTheme.colorScheme.onPrimary
+            } else {
+                MaterialTheme.colorScheme.onPrimaryContainer
+            }
             CircularProgressIndicator(
-                color = if (filled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer,
+                color = progressColor,
                 strokeWidth = 3.dp,
-                modifier = Modifier.size(iconSize).semantics { this.contentDescription = label },
+                modifier = Modifier
+                    .size(iconSize)
+                    .semantics { this.contentDescription = label },
             )
         } else {
             Icon(painterResource(icon), contentDescription = label, modifier = Modifier.size(iconSize))

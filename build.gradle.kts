@@ -17,7 +17,7 @@ val ktlintVersion = libs.versions.ktlint.get()
 
 spotless {
     kotlin {
-        target("**/*.kt")
+        target("**/src/**/*.kt")
         targetExclude("**/build/**")
         ktlint(ktlintVersion).editorConfigOverride(
             mapOf("ktlint_function_naming_ignore_when_annotated_with" to "Composable"),
