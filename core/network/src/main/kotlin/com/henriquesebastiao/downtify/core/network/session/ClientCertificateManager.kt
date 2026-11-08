@@ -95,8 +95,7 @@ class ClientCertificateManager internal constructor(
     override fun getCertificateChain(alias: String?): Array<X509Certificate>? =
         alias?.takeIf { it.isNotBlank() }?.let(::credentialsFor)?.chain
 
-    override fun getClientAliases(keyType: String?, issuers: Array<out Principal>?): Array<String>? =
-        selectAlias(null)?.let { arrayOf(it) }
+    override fun getClientAliases(keyType: String?, issuers: Array<out Principal>?): Array<String>? = null
 
     override fun getServerAliases(keyType: String?, issuers: Array<out Principal>?): Array<String>? = null
 
@@ -122,8 +121,6 @@ class ClientCertificateManager internal constructor(
                 init(arrayOf<KeyManager>(this@ClientCertificateManager), arrayOf<TrustManager>(trustManager), null)
                 runCatching {
                     sessionContext = clientSessionContext
-                    clientSessionContext.sessionCacheSize = 0
-                    clientSessionContext.sessionTimeout = 0
                 }
             }
         }.getOrNull() ?: return builder
@@ -164,20 +161,23 @@ class ClientCertificateManager internal constructor(
 
         /**
          * Whether [peerHost] may receive the client certificate when paired with [pairedBaseUrl].
-         * Before pairing ([pairedBaseUrl] is null), any host being probed or paired with may receive
+         * Before pairing ([pairedBaseUrl] is null or blank), any valid host being probed or paired with may receive
          * it; once paired, only the paired server's host may.
          */
         fun allowsHost(peerHost: String?, pairedBaseUrl: String?): Boolean {
-            if (pairedBaseUrl.isNullOrBlank() || peerHost.isNullOrBlank()) return true
+            if (peerHost.isNullOrBlank()) return false
+            val peerClean = cleanHost(peerHost) ?: return false
+            if (pairedBaseUrl.isNullOrBlank()) return true
+
             val pairedHost = pairedBaseUrl.toHttpUrlOrNull()?.host
                 ?: pairedBaseUrl.trim()
                     .removePrefix("https://")
                     .removePrefix("http://")
                     .substringBefore('/')
                     .takeIf { it.isNotBlank() }
-                ?: return true
-            val peerClean = cleanHost(peerHost) ?: return true
-            val pairedClean = cleanHost(pairedHost) ?: return true
+                ?: return false
+
+            val pairedClean = cleanHost(pairedHost) ?: return false
             return peerClean.equals(pairedClean, ignoreCase = true)
         }
 

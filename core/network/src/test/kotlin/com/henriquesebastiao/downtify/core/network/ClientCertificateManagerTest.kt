@@ -14,8 +14,12 @@ import org.junit.Test
 class ClientCertificateManagerTest {
 
     @Test
-    fun `presents the certificate to any host before pairing and only to the paired host after`() {
+    fun `presents the certificate to any valid host before pairing and only to the paired host after`() {
+        assertFalse(ClientCertificateManager.allowsHost(null, pairedBaseUrl = null))
+        assertFalse(ClientCertificateManager.allowsHost("", pairedBaseUrl = null))
         assertTrue(ClientCertificateManager.allowsHost("music.example.com", pairedBaseUrl = null))
+        assertFalse(ClientCertificateManager.allowsHost(null, pairedBaseUrl = "https://music.example.com"))
+        assertFalse(ClientCertificateManager.allowsHost("", pairedBaseUrl = "https://music.example.com"))
         assertTrue(
             ClientCertificateManager.allowsHost(
                 peerHost = "music.example.com",
@@ -60,7 +64,10 @@ class ClientCertificateManagerTest {
             loader = loader,
         )
 
-        assertEquals("cloudflare-mtls", manager.chooseClientAlias(arrayOf("RSA"), null, null))
+        assertNull(manager.getClientAliases("RSA", null))
+        assertNull(manager.chooseClientAlias(arrayOf("RSA"), null, null))
+        assertTrue(ClientCertificateManager.allowsHost("music.example.com", baseUrl))
+
         assertSame(generatedKey, manager.getPrivateKey("cloudflare-mtls"))
         assertSame(generatedKey, manager.getPrivateKey("cloudflare-mtls"))
         assertEquals(1, keyLoads)
