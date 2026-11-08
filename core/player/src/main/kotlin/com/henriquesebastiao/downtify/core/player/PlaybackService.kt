@@ -140,6 +140,8 @@ class PlaybackService : MediaLibraryService() {
     private val moveInQueueCommand = SessionCommand(ACTION_MOVE_IN_QUEUE, Bundle.EMPTY)
     private val djNextCommand = SessionCommand(ACTION_DJ_NEXT, Bundle.EMPTY)
     private val shuffleFromHeadCommand = SessionCommand(ACTION_SHUFFLE_FROM_HEAD, Bundle.EMPTY)
+    private val shuffleCommand = SessionCommand(ACTION_TOGGLE_SHUFFLE, Bundle.EMPTY)
+    private val repeatCommand = SessionCommand(ACTION_CYCLE_REPEAT, Bundle.EMPTY)
 
     override fun onCreate() {
         super.onCreate()
@@ -188,7 +190,7 @@ class PlaybackService : MediaLibraryService() {
                 if (decoder is ExoPlayer) readAhead.start(decoder, scope)
             }
         }
-        keepLikeButtonCurrent(player)
+        keepButtonsCurrent(player)
         stopDisabledDj(player)
         stopWhenSignedOut(player)
         removeDeletedLibraryTracks(player)
@@ -352,30 +354,70 @@ class PlaybackService : MediaLibraryService() {
     }
 
     /** The heart in the notification follows the current track's like. */
-    private fun keepLikeButtonCurrent(player: Player) {
+    private fun keepButtonsCurrent(player: Player) {
         val currentId = MutableStateFlow(player.currentMediaItem?.mediaId)
+        val shuffleOn = MutableStateFlow(player.shuffleModeEnabled)
+        val repeatFlow = MutableStateFlow(player.repeatMode)
         player.addListener(
             object : Player.Listener {
                 override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                     currentId.value = mediaItem?.mediaId
                 }
+
+                override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
+                    shuffleOn.value = shuffleModeEnabled
+                }
+
+                override fun onRepeatModeChanged(repeatMode: Int) {
+                    repeatFlow.value = repeatMode
+                }
             },
         )
-        // Songs get a heart; an episode or a stream has nothing to like.
-        combine(currentId, library.likedIds) { id, liked ->
-            when {
-                EpisodeIds.isEpisode(id) || StreamIds.isStream(id) ||
-                    DjIds.isDj(id) -> null
-
-                else -> id != null && id in liked
-            }
+        // Shuffle and repeat follow the real player state; a song also gets a heart.
+        combine(currentId, library.likedIds, shuffleOn, repeatFlow) { id, liked, shuffle, mode ->
+            Triple(likeable(id, liked), shuffle, mode)
         }
             .distinctUntilChanged()
-            .onEach { liked ->
-                session?.setMediaButtonPreferences(if (liked == null) emptyList() else listOf(likeButton(liked)))
+            .onEach { (liked, shuffle, mode) ->
+                session?.setMediaButtonPreferences(
+                    listOfNotNull(shuffleButton(shuffle), repeatButton(mode), liked?.let(::likeButton)),
+                )
             }
             .launchIn(scope)
     }
+
+    /** Songs get a heart; an episode, a stream or a DJ render has nothing to like. */
+    private fun likeable(id: String?, liked: Collection<String>): Boolean? = when {
+        EpisodeIds.isEpisode(id) || StreamIds.isStream(id) || DjIds.isDj(id) -> null
+        else -> id != null && id in liked
+    }
+
+    private fun shuffleButton(enabled: Boolean): CommandButton =
+        CommandButton.Builder(if (enabled) CommandButton.ICON_SHUFFLE_ON else CommandButton.ICON_SHUFFLE_OFF)
+            .setDisplayName(getString(if (enabled) R.string.player_shuffle_on else R.string.player_shuffle_off))
+            .setSessionCommand(shuffleCommand)
+            .setSlots(CommandButton.SLOT_OVERFLOW)
+            .build()
+
+    private fun repeatButton(mode: Int): CommandButton = CommandButton.Builder(
+        when (mode) {
+            Player.REPEAT_MODE_ONE -> CommandButton.ICON_REPEAT_ONE
+            Player.REPEAT_MODE_ALL -> CommandButton.ICON_REPEAT_ALL
+            else -> CommandButton.ICON_REPEAT_OFF
+        },
+    )
+        .setDisplayName(
+            getString(
+                when (mode) {
+                    Player.REPEAT_MODE_ONE -> R.string.player_repeat_one
+                    Player.REPEAT_MODE_ALL -> R.string.player_repeat_all
+                    else -> R.string.player_repeat_off
+                },
+            ),
+        )
+        .setSessionCommand(repeatCommand)
+        .setSlots(CommandButton.SLOT_OVERFLOW)
+        .build()
 
     /**
      * Puts [item] after the current song and anything queued before it, ahead of the rest of
@@ -475,7 +517,7 @@ class PlaybackService : MediaLibraryService() {
             val commands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon()
             if (own(controller)) {
                 commands.add(likeCommand).add(addToQueueCommand).add(moveInQueueCommand).add(djNextCommand)
-                commands.add(shuffleFromHeadCommand)
+                commands.add(shuffleFromHeadCommand).add(shuffleCommand).add(repeatCommand)
             } else {
                 commands.add(likeCommand)
             }
@@ -500,17 +542,32 @@ class PlaybackService : MediaLibraryService() {
                         scope.launch { library.setLiked(id, !liked) }
                     }
                 }
+
                 ACTION_SHUFFLE_FROM_HEAD -> PlayOrder.startShuffled(session.player)
+
+                ACTION_TOGGLE_SHUFFLE ->
+                    session.player.shuffleModeEnabled =
+                        !session.player.shuffleModeEnabled
+
+                ACTION_CYCLE_REPEAT -> session.player.repeatMode = when (session.player.repeatMode) {
+                    Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+                    Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+                    else -> Player.REPEAT_MODE_OFF
+                }
+
                 ACTION_DJ_NEXT -> return requestDjNext(
                     DjIds.referenceOf(session.player.currentMediaItem?.mediaId),
                 )
+
                 ACTION_ADD_TO_QUEUE -> return requestQueueAdd(session, args)
+
                 ACTION_MOVE_IN_QUEUE -> moveInQueue(
                     session.player as ExoPlayer,
                     from = args.getInt(EXTRA_FROM, C.INDEX_UNSET),
                     after = args.getInt(EXTRA_AFTER, C.INDEX_UNSET),
                     queued = args.getBoolean(EXTRA_QUEUED),
                 )
+
                 else -> return super.onCustomCommand(session, controller, customCommand, args)
             }
             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
@@ -594,6 +651,8 @@ class PlaybackService : MediaLibraryService() {
         const val ACTION_MOVE_IN_QUEUE = "com.henriquesebastiao.downtify.MOVE_IN_QUEUE"
         const val ACTION_DJ_NEXT = "com.henriquesebastiao.downtify.DJ_NEXT"
         const val ACTION_SHUFFLE_FROM_HEAD = "com.henriquesebastiao.downtify.SHUFFLE_FROM_HEAD"
+        const val ACTION_TOGGLE_SHUFFLE = "com.henriquesebastiao.downtify.TOGGLE_SHUFFLE"
+        const val ACTION_CYCLE_REPEAT = "com.henriquesebastiao.downtify.CYCLE_REPEAT"
         const val EXTRA_TRACK_ID = "track_id"
         const val EXTRA_FROM = "from"
         const val EXTRA_AFTER = "after"

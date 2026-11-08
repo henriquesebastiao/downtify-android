@@ -197,7 +197,10 @@ class PlayerController @Inject constructor(
             player.setMediaItems(tracks.map { MediaItems.from(it, baseUrl) }, start, C.TIME_UNSET)
             player.setPlaybackSpeed(1f)
             player.shuffleModeEnabled = shuffle
-            if (shuffle && startIndex == 0) player.shuffleFromHead()
+            if (shuffle) {
+                player.repeatMode = PlayOrder.repeatAfterShuffle(player.repeatMode)
+                if (startIndex == 0) player.shuffleFromHead()
+            }
             player.playlistMetadata = MediaItems.contextMetadata(from)
             player.prepare()
             player.play()
@@ -221,7 +224,10 @@ class PlayerController @Inject constructor(
             player.setMediaItems(entries.map { MediaItems.stream(it.song, it.videoId) }, start, C.TIME_UNSET)
             player.setPlaybackSpeed(1f)
             player.shuffleModeEnabled = shuffle
-            if (shuffle && startIndex == 0) player.shuffleFromHead()
+            if (shuffle) {
+                player.repeatMode = PlayOrder.repeatAfterShuffle(player.repeatMode)
+                if (startIndex == 0) player.shuffleFromHead()
+            }
             player.playlistMetadata = MediaItems.contextMetadata(from)
             player.prepare()
             player.play()

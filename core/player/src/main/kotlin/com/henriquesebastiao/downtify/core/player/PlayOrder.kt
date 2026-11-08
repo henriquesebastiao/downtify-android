@@ -44,6 +44,13 @@ internal object PlayOrder {
         }
     }
 
+    /**
+     * An explicit Shuffle launch drops "repeat one" — it would replay the same song forever inside
+     * a queue meant to be heard once — but keeps "repeat all" if the user had chosen it.
+     */
+    fun repeatAfterShuffle(repeatMode: Int): Int =
+        if (repeatMode == Player.REPEAT_MODE_ONE) Player.REPEAT_MODE_ALL else repeatMode
+
     private fun walk(timeline: Timeline, from: Int, shuffle: Boolean): List<Int> {
         val order = ArrayList<Int>()
         var index = from
