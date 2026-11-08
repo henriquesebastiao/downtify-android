@@ -104,6 +104,7 @@ import com.henriquesebastiao.downtify.core.model.PairingPayload
 import com.henriquesebastiao.downtify.core.model.ServerAddress
 import com.henriquesebastiao.downtify.core.model.ServerInfo
 import com.henriquesebastiao.downtify.core.network.discovery.DiscoveredServer
+import com.henriquesebastiao.downtify.ui.common.chooseClientCertificate
 
 @Composable
 fun ConnectRoute(
@@ -175,6 +176,15 @@ fun ConnectRoute(
                 cameraPermission.launch(Manifest.permission.CAMERA)
             }
         },
+        onSelectClientCertificate = {
+            chooseClientCertificate(
+                context = context,
+                currentAlias = state.clientCertificate,
+                addressOrUrl = state.address,
+                onSelected = viewModel::onClientCertificateChange,
+            )
+        },
+        onClearClientCertificate = { viewModel.onClientCertificateChange(null) },
         modifier = modifier,
     )
 }
@@ -204,6 +214,8 @@ fun ConnectScreen(
     modifier: Modifier = Modifier,
     permissionDenied: Boolean = false,
     localNetworkDenied: Boolean = false,
+    onSelectClientCertificate: () -> Unit = {},
+    onClearClientCertificate: () -> Unit = {},
 ) {
     val step = state.step
     val effects = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
@@ -227,13 +239,15 @@ fun ConnectScreen(
                     when (val step = shown) {
                         ConnectStep.Address ->
                             AddressStep(
-                                state,
-                                onAddressChange,
-                                onPickDiscovered,
-                                onConnect,
-                                onScan,
-                                permissionDenied,
-                                localNetworkDenied,
+                                state = state,
+                                onAddressChange = onAddressChange,
+                                onPickDiscovered = onPickDiscovered,
+                                onConnect = onConnect,
+                                onScan = onScan,
+                                permissionDenied = permissionDenied,
+                                localNetworkDenied = localNetworkDenied,
+                                onSelectClientCertificate = onSelectClientCertificate,
+                                onClearClientCertificate = onClearClientCertificate,
                             )
 
                         is ConnectStep.SignIn ->
@@ -299,6 +313,8 @@ private fun AddressStep(
     onScan: () -> Unit,
     permissionDenied: Boolean,
     localNetworkDenied: Boolean,
+    onSelectClientCertificate: () -> Unit,
+    onClearClientCertificate: () -> Unit,
 ) {
     val typing = WindowInsets.isImeVisible
     StepColumn {
@@ -333,8 +349,28 @@ private fun AddressStep(
                 label = { Text(stringResource(R.string.connect_address_label)) },
                 placeholder = { Text("http://192.168.1.20:8000", style = DowntifyType.dataInput) },
                 leadingIcon = { Icon(painterResource(DowntifyIcons.Server), contentDescription = null) },
+                trailingIcon = {
+                    if (state.clientCertificate != null) {
+                        IconButton(onClick = onClearClientCertificate) {
+                            Icon(
+                                painterResource(DowntifyIcons.Close),
+                                contentDescription = stringResource(R.string.connect_client_certificate_clear),
+                            )
+                        }
+                    } else {
+                        IconButton(onClick = onSelectClientCertificate) {
+                            Icon(
+                                painterResource(DowntifyIcons.Terms),
+                                contentDescription = stringResource(R.string.connect_client_certificate),
+                            )
+                        }
+                    }
+                },
                 supportingText = {
-                    Text(errorText(state.error) ?: stringResource(R.string.connect_address_hint))
+                    val hint = state.clientCertificate?.let {
+                        stringResource(R.string.connect_client_certificate_selected, it)
+                    } ?: stringResource(R.string.connect_address_hint)
+                    Text(errorText(state.error) ?: hint)
                 },
                 isError = state.error != null,
                 singleLine = true,

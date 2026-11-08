@@ -565,4 +565,12 @@
     <string name="settings_normalization_louder">Plus fort</string>
     <string name="settings_normalization_maximum">Maximum</string>
     <string name="settings_normalization_level_hint">Le volume augmente dans la limite propre à chaque titre. Vos fichiers restent inchangés.</string>
+    <string name="connect_client_certificate">Certificat client</string>
+    <string name="connect_client_certificate_selected">Certificat client : %1$s</string>
+    <string name="connect_client_certificate_clear">Retirer le certificat client</string>
+    <string name="settings_client_certificate">Certificat client</string>
+    <string name="settings_client_certificate_none">Aucun · pour les proxys inverses utilisant le TLS mutuel</string>
+    <string name="settings_client_certificate_active">Présentation de «\u00A0%1$s\u00A0» depuis le stockage des identifiants d’Android lorsque le serveur demande un certificat client.</string>
+    <string name="settings_client_certificate_change">Changer</string>
+    <string name="settings_client_certificate_remove">Retirer</string>
 </resources>

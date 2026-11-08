@@ -551,4 +551,12 @@
     <string name="settings_normalization_louder">Hangosabb</string>
     <string name="settings_normalization_maximum">Maximum</string>
     <string name="settings_normalization_level_hint">A hangerőt az egyes számok biztonságos határáig növeli. A hangfájlok változatlanok maradnak.</string>
+    <string name="connect_client_certificate">Ügyféltanúsítvány</string>
+    <string name="connect_client_certificate_selected">Ügyféltanúsítvány: %1$s</string>
+    <string name="connect_client_certificate_clear">Ügyféltanúsítvány eltávolítása</string>
+    <string name="settings_client_certificate">Ügyféltanúsítvány</string>
+    <string name="settings_client_certificate_none">Nincs · kölcsönös TLS-t használó fordított proxykhoz</string>
+    <string name="settings_client_certificate_active">A(z) „%1$s” bemutatása az Android hitelesítőadat-tárából, amikor a szerver ügyféltanúsítványt kér.</string>
+    <string name="settings_client_certificate_change">Módosítás</string>
+    <string name="settings_client_certificate_remove">Eltávolítás</string>
 </resources>

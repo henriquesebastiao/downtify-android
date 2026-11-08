@@ -60,6 +60,7 @@ class ServerRepository @Inject constructor(
     @ApplicationScope scope: CoroutineScope,
 ) {
     val session: StateFlow<Session?> get() = sessions.session
+    val clientCertificate: StateFlow<String?> get() = sessions.clientCertificate
     val signOutReason: StateFlow<SignOutReason?> get() = sessions.signOutReason
 
     private val connectionState = MutableStateFlow(ConnectionState.Unknown)
@@ -75,6 +76,11 @@ class ServerRepository @Inject constructor(
         .stateIn(scope, SharingStarted.Eagerly, null)
 
     suspend fun ensureLoaded() = withContext(Dispatchers.IO) { sessions.ensureLoaded() }
+
+    /** Sets or clears the KeyChain alias presented when a server asks for a client certificate (mTLS). */
+    suspend fun setClientCertificate(alias: String?) = withContext(Dispatchers.IO) {
+        sessions.setClientCertificate(alias)
+    }
 
     /** Checks what the user typed or picked. */
     suspend fun probe(input: String): ServerProbe.Result = probe.probe(input)
