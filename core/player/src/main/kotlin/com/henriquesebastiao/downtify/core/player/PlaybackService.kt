@@ -139,6 +139,7 @@ class PlaybackService : MediaLibraryService() {
     private val addToQueueCommand = SessionCommand(ACTION_ADD_TO_QUEUE, Bundle.EMPTY)
     private val moveInQueueCommand = SessionCommand(ACTION_MOVE_IN_QUEUE, Bundle.EMPTY)
     private val djNextCommand = SessionCommand(ACTION_DJ_NEXT, Bundle.EMPTY)
+    private val shuffleFromHeadCommand = SessionCommand(ACTION_SHUFFLE_FROM_HEAD, Bundle.EMPTY)
 
     override fun onCreate() {
         super.onCreate()
@@ -154,6 +155,10 @@ class PlaybackService : MediaLibraryService() {
             )
             .apply { launchIntent()?.let(::setSessionActivity) }
             .build()
+
+        player.setDjNextHandler {
+            callback.requestDjNext(DjIds.referenceOf(player.currentMediaItem?.mediaId))
+        }
 
         callback.observe(checkNotNull(session))
         scope.launch { sleepTimer.run { player.pause() } }
@@ -470,6 +475,7 @@ class PlaybackService : MediaLibraryService() {
             val commands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon()
             if (own(controller)) {
                 commands.add(likeCommand).add(addToQueueCommand).add(moveInQueueCommand).add(djNextCommand)
+                commands.add(shuffleFromHeadCommand)
             } else {
                 commands.add(likeCommand)
             }
@@ -486,34 +492,31 @@ class PlaybackService : MediaLibraryService() {
             if (!own(controller) && customCommand.customAction != ACTION_TOGGLE_LIKE) {
                 return Futures.immediateFuture(SessionResult(SessionError.ERROR_PERMISSION_DENIED))
             }
-            if (customCommand.customAction == ACTION_TOGGLE_LIKE) {
-                val id = session.player.currentMediaItem?.mediaId
-                if (id != null && MediaIds.isLibrary(id)) {
-                    val liked = id in library.likedIds.value
-                    scope.launch { library.setLiked(id, !liked) }
+            when (customCommand.customAction) {
+                ACTION_TOGGLE_LIKE -> {
+                    val id = session.player.currentMediaItem?.mediaId
+                    if (id != null && MediaIds.isLibrary(id)) {
+                        val liked = id in library.likedIds.value
+                        scope.launch { library.setLiked(id, !liked) }
+                    }
                 }
-                return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
-            }
-            if (customCommand.customAction == ACTION_DJ_NEXT) {
-                val reference = DjIds.referenceOf(session.player.currentMediaItem?.mediaId)
-                return requestDjNext(reference)
-            }
-            if (customCommand.customAction == ACTION_ADD_TO_QUEUE) {
-                return requestQueueAdd(session, args)
-            }
-            if (customCommand.customAction == ACTION_MOVE_IN_QUEUE) {
-                moveInQueue(
+                ACTION_SHUFFLE_FROM_HEAD -> PlayOrder.startShuffled(session.player)
+                ACTION_DJ_NEXT -> return requestDjNext(
+                    DjIds.referenceOf(session.player.currentMediaItem?.mediaId),
+                )
+                ACTION_ADD_TO_QUEUE -> return requestQueueAdd(session, args)
+                ACTION_MOVE_IN_QUEUE -> moveInQueue(
                     session.player as ExoPlayer,
                     from = args.getInt(EXTRA_FROM, C.INDEX_UNSET),
                     after = args.getInt(EXTRA_AFTER, C.INDEX_UNSET),
                     queued = args.getBoolean(EXTRA_QUEUED),
                 )
-                return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                else -> return super.onCustomCommand(session, controller, customCommand, args)
             }
-            return super.onCustomCommand(session, controller, customCommand, args)
+            return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
         }
 
-        private fun requestDjNext(
+        internal fun requestDjNext(
             reference: com.henriquesebastiao.downtify.core.model.DjReference?,
         ): ListenableFuture<SessionResult> {
             if (reference?.mode !=
@@ -590,6 +593,7 @@ class PlaybackService : MediaLibraryService() {
         const val ACTION_ADD_TO_QUEUE = "com.henriquesebastiao.downtify.ADD_TO_QUEUE"
         const val ACTION_MOVE_IN_QUEUE = "com.henriquesebastiao.downtify.MOVE_IN_QUEUE"
         const val ACTION_DJ_NEXT = "com.henriquesebastiao.downtify.DJ_NEXT"
+        const val ACTION_SHUFFLE_FROM_HEAD = "com.henriquesebastiao.downtify.SHUFFLE_FROM_HEAD"
         const val EXTRA_TRACK_ID = "track_id"
         const val EXTRA_FROM = "from"
         const val EXTRA_AFTER = "after"

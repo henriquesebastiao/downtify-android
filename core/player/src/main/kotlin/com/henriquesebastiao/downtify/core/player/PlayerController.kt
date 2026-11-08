@@ -193,10 +193,11 @@ class PlayerController @Inject constructor(
         main.launch {
             val player = connect()
             val baseUrl = sessions.current?.baseUrl
-            val start = if (shuffle && startIndex == 0) tracks.indices.random() else startIndex.coerceIn(tracks.indices)
+            val start = startIndex.coerceIn(tracks.indices)
             player.setMediaItems(tracks.map { MediaItems.from(it, baseUrl) }, start, C.TIME_UNSET)
             player.setPlaybackSpeed(1f)
             player.shuffleModeEnabled = shuffle
+            if (shuffle && startIndex == 0) player.shuffleFromHead()
             player.playlistMetadata = MediaItems.contextMetadata(from)
             player.prepare()
             player.play()
@@ -216,14 +217,11 @@ class PlayerController @Inject constructor(
         mutableSelectionVersion.value++
         main.launch {
             val player = connect()
-            val start = if (shuffle && startIndex == 0) {
-                entries.indices.random()
-            } else {
-                startIndex.coerceIn(entries.indices)
-            }
+            val start = startIndex.coerceIn(entries.indices)
             player.setMediaItems(entries.map { MediaItems.stream(it.song, it.videoId) }, start, C.TIME_UNSET)
             player.setPlaybackSpeed(1f)
             player.shuffleModeEnabled = shuffle
+            if (shuffle && startIndex == 0) player.shuffleFromHead()
             player.playlistMetadata = MediaItems.contextMetadata(from)
             player.prepare()
             player.play()
@@ -461,6 +459,11 @@ class PlayerController @Inject constructor(
     }
 
     fun previous() = command { if (state.value.dj == null) it.seekToPrevious() }
+
+    /** Starts a freshly shuffled queue at the first item of the permutation the player built. */
+    private fun MediaController.shuffleFromHead() {
+        sendCustomCommand(SessionCommand(PlaybackService.ACTION_SHUFFLE_FROM_HEAD, Bundle.EMPTY), Bundle.EMPTY)
+    }
 
     fun seekTo(positionMs: Long) = command {
         if (state.value.dj?.mode == "interactive") return@command

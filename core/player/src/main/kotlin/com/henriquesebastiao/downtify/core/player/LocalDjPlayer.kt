@@ -151,6 +151,13 @@ class LocalDjPlayer(first: Player, second: Player, private val scope: CoroutineS
     }
 
     override fun handleSeek(mediaItemIndex: Int, positionMs: Long, seekCommand: Int): ListenableFuture<*> {
+        when (seekCommand) {
+            Player.COMMAND_SEEK_TO_NEXT, Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM ->
+                nextInsideDj()?.let { return it }
+
+            Player.COMMAND_SEEK_TO_PREVIOUS, Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM ->
+                previousInsideDj()?.let { return it }
+        }
         engine.reset()
         return super.handleSeek(mediaItemIndex, positionMs, seekCommand)
     }
@@ -208,4 +215,52 @@ class LocalDjPlayer(first: Player, second: Player, private val scope: CoroutineS
     }
 
     internal fun pulseForTest() = engine.pulse()
+
+    /** Asked when a controller presses Next inside an interactive DJ render. */
+    private var djNext: (() -> Unit)? = null
+
+    fun setDjNextHandler(handler: (() -> Unit)?) {
+        djNext = handler
+    }
+
+    /**
+     * Next inside a DJ render stays inside the mix: a prepared render jumps to its next marker,
+     * an interactive one asks the server for the next transition. Letting the player advance
+     * would leave the mix for the classic queue item stored right after it — the reported
+     * Android Auto behaviour.
+     */
+    private fun nextInsideDj(): ListenableFuture<*>? {
+        val dj = DjMediaItems.of(currentMediaItem ?: return null) ?: return null
+        if (dj.mode == "interactive") {
+            djNext?.invoke() ?: return null
+            return Futures.immediateVoidFuture()
+        }
+        if (dj.nextStart == Long.MAX_VALUE || dj.nextStart <= 0) return null
+        scope.launch { seekTo(currentMediaItemIndex, dj.nextStart) }
+        return Futures.immediateVoidFuture()
+    }
+
+    /** Previous inside a DJ render restarts the track, or returns to the previous marker. */
+    private fun previousInsideDj(): ListenableFuture<*>? {
+        val item = currentMediaItem ?: return null
+        if (DjMediaItems.of(item) == null) return null
+        val positionMs = currentPosition
+        val rows = DjTimeline.resumeRows(item)
+        val seconds = positionMs / 1000.0
+        val row = rows.indexOfFirst { it.start <= seconds && seconds < it.end }
+        val target = when {
+            rows.isEmpty() -> return null
+            row < 0 -> rows.last().start
+            positionMs - (rows[row].start * 1000).toLong() > RESTART_MS -> rows[row].start
+            row > 0 -> rows[row - 1].start
+            else -> rows[row].start
+        }
+        scope.launch { seekTo(currentMediaItemIndex, (target * 1000).toLong()) }
+        return Futures.immediateVoidFuture()
+    }
+
+    private companion object {
+        /** Listening longer than this restarts the track instead of stepping back. */
+        const val RESTART_MS = 3_000L
+    }
 }
