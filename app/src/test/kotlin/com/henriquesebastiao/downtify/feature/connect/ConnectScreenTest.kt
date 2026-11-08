@@ -239,7 +239,8 @@ class ConnectScreenTest {
             onSelectClientCertificate = { selected = true },
             onClearClientCertificate = { cleared = true },
         )
-        compose.onNodeWithText("Client certificate: cloudflare-mtls").assertExists()
+        compose.onNodeWithText("Client certificate").assertExists()
+        compose.onNodeWithText("cloudflare-mtls").assertExists()
         compose.onNodeWithContentDescription("Remove client certificate").performClick()
         assertTrue(cleared)
         assertTrue(!selected)

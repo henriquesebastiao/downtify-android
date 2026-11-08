@@ -341,9 +341,9 @@ private fun AddressStep(
                 satellites = listOf(DowntifyIcons.Wifi, DowntifyIcons.QrCode, DowntifyIcons.Server),
                 caption = stringResource(R.string.connect_none_found).takeUnless { typing },
                 modifier = Modifier.weight(1f),
-            ) { DowntifyLogo(size = 64.dp) }
+            ) { DowntifyLogo(size = 48.dp) }
         }
-        Column(Modifier.padding(horizontal = Spacing.xl), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        Column(Modifier.padding(horizontal = Spacing.xl), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             OutlinedTextField(
                 value = state.address,
                 onValueChange = onAddressChange,
@@ -577,7 +577,7 @@ private fun PairStep(
                 modifier = Modifier.size(64.dp),
             )
         }
-        Column(Modifier.padding(horizontal = Spacing.xl), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        Column(Modifier.padding(horizontal = Spacing.xl), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             OutlinedTextField(
                 value = state.code,
                 onValueChange = onCodeChange,
@@ -632,8 +632,8 @@ private fun StepColumn(content: @Composable ColumnScope.() -> Unit) = BoxWithCon
             .verticalScroll(scroll, enabled = scroll.maxValue > 0)
             // At least the screen's height, so the weighted picture has the leftover room to take.
             .heightIn(min = maxHeight)
-            .padding(bottom = Spacing.lg),
-        verticalArrangement = Arrangement.spacedBy(Spacing.lg),
+            .padding(bottom = Spacing.sm),
+        verticalArrangement = Arrangement.spacedBy(Spacing.md),
         content = content,
     )
 }
@@ -921,7 +921,7 @@ private fun ClientCertificateOption(
         modifier = modifier.fillMaxWidth(),
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm),
+            modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(Spacing.md),
         ) {
