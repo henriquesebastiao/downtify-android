@@ -69,6 +69,8 @@ class LocalDjPlayer(first: Player, second: Player, private val scope: CoroutineS
         (engine.active as? androidx.media3.exoplayer.ExoPlayer)?.setShuffleOrder(
             androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder(order, 0L),
         )
+        // The facade caches its state, so it keeps the deck's previous order until rebuilt.
+        invalidateState()
     }
 
     fun updateAnalyses(values: Map<String, LocalDjAnalysis>) = engine.updateAnalyses(values)

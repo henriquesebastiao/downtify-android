@@ -19,7 +19,6 @@ import androidx.media3.exoplayer.audio.AudioOffloadSupport
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
-import androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder
 import androidx.media3.session.CacheBitmapLoader
 import androidx.media3.session.CommandButton
 import androidx.media3.session.DefaultMediaNotificationProvider
@@ -45,13 +44,11 @@ import com.henriquesebastiao.downtify.core.data.sync.SyncCoordinator
 import com.henriquesebastiao.downtify.core.model.DjIds
 import com.henriquesebastiao.downtify.core.model.EpisodeIds
 import com.henriquesebastiao.downtify.core.model.MediaIds
-import com.henriquesebastiao.downtify.core.model.PlayQueue
 import com.henriquesebastiao.downtify.core.model.StreamIds
 import com.henriquesebastiao.downtify.core.network.di.StreamingClient
 import com.henriquesebastiao.downtify.core.network.session.SessionStore
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
-import kotlin.random.Random
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -419,50 +416,6 @@ class PlaybackService : MediaLibraryService() {
         .setSlots(CommandButton.SLOT_OVERFLOW)
         .build()
 
-    /**
-     * Puts [item] after the current song and anything queued before it, ahead of the rest of
-     * the album or playlist — in the shuffled order too, where ExoPlayer alone would put it
-     * at a random spot. With nothing loaded it becomes the queue, paused.
-     */
-    private fun addToQueue(player: ExoPlayer, item: MediaItem) {
-        if (player.mediaItemCount == 0) {
-            player.setMediaItem(item)
-            player.prepare()
-            return
-        }
-        val anchor = PlayQueue.anchor(PlayOrder.fromCurrent(player)) {
-            MediaItems.isQueued(player.getMediaItemAt(it))
-        } ?: return
-        if (player.shuffleModeEnabled) {
-            val shuffled = PlayOrder.shuffled(player.currentTimeline)
-            val newIndex = player.mediaItemCount
-            player.addMediaItem(item)
-            val order = PlayQueue.shuffleOrderWith(shuffled, anchor, newIndex)
-            player.setShuffleOrder(DefaultShuffleOrder(order.toIntArray(), Random.nextLong()))
-        } else {
-            player.addMediaItem(anchor + 1, item)
-        }
-    }
-
-    /**
-     * Moves the item at [from] to play right after the item at [after] (indices in the
-     * player's list), marked as queued or not. With shuffle on only the shuffled order
-     * changes; otherwise the item moves in the list.
-     */
-    private fun moveInQueue(player: ExoPlayer, from: Int, after: Int, queued: Boolean) {
-        val count = player.mediaItemCount
-        if (from !in 0 until count || after !in 0 until count || from == after) return
-        if (from == player.currentMediaItemIndex) return
-        val item = player.getMediaItemAt(from)
-        if (MediaItems.isQueued(item) != queued) player.replaceMediaItem(from, MediaItems.withQueued(item, queued))
-        if (player.shuffleModeEnabled) {
-            val order = PlayQueue.moveAfter(PlayOrder.shuffled(player.currentTimeline), from, after)
-            player.setShuffleOrder(DefaultShuffleOrder(order.toIntArray(), Random.nextLong()))
-        } else {
-            player.moveMediaItem(from, PlayQueue.moveTarget(from, after))
-        }
-    }
-
     private fun likeButton(liked: Boolean): CommandButton =
         CommandButton.Builder(if (liked) CommandButton.ICON_HEART_FILLED else CommandButton.ICON_HEART_UNFILLED)
             .setDisplayName(getString(if (liked) R.string.player_unlike else R.string.player_like))
@@ -561,8 +514,8 @@ class PlaybackService : MediaLibraryService() {
 
                 ACTION_ADD_TO_QUEUE -> return requestQueueAdd(session, args)
 
-                ACTION_MOVE_IN_QUEUE -> moveInQueue(
-                    session.player as ExoPlayer,
+                ACTION_MOVE_IN_QUEUE -> QueueEdit.move(
+                    session.player,
                     from = args.getInt(EXTRA_FROM, C.INDEX_UNSET),
                     after = args.getInt(EXTRA_AFTER, C.INDEX_UNSET),
                     queued = args.getBoolean(EXTRA_QUEUED),
@@ -594,7 +547,7 @@ class PlaybackService : MediaLibraryService() {
         private fun requestQueueAdd(session: MediaSession, args: Bundle): ListenableFuture<SessionResult> {
             val track = args.getString(EXTRA_TRACK_ID)?.let { library.library.value?.byId?.get(it) }
                 ?: return Futures.immediateFuture(SessionResult(SessionError.ERROR_BAD_VALUE))
-            addToQueue(session.player as ExoPlayer, MediaItems.from(track, sessions.current?.baseUrl, queued = true))
+            QueueEdit.add(session.player, MediaItems.from(track, sessions.current?.baseUrl, queued = true))
             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
         }
 
