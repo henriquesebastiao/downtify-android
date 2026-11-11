@@ -130,4 +130,25 @@ class MiniPlayerTest {
         // It slides instead of ending in an ellipsis: the whole title is there to read.
         compose.onNodeWithText(title).assertExists()
     }
+
+    @Test
+    fun showsProgressIndicatorAndRetainsContentDescriptionWhenBuffering() {
+        var toggles = 0
+        val track = PreviewData.tracks[1]
+        compose.setContent {
+            DowntifyTheme {
+                MiniPlayer(
+                    state = PlayerState(
+                        track = track,
+                        isPlaying = true,
+                        isBuffering = true,
+                    ),
+                    onOpen = {},
+                    onTogglePlay = { toggles++ },
+                )
+            }
+        }
+        compose.onNodeWithContentDescription("Pause").assertExists().performClick()
+        assertEquals(1, toggles)
+    }
 }

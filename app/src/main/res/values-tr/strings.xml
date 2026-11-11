@@ -551,4 +551,12 @@
     <string name="settings_normalization_louder">Daha yüksek</string>
     <string name="settings_normalization_maximum">Maksimum</string>
     <string name="settings_normalization_level_hint">Sesi her parçanın güvenli sınırına kadar artırır. Ses dosyaları değişmez.</string>
+    <string name="connect_client_certificate">İstemci sertifikası</string>
+    <string name="connect_client_certificate_selected">İstemci sertifikası: %1$s</string>
+    <string name="connect_client_certificate_clear">İstemci sertifikasını kaldır</string>
+    <string name="settings_client_certificate">İstemci sertifikası</string>
+    <string name="settings_client_certificate_none">Yok · karşılıklı TLS kullanan ters vekil sunucular için</string>
+    <string name="settings_client_certificate_active">Sunucu bir istemci sertifikası istediğinde Android kimlik bilgisi deposundan “%1$s” sunuluyor.</string>
+    <string name="settings_client_certificate_change">Değiştir</string>
+    <string name="settings_client_certificate_remove">Kaldır</string>
 </resources>

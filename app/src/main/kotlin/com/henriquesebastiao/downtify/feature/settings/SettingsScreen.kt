@@ -84,6 +84,7 @@ import com.henriquesebastiao.downtify.ui.common.GroupTitle
 import com.henriquesebastiao.downtify.ui.common.GroupedList
 import com.henriquesebastiao.downtify.ui.common.GroupedRow
 import com.henriquesebastiao.downtify.ui.common.RowAction
+import com.henriquesebastiao.downtify.ui.common.chooseClientCertificate
 import kotlin.math.roundToInt
 
 @Composable
@@ -115,6 +116,15 @@ fun SettingsRoute(
             onReadAhead = viewModel::setReadAhead,
             onStreamCacheMb = viewModel::setStreamCacheMb,
             onReadAheadMobile = viewModel::setReadAheadMobile,
+            onSelectClientCertificate = {
+                chooseClientCertificate(
+                    context = context,
+                    currentAlias = state.clientCertificate,
+                    addressOrUrl = state.baseUrl,
+                    onSelected = viewModel::setClientCertificate,
+                )
+            },
+            onClearClientCertificate = { viewModel.setClientCertificate(null) },
             onUnpair = viewModel::unpair,
             onOpenWeb = {
                 runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, state.baseUrl.toUri())) }
@@ -142,6 +152,8 @@ data class SettingsActions(
     val onReadAhead: (Int) -> Unit = {},
     val onStreamCacheMb: (Int) -> Unit = {},
     val onReadAheadMobile: (Boolean) -> Unit = {},
+    val onSelectClientCertificate: () -> Unit = {},
+    val onClearClientCertificate: () -> Unit = {},
     val onUnpair: () -> Unit = {},
     val onOpenWeb: () -> Unit = {},
 )
@@ -153,6 +165,7 @@ private enum class SettingsDialog {
     OfflineLimit,
     ReadAhead,
     StreamCache,
+    ClientCertificate,
     Unpair,
 }
 
@@ -207,6 +220,19 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
             GroupTitle(stringResource(R.string.settings_server))
             GroupedList(
                 listOf(
+                    GroupedRow(
+                        title = stringResource(R.string.settings_client_certificate),
+                        summary = state.clientCertificate ?: stringResource(R.string.settings_client_certificate_none),
+                        summaryValues = listOfNotNull(state.clientCertificate),
+                        icon = DowntifyIcons.Terms,
+                        action = RowAction.Click({
+                            if (state.clientCertificate != null) {
+                                dialog = SettingsDialog.ClientCertificate
+                            } else {
+                                actions.onSelectClientCertificate()
+                            }
+                        }),
+                    ),
                     GroupedRow(
                         title = stringResource(R.string.settings_unpair),
                         summary = stringResource(R.string.settings_unpair_body),
@@ -274,6 +300,27 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
             state.settings.readAhead.cacheMb,
             actions.onStreamCacheMb,
             onDismiss = { dialog = null },
+        )
+
+        SettingsDialog.ClientCertificate -> AlertDialog(
+            onDismissRequest = { dialog = null },
+            icon = { Icon(painterResource(DowntifyIcons.Terms), contentDescription = null) },
+            title = { Text(stringResource(R.string.settings_client_certificate)) },
+            text = {
+                Text(stringResource(R.string.settings_client_certificate_active, state.clientCertificate.orEmpty()))
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    dialog = null
+                    actions.onSelectClientCertificate()
+                }) { Text(stringResource(R.string.settings_client_certificate_change)) }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    dialog = null
+                    actions.onClearClientCertificate()
+                }) { Text(stringResource(R.string.settings_client_certificate_remove)) }
+            },
         )
 
         SettingsDialog.Unpair -> AlertDialog(

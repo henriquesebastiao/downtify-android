@@ -43,6 +43,8 @@ class ConnectScreenTest {
     private fun show(
         state: ConnectUiState,
         onAddressChange: (String) -> Unit = {},
+        onSelectClientCertificate: () -> Unit = {},
+        onClearClientCertificate: () -> Unit = {},
         onConnect: () -> Unit = {},
         onUsernameChange: (String) -> Unit = {},
         onSignIn: () -> Unit = {},
@@ -54,6 +56,8 @@ class ConnectScreenTest {
             ConnectScreen(
                 state = state,
                 onAddressChange = onAddressChange,
+                onSelectClientCertificate = onSelectClientCertificate,
+                onClearClientCertificate = onClearClientCertificate,
                 onPickDiscovered = {},
                 onConnect = onConnect,
                 onUsernameChange = onUsernameChange,
@@ -224,6 +228,22 @@ class ConnectScreenTest {
             .assertClearOfTheFooter(footer)
         compose.onNodeWithText("Server address").assertClearOfTheFooter(footer)
         compose.onNodeWithText("Scan a pairing QR code").assertClearOfTheFooter(footer)
+    }
+
+    @Test
+    fun clientCertificateCanBeSelectedAndClearedFromTheAddressField() {
+        var selected = false
+        var cleared = false
+        show(
+            ConnectUiState(address = base, clientCertificate = "cloudflare-mtls", searching = false),
+            onSelectClientCertificate = { selected = true },
+            onClearClientCertificate = { cleared = true },
+        )
+        compose.onNodeWithText("Client certificate").assertExists()
+        compose.onNodeWithText("cloudflare-mtls").assertExists()
+        compose.onNodeWithContentDescription("Remove client certificate").performClick()
+        assertTrue(cleared)
+        assertTrue(!selected)
     }
 
     private companion object {

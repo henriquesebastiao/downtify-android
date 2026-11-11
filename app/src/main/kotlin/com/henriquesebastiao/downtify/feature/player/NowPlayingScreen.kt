@@ -362,6 +362,7 @@ internal fun TrackTransport(
 ) {
     PlaybackControls(
         playing = state.isPlaying,
+        buffering = state.isBuffering,
         onTogglePlay = actions.onTogglePlay,
         onPrevious = actions.onPrevious,
         onNext = actions.onNext,
@@ -423,6 +424,7 @@ internal fun TrackTransport(
 private fun EpisodeTransport(state: PlayerState, actions: NowPlayingActions, compact: Boolean) {
     PlaybackControls(
         playing = state.isPlaying,
+        buffering = state.isBuffering,
         onTogglePlay = actions.onTogglePlay,
         onPrevious = actions.onSkipBack,
         onNext = actions.onSkipForward,

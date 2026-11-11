@@ -70,6 +70,8 @@ data class ConnectUiState(
     /** Plain http to an address beyond the home network: the token would travel unencrypted. */
     val cleartextWarning: Boolean = false,
     val revoked: Boolean = false,
+    /** KeyChain alias of the client certificate for mutual TLS (mTLS), when selected. */
+    val clientCertificate: String? = null,
 ) {
     val canConnect: Boolean get() = address.isNotBlank() && !busy
     val canPair: Boolean get() = code.count { it.isLetterOrDigit() } >= PAIR_CODE_LENGTH && !busy &&
@@ -112,11 +114,13 @@ class ConnectViewModel @Inject constructor(private val server: ServerRepository,
             if (allowed) discovery.servers().onStart { emit(emptyList()) } else flowOf(emptyList())
         },
         server.signOutReason,
-    ) { state, found, reason ->
+        server.clientCertificate,
+    ) { state, found, reason, cert ->
         state.copy(
             discovered = found.filter { it.apiVersion <= ServerInfo.SUPPORTED_API_VERSION },
             searching = found.isEmpty(),
             revoked = reason == SignOutReason.Revoked,
+            clientCertificate = cert,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), ConnectUiState())
 
@@ -146,6 +150,11 @@ class ConnectViewModel @Inject constructor(private val server: ServerRepository,
     }
 
     fun onPickDiscovered(server: DiscoveredServer) = onAddressChange(server.baseUrl)
+
+    fun onClientCertificateChange(alias: String?) {
+        form.update { it.copy(error = null) }
+        viewModelScope.launch { server.setClientCertificate(alias) }
+    }
 
     /** Checks the address with `GET /api/server/info`, then asks for a password, or a code when it can't take one. */
     fun connect() {

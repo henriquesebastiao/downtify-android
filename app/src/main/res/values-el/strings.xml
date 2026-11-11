@@ -551,4 +551,12 @@
     <string name="settings_normalization_louder">Πιο δυνατά</string>
     <string name="settings_normalization_maximum">Μέγιστο</string>
     <string name="settings_normalization_level_hint">Αυξάνει την ένταση εντός του ασφαλούς ορίου κάθε τραγουδιού. Τα αρχεία ήχου δεν αλλάζουν.</string>
+    <string name="connect_client_certificate">Πιστοποιητικό πελάτη</string>
+    <string name="connect_client_certificate_selected">Πιστοποιητικό πελάτη: %1$s</string>
+    <string name="connect_client_certificate_clear">Αφαίρεση πιστοποιητικού πελάτη</string>
+    <string name="settings_client_certificate">Πιστοποιητικό πελάτη</string>
+    <string name="settings_client_certificate_none">Κανένα · για αντίστροφους διακομιστές μεσολάβησης με αμοιβαίο TLS</string>
+    <string name="settings_client_certificate_active">Παρουσίαση του «%1$s» από τον χώρο αποθήκευσης διαπιστευτηρίων του Android όταν ο διακομιστής ζητά πιστοποιητικό πελάτη.</string>
+    <string name="settings_client_certificate_change">Αλλαγή</string>
+    <string name="settings_client_certificate_remove">Αφαίρεση</string>
 </resources>

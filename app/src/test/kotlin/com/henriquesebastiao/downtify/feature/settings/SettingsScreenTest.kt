@@ -142,4 +142,23 @@ class SettingsScreenTest {
         compose.onNodeWithText("Cancel").performClick()
         assertEquals(null, limit)
     }
+
+    @Test
+    fun clientCertificateRowPicksWhenUnsetAndOpensDialogWhenSet() {
+        var selected = false
+        var cleared = false
+        show(
+            state = SettingsUiState(clientCertificate = "cloudflare-mtls"),
+            actions = SettingsActions(
+                onSelectClientCertificate = { selected = true },
+                onClearClientCertificate = { cleared = true },
+            ),
+        )
+        compose.onNodeWithText("cloudflare-mtls").performScrollTo().assertExists()
+        compose.onNodeWithText("Client certificate").performScrollTo().performClick()
+        compose.onNodeWithText("Change").assertExists()
+        compose.onNodeWithText("Remove").performClick()
+        assertEquals(true, cleared)
+        assertEquals(false, selected)
+    }
 }

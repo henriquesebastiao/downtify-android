@@ -565,4 +565,12 @@
     <string name="settings_normalization_louder">Más alto</string>
     <string name="settings_normalization_maximum">Máximo</string>
     <string name="settings_normalization_level_hint">Aumenta el volumen dentro del límite seguro de cada canción. Los archivos de audio no cambian.</string>
+    <string name="connect_client_certificate">Certificado de cliente</string>
+    <string name="connect_client_certificate_selected">Certificado de cliente: %1$s</string>
+    <string name="connect_client_certificate_clear">Quitar certificado de cliente</string>
+    <string name="settings_client_certificate">Certificado de cliente</string>
+    <string name="settings_client_certificate_none">Ninguno · para proxies inversos con TLS mutuo</string>
+    <string name="settings_client_certificate_active">Se presenta «%1$s» del almacén de credenciales de Android cuando el servidor pide un certificado de cliente.</string>
+    <string name="settings_client_certificate_change">Cambiar</string>
+    <string name="settings_client_certificate_remove">Quitar</string>
 </resources>

@@ -379,7 +379,11 @@ private fun QuickAccessTile(
 ) {
     val covers = LocalCoverUrls.current
     val playlist = if (entry.type == PlaybackContextType.Playlist) playlists[entry.refId] else null
-    val title = if (entry.type == PlaybackContextType.Liked) stringResource(R.string.liked_songs) else entry.title
+    val title = when (entry.type) {
+        PlaybackContextType.Liked -> stringResource(R.string.liked_songs)
+        PlaybackContextType.Songs -> stringResource(R.string.library_songs)
+        else -> entry.title.ifEmpty { stringResource(R.string.library_songs) }
+    }
     Surface(
         onClick = { onOpen(entry) },
         color = MaterialTheme.colorScheme.surfaceContainer,
@@ -403,6 +407,7 @@ private fun QuickAccessTile(
                     PlaybackContextType.Liked -> DowntifyIcons.FavoriteFilled
                     PlaybackContextType.Artist -> DowntifyIcons.Artist
                     PlaybackContextType.Playlist -> DowntifyIcons.Playlist
+                    PlaybackContextType.Songs -> DowntifyIcons.Song
                     else -> DowntifyIcons.Album
                 },
                 tone = if (entry.type == PlaybackContextType.Liked) ArtworkTone.Primary else ArtworkTone.Neutral,

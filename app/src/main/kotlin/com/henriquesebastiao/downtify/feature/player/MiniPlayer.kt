@@ -64,6 +64,7 @@ fun MiniPlayer(
                 onTogglePlay,
                 main = true,
                 playing = state.isPlaying,
+                buffering = state.isBuffering,
             )
             if (episode != null) {
                 MiniPlayerButton(DowntifyIcons.SkipForward, stringResource(R.string.player_skip_forward), onSkipForward)
