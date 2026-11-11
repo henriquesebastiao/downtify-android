@@ -19,7 +19,6 @@ import androidx.media3.exoplayer.audio.AudioOffloadSupport
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
-import androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder
 import androidx.media3.session.CacheBitmapLoader
 import androidx.media3.session.CommandButton
 import androidx.media3.session.DefaultMediaNotificationProvider
@@ -42,14 +41,14 @@ import com.henriquesebastiao.downtify.core.data.playback.PlaybackRepository
 import com.henriquesebastiao.downtify.core.data.playback.playbackOwner
 import com.henriquesebastiao.downtify.core.data.podcasts.PodcastsRepository
 import com.henriquesebastiao.downtify.core.data.sync.SyncCoordinator
+import com.henriquesebastiao.downtify.core.model.DjIds
 import com.henriquesebastiao.downtify.core.model.EpisodeIds
-import com.henriquesebastiao.downtify.core.model.PlayQueue
+import com.henriquesebastiao.downtify.core.model.MediaIds
 import com.henriquesebastiao.downtify.core.model.StreamIds
 import com.henriquesebastiao.downtify.core.network.di.StreamingClient
 import com.henriquesebastiao.downtify.core.network.session.SessionStore
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
-import kotlin.random.Random
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -85,7 +84,11 @@ class PlaybackService : MediaLibraryService() {
 
     @Inject lateinit var library: LibraryRepository
 
+    @Inject lateinit var sleepTimer: PlaybackSleepTimer
+
     @Inject lateinit var reporter: ListenReporter
+
+    @Inject lateinit var musicAi: com.henriquesebastiao.downtify.core.data.musicai.MusicAiRepository
 
     @Inject lateinit var activityReporter: PlaybackActivityReporter
 
@@ -117,9 +120,13 @@ class PlaybackService : MediaLibraryService() {
 
     @Inject lateinit var syncCoordinator: SyncCoordinator
 
+    @Inject lateinit var localDj: LocalDjSettings
+    private var localFocus: LocalDjAudioFocus? = null
     private var session: MediaLibrarySession? = null
     private var artworkTracker: SessionArtworkTracker? = null
     private var listens: ListenTracker? = null
+    private var aiListens: MusicAiListenTracker? = null
+    private var djControls: DjControlTracker? = null
     private var activity: ActivityTracker? = null
     private var episodes: EpisodeProgressTracker? = null
     private var prefetch: StreamPrefetchTracker? = null
@@ -128,10 +135,80 @@ class PlaybackService : MediaLibraryService() {
     private val likeCommand = SessionCommand(ACTION_TOGGLE_LIKE, Bundle.EMPTY)
     private val addToQueueCommand = SessionCommand(ACTION_ADD_TO_QUEUE, Bundle.EMPTY)
     private val moveInQueueCommand = SessionCommand(ACTION_MOVE_IN_QUEUE, Bundle.EMPTY)
+    private val djNextCommand = SessionCommand(ACTION_DJ_NEXT, Bundle.EMPTY)
+    private val shuffleFromHeadCommand = SessionCommand(ACTION_SHUFFLE_FROM_HEAD, Bundle.EMPTY)
+    private val shuffleCommand = SessionCommand(ACTION_TOGGLE_SHUFFLE, Bundle.EMPTY)
+    private val repeatCommand = SessionCommand(ACTION_CYCLE_REPEAT, Bundle.EMPTY)
 
     override fun onCreate() {
         super.onCreate()
         CarDiagnostics.service(true)
+        val player = createSessionPlayer()
+
+        val callback = SessionCallback()
+        session = MediaLibrarySession.Builder(this, player, callback)
+            .setBitmapLoader(
+                CacheBitmapLoader(
+                    DataSourceBitmapLoader(DataSourceBitmapLoader.DEFAULT_EXECUTOR_SERVICE.get(), artworkDataSource),
+                ),
+            )
+            .apply { launchIntent()?.let(::setSessionActivity) }
+            .build()
+
+        player.setDjNextHandler {
+            callback.requestDjNext(DjIds.referenceOf(player.currentMediaItem?.mediaId))
+        }
+
+        callback.observe(checkNotNull(session))
+        scope.launch { sleepTimer.run { player.pause() } }
+        syncCoordinator.setMediaServiceActive(true)
+        scope.launch {
+            withContext(Dispatchers.IO) { sessions.ensureLoaded() }
+            artworkTracker = SessionArtworkTracker(player, artwork, sessions, network, scope).also { it.start() }
+        }
+
+        setMediaNotificationProvider(
+            DefaultMediaNotificationProvider(this).apply { setSmallIcon(R.drawable.ic_notification) },
+        )
+
+        listens = ListenTracker(player, reporter, scope).also { it.start() }
+        aiListens = MusicAiListenTracker(player, musicAi, scope).also { it.start() }
+        djControls = DjControlTracker(player, musicAi, scope).also { it.start() }
+        activity = ActivityTracker(player, activityReporter, scope).also { it.start() }
+        episodes = EpisodeProgressTracker(player, podcasts, scope).also { it.start() }
+        prefetch = StreamPrefetchTracker(player, catalog, scope, enabled = { !readAhead.enabled }).also { it.start() }
+        warmer =
+            TranscodeWarmer(player, resolver, streamingClient, scope, enabled = {
+                !readAhead.enabled
+            }).also { it.start() }
+        scope.launch {
+            player.dominantDecoder.collect { decoder ->
+                readAhead.stop()
+                if (decoder is ExoPlayer) readAhead.start(decoder, scope)
+            }
+        }
+        keepButtonsCurrent(player)
+        stopDisabledDj(player)
+        stopWhenSignedOut(player)
+        removeDeletedLibraryTracks(player)
+        persistence = PlaybackPersistence(player, playback, sessions, scope).also { it.start() }
+    }
+
+    private fun createSessionPlayer(): LocalDjPlayer {
+        val player = LocalDjPlayer(decoder(), decoder(), scope)
+        localFocus = LocalDjAudioFocus(this, player).also { it.start() }
+        scope.launch { player.transition.collect { localDj.publish(it) } }
+        scope.launch {
+            combine(localDj.device, localDj.armed, musicAi.capabilities) { device, armed, caps ->
+                if (caps.version > 0 && !caps.enabled("dj_interactive")) localDj.setArmed(false)
+                device && armed && caps.enabled("dj_interactive")
+            }.distinctUntilChanged().collect { player.setEnabled(it) }
+        }
+
+        return player
+    }
+
+    private fun decoder(): ExoPlayer {
         val normalizer = NormalizationAudioProcessor(
             gainForTrack = loudness::gainDb,
             isEnabled = { loudness.enabled.value },
@@ -149,54 +226,26 @@ class PlaybackService : MediaLibraryService() {
                 .setAudioOffloadSupportProvider { _, _ -> AudioOffloadSupport.DEFAULT_UNSUPPORTED }
                 .build()
         }
-        val player = ExoPlayer.Builder(this, renderers)
+        return ExoPlayer.Builder(this, renderers)
+            .setLoadControl(
+                androidx.media3.exoplayer.DefaultLoadControl.Builder()
+                    .setBufferDurationsMs(15000, 60000, 1000, 2500)
+                    .setTargetBufferBytes(32 * 1024 * 1024)
+                    .setPrioritizeTimeOverSizeThresholds(false)
+                    .build(),
+            )
             .setMediaSourceFactory(DefaultMediaSourceFactory(audioDataSource))
             .setAudioAttributes(
                 AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(),
                 /* handleAudioFocus = */
-                true,
+                false,
             )
-            .setHandleAudioBecomingNoisy(true)
+            .setHandleAudioBecomingNoisy(false)
             // For podcast episodes: the buttons in the app and the notification skip by these.
             .setSeekBackIncrementMs(SKIP_BACK_MS)
             .setSeekForwardIncrementMs(SKIP_FORWARD_MS)
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .build()
-
-        val callback = SessionCallback()
-        session = MediaLibrarySession.Builder(this, player, callback)
-            .setBitmapLoader(
-                CacheBitmapLoader(
-                    DataSourceBitmapLoader(DataSourceBitmapLoader.DEFAULT_EXECUTOR_SERVICE.get(), artworkDataSource),
-                ),
-            )
-            .apply { launchIntent()?.let(::setSessionActivity) }
-            .build()
-
-        callback.observe(checkNotNull(session))
-        syncCoordinator.setMediaServiceActive(true)
-        scope.launch {
-            withContext(Dispatchers.IO) { sessions.ensureLoaded() }
-            artworkTracker = SessionArtworkTracker(player, artwork, sessions, network, scope).also { it.start() }
-        }
-
-        setMediaNotificationProvider(
-            DefaultMediaNotificationProvider(this).apply { setSmallIcon(R.drawable.ic_notification) },
-        )
-
-        listens = ListenTracker(player, reporter, scope).also { it.start() }
-        activity = ActivityTracker(player, activityReporter, scope).also { it.start() }
-        episodes = EpisodeProgressTracker(player, podcasts, scope).also { it.start() }
-        prefetch = StreamPrefetchTracker(player, catalog, scope, enabled = { !readAhead.enabled }).also { it.start() }
-        warmer =
-            TranscodeWarmer(player, resolver, streamingClient, scope, enabled = {
-                !readAhead.enabled
-            }).also { it.start() }
-        readAhead.start(player, scope)
-        keepLikeButtonCurrent(player)
-        stopWhenSignedOut(player)
-        removeDeletedLibraryTracks(player)
-        persistence = PlaybackPersistence(player, playback, sessions, scope).also { it.start() }
     }
 
     /**
@@ -220,6 +269,25 @@ class PlaybackService : MediaLibraryService() {
             }.launchIn(scope)
     }
 
+    private fun stopDisabledDj(player: Player) {
+        fun enforce() {
+            if (musicAi.capabilities.value.version == 0) return
+            val id = player.currentMediaItem?.mediaId
+            if (!DjIds.isDj(id)) return
+            val reference = DjIds.referenceOf(id)
+            if (reference == null || !musicAi.capabilities.value.enabled("dj_" + reference.mode)) player.pause()
+        }
+        musicAi.capabilities.onEach { enforce() }.launchIn(scope)
+        player.addListener(object : Player.Listener {
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                if (isPlaying) enforce()
+            }
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                enforce()
+            }
+        })
+    }
+
     /** Unpaired (here or from the web): the queue belongs to a server the app can't reach anymore. */
     private fun stopWhenSignedOut(player: Player) {
         scope.launch {
@@ -227,6 +295,9 @@ class PlaybackService : MediaLibraryService() {
             val expected = sessions.current?.playbackOwner
             sessions.session.collect { paired ->
                 if (paired == null || paired.playbackOwner != expected) {
+                    sleepTimer.set(null)
+                    localDj.setArmed(false)
+                    (player as? LocalDjPlayer)?.resetForOwner()
                     player.stop()
                     player.clearMediaItems()
                     stopSelf()
@@ -244,16 +315,22 @@ class PlaybackService : MediaLibraryService() {
     }
 
     override fun onDestroy() {
+        sleepTimer.set(null)
         CarDiagnostics.service(false)
         syncCoordinator.setMediaServiceActive(false)
         artworkTracker?.stop()
         readAhead.stop()
         persistence?.stop()
         listens?.stop()
+        aiListens?.stop()
+        djControls?.stop()
         activity?.stop()
         episodes?.stop()
         prefetch?.stop()
         warmer?.stop()
+        localFocus?.release()
+        localDj.setArmed(false)
+        localDj.publish(LocalDjTransition())
         scope.cancel()
         session?.run {
             player.release()
@@ -274,72 +351,70 @@ class PlaybackService : MediaLibraryService() {
     }
 
     /** The heart in the notification follows the current track's like. */
-    private fun keepLikeButtonCurrent(player: Player) {
+    private fun keepButtonsCurrent(player: Player) {
         val currentId = MutableStateFlow(player.currentMediaItem?.mediaId)
+        val shuffleOn = MutableStateFlow(player.shuffleModeEnabled)
+        val repeatFlow = MutableStateFlow(player.repeatMode)
         player.addListener(
             object : Player.Listener {
                 override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                     currentId.value = mediaItem?.mediaId
                 }
+
+                override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
+                    shuffleOn.value = shuffleModeEnabled
+                }
+
+                override fun onRepeatModeChanged(repeatMode: Int) {
+                    repeatFlow.value = repeatMode
+                }
             },
         )
-        // Songs get a heart; an episode or a stream has nothing to like.
-        combine(currentId, library.likedIds) { id, liked ->
-            when {
-                EpisodeIds.isEpisode(id) || StreamIds.isStream(id) -> null
-                else -> id != null && id in liked
-            }
+        // Shuffle and repeat follow the real player state; a song also gets a heart.
+        combine(currentId, library.likedIds, shuffleOn, repeatFlow) { id, liked, shuffle, mode ->
+            Triple(likeable(id, liked), shuffle, mode)
         }
             .distinctUntilChanged()
-            .onEach { liked ->
-                session?.setMediaButtonPreferences(if (liked == null) emptyList() else listOf(likeButton(liked)))
+            .onEach { (liked, shuffle, mode) ->
+                session?.setMediaButtonPreferences(
+                    listOfNotNull(shuffleButton(shuffle), repeatButton(mode), liked?.let(::likeButton)),
+                )
             }
             .launchIn(scope)
     }
 
-    /**
-     * Puts [item] after the current song and anything queued before it, ahead of the rest of
-     * the album or playlist — in the shuffled order too, where ExoPlayer alone would put it
-     * at a random spot. With nothing loaded it becomes the queue, paused.
-     */
-    private fun addToQueue(player: ExoPlayer, item: MediaItem) {
-        if (player.mediaItemCount == 0) {
-            player.setMediaItem(item)
-            player.prepare()
-            return
-        }
-        val anchor = PlayQueue.anchor(PlayOrder.fromCurrent(player)) {
-            MediaItems.isQueued(player.getMediaItemAt(it))
-        } ?: return
-        if (player.shuffleModeEnabled) {
-            val shuffled = PlayOrder.shuffled(player.currentTimeline)
-            val newIndex = player.mediaItemCount
-            player.addMediaItem(item)
-            val order = PlayQueue.shuffleOrderWith(shuffled, anchor, newIndex)
-            player.setShuffleOrder(DefaultShuffleOrder(order.toIntArray(), Random.nextLong()))
-        } else {
-            player.addMediaItem(anchor + 1, item)
-        }
+    /** Songs get a heart; an episode, a stream or a DJ render has nothing to like. */
+    private fun likeable(id: String?, liked: Collection<String>): Boolean? = when {
+        EpisodeIds.isEpisode(id) || StreamIds.isStream(id) || DjIds.isDj(id) -> null
+        else -> id != null && id in liked
     }
 
-    /**
-     * Moves the item at [from] to play right after the item at [after] (indices in the
-     * player's list), marked as queued or not. With shuffle on only the shuffled order
-     * changes; otherwise the item moves in the list.
-     */
-    private fun moveInQueue(player: ExoPlayer, from: Int, after: Int, queued: Boolean) {
-        val count = player.mediaItemCount
-        if (from !in 0 until count || after !in 0 until count || from == after) return
-        if (from == player.currentMediaItemIndex) return
-        val item = player.getMediaItemAt(from)
-        if (MediaItems.isQueued(item) != queued) player.replaceMediaItem(from, MediaItems.withQueued(item, queued))
-        if (player.shuffleModeEnabled) {
-            val order = PlayQueue.moveAfter(PlayOrder.shuffled(player.currentTimeline), from, after)
-            player.setShuffleOrder(DefaultShuffleOrder(order.toIntArray(), Random.nextLong()))
-        } else {
-            player.moveMediaItem(from, PlayQueue.moveTarget(from, after))
-        }
-    }
+    private fun shuffleButton(enabled: Boolean): CommandButton =
+        CommandButton.Builder(if (enabled) CommandButton.ICON_SHUFFLE_ON else CommandButton.ICON_SHUFFLE_OFF)
+            .setDisplayName(getString(if (enabled) R.string.player_shuffle_on else R.string.player_shuffle_off))
+            .setSessionCommand(shuffleCommand)
+            .setSlots(CommandButton.SLOT_OVERFLOW)
+            .build()
+
+    private fun repeatButton(mode: Int): CommandButton = CommandButton.Builder(
+        when (mode) {
+            Player.REPEAT_MODE_ONE -> CommandButton.ICON_REPEAT_ONE
+            Player.REPEAT_MODE_ALL -> CommandButton.ICON_REPEAT_ALL
+            else -> CommandButton.ICON_REPEAT_OFF
+        },
+    )
+        .setDisplayName(
+            getString(
+                when (mode) {
+                    Player.REPEAT_MODE_ONE -> R.string.player_repeat_one
+                    Player.REPEAT_MODE_ALL -> R.string.player_repeat_all
+                    else -> R.string.player_repeat_off
+                },
+            ),
+        )
+        .setSessionCommand(repeatCommand)
+        .setSlots(CommandButton.SLOT_OVERFLOW)
+        .build()
 
     private fun likeButton(liked: Boolean): CommandButton =
         CommandButton.Builder(if (liked) CommandButton.ICON_HEART_FILLED else CommandButton.ICON_HEART_UNFILLED)
@@ -394,7 +469,8 @@ class PlaybackService : MediaLibraryService() {
             }
             val commands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon()
             if (own(controller)) {
-                commands.add(likeCommand).add(addToQueueCommand).add(moveInQueueCommand)
+                commands.add(likeCommand).add(addToQueueCommand).add(moveInQueueCommand).add(djNextCommand)
+                commands.add(shuffleFromHeadCommand).add(shuffleCommand).add(repeatCommand)
             } else {
                 commands.add(likeCommand)
             }
@@ -411,33 +487,68 @@ class PlaybackService : MediaLibraryService() {
             if (!own(controller) && customCommand.customAction != ACTION_TOGGLE_LIKE) {
                 return Futures.immediateFuture(SessionResult(SessionError.ERROR_PERMISSION_DENIED))
             }
-            if (customCommand.customAction == ACTION_TOGGLE_LIKE) {
-                val id = session.player.currentMediaItem?.mediaId
-                if (id != null && !EpisodeIds.isEpisode(id) && !StreamIds.isStream(id)) {
-                    val liked = id in library.likedIds.value
-                    scope.launch { library.setLiked(id, !liked) }
+            when (customCommand.customAction) {
+                ACTION_TOGGLE_LIKE -> {
+                    val id = session.player.currentMediaItem?.mediaId
+                    if (id != null && MediaIds.isLibrary(id)) {
+                        val liked = id in library.likedIds.value
+                        scope.launch { library.setLiked(id, !liked) }
+                    }
                 }
-                return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
-            }
-            if (customCommand.customAction == ACTION_ADD_TO_QUEUE) {
-                val track = args.getString(EXTRA_TRACK_ID)?.let { library.library.value?.byId?.get(it) }
-                    ?: return Futures.immediateFuture(SessionResult(SessionError.ERROR_BAD_VALUE))
-                addToQueue(
-                    session.player as ExoPlayer,
-                    MediaItems.from(track, sessions.current?.baseUrl, queued = true),
+
+                ACTION_SHUFFLE_FROM_HEAD -> PlayOrder.startShuffled(session.player)
+
+                ACTION_TOGGLE_SHUFFLE ->
+                    session.player.shuffleModeEnabled =
+                        !session.player.shuffleModeEnabled
+
+                ACTION_CYCLE_REPEAT -> session.player.repeatMode = when (session.player.repeatMode) {
+                    Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+                    Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+                    else -> Player.REPEAT_MODE_OFF
+                }
+
+                ACTION_DJ_NEXT -> return requestDjNext(
+                    DjIds.referenceOf(session.player.currentMediaItem?.mediaId),
                 )
-                return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
-            }
-            if (customCommand.customAction == ACTION_MOVE_IN_QUEUE) {
-                moveInQueue(
-                    session.player as ExoPlayer,
+
+                ACTION_ADD_TO_QUEUE -> return requestQueueAdd(session, args)
+
+                ACTION_MOVE_IN_QUEUE -> QueueEdit.move(
+                    session.player,
                     from = args.getInt(EXTRA_FROM, C.INDEX_UNSET),
                     after = args.getInt(EXTRA_AFTER, C.INDEX_UNSET),
                     queued = args.getBoolean(EXTRA_QUEUED),
                 )
-                return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+
+                else -> return super.onCustomCommand(session, controller, customCommand, args)
             }
-            return super.onCustomCommand(session, controller, customCommand, args)
+            return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+        }
+
+        internal fun requestDjNext(
+            reference: com.henriquesebastiao.downtify.core.model.DjReference?,
+        ): ListenableFuture<SessionResult> {
+            if (reference?.mode !=
+                "interactive"
+            ) {
+                return Futures.immediateFuture(SessionResult(SessionError.ERROR_BAD_VALUE))
+            }
+            return scope.future {
+                try {
+                    musicAi.djCommand(reference.id, "next")
+                    SessionResult(SessionResult.RESULT_SUCCESS)
+                } catch (_: com.henriquesebastiao.downtify.core.data.musicai.MusicAiFailure) {
+                    SessionResult(SessionError.ERROR_IO)
+                }
+            }
+        }
+
+        private fun requestQueueAdd(session: MediaSession, args: Bundle): ListenableFuture<SessionResult> {
+            val track = args.getString(EXTRA_TRACK_ID)?.let { library.library.value?.byId?.get(it) }
+                ?: return Futures.immediateFuture(SessionResult(SessionError.ERROR_BAD_VALUE))
+            QueueEdit.add(session.player, MediaItems.from(track, sessions.current?.baseUrl, queued = true))
+            return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
         }
 
         /**
@@ -453,6 +564,22 @@ class PlaybackService : MediaLibraryService() {
             val snapshot = library.library.value
             val baseUrl = sessions.current?.baseUrl
             val resolved = mediaItems.mapNotNull { item ->
+                if (DjIds.isDj(item.mediaId)) {
+                    val reference = DjIds.referenceOf(item.mediaId)
+                    return@mapNotNull if (reference != null &&
+                        musicAi.capabilities.value.enabled("dj_" + reference.mode)
+                    ) {
+                        DjMediaItems.from(
+                            reference.id,
+                            item.mediaMetadata.title?.toString().orEmpty(),
+                            item.mediaMetadata.durationMs ?: 0,
+                            reference.mode,
+                        ).buildUpon()
+                            .setMediaMetadata(item.mediaMetadata).build()
+                    } else {
+                        null
+                    }
+                }
                 // An episode carries its file's address in the request metadata.
                 if (EpisodeIds.isEpisode(item.mediaId)) {
                     return@mapNotNull item.requestMetadata.mediaUri?.let { item.buildUpon().setUri(it).build() }
@@ -475,6 +602,10 @@ class PlaybackService : MediaLibraryService() {
         const val ACTION_TOGGLE_LIKE = "com.henriquesebastiao.downtify.TOGGLE_LIKE"
         const val ACTION_ADD_TO_QUEUE = "com.henriquesebastiao.downtify.ADD_TO_QUEUE"
         const val ACTION_MOVE_IN_QUEUE = "com.henriquesebastiao.downtify.MOVE_IN_QUEUE"
+        const val ACTION_DJ_NEXT = "com.henriquesebastiao.downtify.DJ_NEXT"
+        const val ACTION_SHUFFLE_FROM_HEAD = "com.henriquesebastiao.downtify.SHUFFLE_FROM_HEAD"
+        const val ACTION_TOGGLE_SHUFFLE = "com.henriquesebastiao.downtify.TOGGLE_SHUFFLE"
+        const val ACTION_CYCLE_REPEAT = "com.henriquesebastiao.downtify.CYCLE_REPEAT"
         const val EXTRA_TRACK_ID = "track_id"
         const val EXTRA_FROM = "from"
         const val EXTRA_AFTER = "after"

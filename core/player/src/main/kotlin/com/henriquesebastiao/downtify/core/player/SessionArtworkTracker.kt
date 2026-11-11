@@ -1,8 +1,10 @@
 package com.henriquesebastiao.downtify.core.player
 
 import android.net.Uri
+import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import com.henriquesebastiao.downtify.core.data.NetworkMonitor
+import com.henriquesebastiao.downtify.core.model.DjIds
 import com.henriquesebastiao.downtify.core.model.EpisodeIds
 import com.henriquesebastiao.downtify.core.model.StreamIds
 import com.henriquesebastiao.downtify.core.network.ServerUrls
@@ -58,6 +60,7 @@ internal class SessionArtworkTracker(
                 Player.EVENT_MEDIA_ITEM_TRANSITION,
                 Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED,
                 Player.EVENT_REPEAT_MODE_CHANGED,
+                Player.EVENT_MEDIA_METADATA_CHANGED,
             )
         ) {
             update()
@@ -71,12 +74,7 @@ internal class SessionArtworkTracker(
         } else {
             PlayOrder.ahead(player, 4).mapNotNull { index ->
                 val item = player.getMediaItemAt(index)
-                val original = MediaItems.originalArtwork(item) ?: return@mapNotNull null
-                val source = if (!StreamIds.isStream(item.mediaId) && !EpisodeIds.isEpisode(item.mediaId)) {
-                    Uri.parse(ServerUrls.cover(paired.baseUrl, item.mediaId, ServerUrls.COVER_LARGE))
-                } else {
-                    original
-                }
+                val source = coverSource(item, paired.baseUrl) ?: return@mapNotNull null
                 Target(index, item.mediaId, source, paired.artworkOwner)
             }
         }
@@ -97,4 +95,19 @@ internal class SessionArtworkTracker(
             player.replaceMediaItem(target.index, MediaItems.withArtwork(current, image))
         }
     }
+}
+
+/**
+ * The cover of what is audible in [item]. A DJ stream's media id names the render, not a track:
+ * asking the server for that id returns no cover, which is why a mix played with no artwork.
+ * The audible track travels in the DJ extras; a mix without one keeps the cover its plan gave it.
+ */
+internal fun coverSource(item: MediaItem, baseUrl: String): Uri? {
+    DjMediaItems.of(item)?.trackId?.let {
+        return Uri.parse(ServerUrls.cover(baseUrl, it, ServerUrls.COVER_LARGE))
+    }
+    if (DjIds.isDj(item.mediaId) || StreamIds.isStream(item.mediaId) || EpisodeIds.isEpisode(item.mediaId)) {
+        return MediaItems.originalArtwork(item)
+    }
+    return Uri.parse(ServerUrls.cover(baseUrl, item.mediaId, ServerUrls.COVER_LARGE))
 }

@@ -108,7 +108,7 @@ data class LibraryNavigation(
     val onArtist: (String) -> Unit = {},
     val onPlaylist: (String) -> Unit = {},
     val onLiked: () -> Unit = {},
-    val onSimilar: (artist: String, title: String) -> Unit = { _, _ -> },
+    val onSimilar: (artist: String, title: String, seed: String) -> Unit = { _, _, _ -> },
 )
 
 @Composable
@@ -133,7 +133,7 @@ fun LibraryRoute(
             onAddToQueue = viewModel::addToQueue,
             onGoToAlbum = { navigation.onAlbum(it.albumId) },
             onGoToArtist = { navigation.onArtist(it.artistId) },
-            onFindSimilar = { artist, title -> navigation.onSimilar(artist, title) },
+            onFindSimilar = { artist, title, seed -> navigation.onSimilar(artist, title, seed) },
             onMoveToTrash = LocalMoveToTrash.current,
         ),
         modifier = modifier,

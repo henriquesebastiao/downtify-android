@@ -13,5 +13,10 @@
     <string name="car_choose_result">Няколко резултата: изберете песен от търсенето.</string>
     <string name="player_like">Добавяне в любими песни</string>
     <string name="player_unlike">Премахване от любими песни</string>
+    <string name="player_shuffle_on">Разбъркване включено</string>
+    <string name="player_shuffle_off">Разбъркване изключено</string>
+    <string name="player_repeat_off">Повторение изключено</string>
+    <string name="player_repeat_all">Повтаряне на всички</string>
+    <string name="player_repeat_one">Повтаряне на една песен</string>
     <string name="car_refine_search">Твърде много резултати. Уточнете търсенето.</string>
 </resources>

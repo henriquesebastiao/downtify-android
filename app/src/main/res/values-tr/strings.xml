@@ -551,4 +551,9 @@
     <string name="settings_normalization_louder">Daha yüksek</string>
     <string name="settings_normalization_maximum">Maksimum</string>
     <string name="settings_normalization_level_hint">Sesi her parçanın güvenli sınırına kadar artırır. Ses dosyaları değişmez.</string>
+    <string name="nav_music_ai">Müziğiniz</string>
+    <string name="music_dj_server">Sunucu</string>
+    <string name="music_dj_device_beta">Bu cihaz · Beta</string>
+    <string name="music_dj_local_description">Geçerli kuyruğu bu telefonda kısa geçişlerle miksleyin. Ritim analizi hazırlanıyor. Model otomatik indirilmez. Pil ve ses kalitesi cihazda test edilmeyi bekliyor.</string>
+    <string name="music_dj_server_description">Sunucu geçişleri hazırlar. Telefon kimliği doğrulanmış ses akışını çalar.</string>
 </resources>

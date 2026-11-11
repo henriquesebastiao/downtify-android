@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -31,6 +32,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -45,7 +47,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import com.henriquesebastiao.downtify.R
 import com.henriquesebastiao.downtify.core.designsystem.component.Artwork
 import com.henriquesebastiao.downtify.core.designsystem.component.ArtworkTone
@@ -64,11 +69,14 @@ import com.henriquesebastiao.downtify.core.model.PlaybackContextType
 import com.henriquesebastiao.downtify.core.model.Playlist
 import com.henriquesebastiao.downtify.core.model.RecentContext
 import com.henriquesebastiao.downtify.core.network.ServerUrls
+import com.henriquesebastiao.downtify.feature.musicai.MusicAiViewModel
 import com.henriquesebastiao.downtify.ui.common.CoverCard
 import com.henriquesebastiao.downtify.ui.common.LocalCoverUrls
+import com.henriquesebastiao.downtify.ui.common.LocalMusicAiCapabilities
 import com.henriquesebastiao.downtify.ui.common.PreviewData
 import com.henriquesebastiao.downtify.ui.common.albumSubtitle
 import com.henriquesebastiao.downtify.ui.common.plusBottomBars
+import com.henriquesebastiao.downtify.ui.common.similarityAvailable
 
 @Composable
 fun HomeRoute(
@@ -82,8 +90,22 @@ fun HomeRoute(
     onOpenSimilar: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
+    onOpenForYou: () -> Unit = {},
+    onOpenMoodPlaylist: (String, String) -> Unit = { _, _ -> },
+    onOpenDj: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val musicAi: MusicAiViewModel = hiltViewModel()
+    val aiState by musicAi.state.collectAsStateWithLifecycle()
+    val aiCaps by musicAi.capabilities.collectAsStateWithLifecycle()
+    LaunchedEffect(aiCaps.features, aiCaps.homeCards) { musicAi.refreshHome() }
+    val lifecycle = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycle, musicAi) {
+        lifecycle.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            musicAi.refreshHome()
+            kotlinx.coroutines.awaitCancellation()
+        }
+    }
     HomeScreen(
         state,
         onOpenSettings,
@@ -96,6 +118,20 @@ fun HomeRoute(
         onOpenPodcasts,
         onOpenSimilar,
         onOpenMenu = onOpenMenu,
+        forYouContent = {
+            if (listOf("daily", "weekly", "personalization").any(aiCaps::enabled)) {
+                item(key = "daily-mixes") {
+                    com.henriquesebastiao.downtify.feature.musicai.DailyMusicShelf(
+                        aiState,
+                        aiCaps,
+                        onOpenMoodPlaylist,
+                        onOpenForYou,
+                    )
+                }
+            }
+        },
+        onOpenDj = onOpenDj,
+        onRefreshForYou = musicAi::refreshHome,
     )
 }
 
@@ -113,6 +149,9 @@ fun HomeScreen(
     onOpenPodcasts: () -> Unit = {},
     onOpenSimilar: () -> Unit = {},
     onOpenMenu: () -> Unit = {},
+    onOpenDj: () -> Unit = {},
+    forYouContent: (LazyListScope.() -> Unit)? = null,
+    onRefreshForYou: () -> Unit = {},
 ) {
     Scaffold(
         modifier = modifier,
@@ -153,7 +192,10 @@ fun HomeScreen(
     ) { padding ->
         PullToRefreshBox(
             isRefreshing = state.refreshing,
-            onRefresh = onRefresh,
+            onRefresh = {
+                onRefresh()
+                onRefreshForYou()
+            },
             modifier = Modifier.fillMaxSize().padding(padding),
         ) {
             LazyColumn(
@@ -163,6 +205,7 @@ fun HomeScreen(
                 item(key = "status") {
                     ServerStatusLine(state, Modifier.padding(horizontal = Spacing.screen, vertical = Spacing.sm))
                 }
+
                 when {
                     state.loading -> item(key = "loading") {
                         Box(Modifier.fillMaxWidth().padding(Spacing.xxl), contentAlignment = Alignment.Center) {
@@ -184,6 +227,7 @@ fun HomeScreen(
                         if (state.jumpBackIn.isNotEmpty() || state.favoritePlaylists.isNotEmpty()) {
                             item(key = "access") { HomeAccess(state, onOpenRecent) }
                         }
+                        forYouContent?.invoke(this)
                         if (state.recentlyAdded.isNotEmpty()) {
                             item(key = "recent") { RecentlyAdded(state.recentlyAdded, onOpenAlbum, onSeeAll) }
                         }
@@ -197,6 +241,7 @@ fun HomeScreen(
                             onOpenDiscover = onOpenDiscover,
                             onOpenPodcasts = onOpenPodcasts,
                             onOpenSimilar = onOpenSimilar,
+                            onOpenDj = onOpenDj,
                         )
                     }
                 }
@@ -239,6 +284,7 @@ private fun Shortcuts(
     onOpenDiscover: () -> Unit,
     onOpenPodcasts: () -> Unit,
     onOpenSimilar: () -> Unit,
+    onOpenDj: () -> Unit,
 ) {
     Column(
         Modifier.padding(horizontal = Spacing.screen).padding(top = Spacing.xl),
@@ -252,12 +298,14 @@ private fun Shortcuts(
                 onClick = onOpenDiscover,
             )
         }
-        Shortcut(
-            icon = DowntifyIcons.Graphic,
-            title = stringResource(R.string.home_shortcut_similar),
-            body = stringResource(R.string.home_shortcut_similar_body),
-            onClick = onOpenSimilar,
-        )
+        if (LocalMusicAiCapabilities.current.similarityAvailable()) {
+            Shortcut(
+                icon = DowntifyIcons.Graphic,
+                title = stringResource(R.string.home_shortcut_similar),
+                body = stringResource(R.string.home_shortcut_similar_body),
+                onClick = onOpenSimilar,
+            )
+        }
         if (showPodcasts) {
             Shortcut(
                 icon = DowntifyIcons.Podcasts,
@@ -265,6 +313,9 @@ private fun Shortcuts(
                 body = stringResource(R.string.home_shortcut_podcasts_body),
                 onClick = onOpenPodcasts,
             )
+        }
+        if (LocalMusicAiCapabilities.current.version == 1) {
+            Shortcut(DowntifyIcons.Graphic, "DJ · Bêta", "Créer des mixes et mixer votre file", onOpenDj)
         }
     }
 }

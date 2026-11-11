@@ -13,5 +13,10 @@
     <string name="car_choose_result">Πολλά αποτελέσματα: επιλέξτε ένα τραγούδι από την αναζήτηση.</string>
     <string name="player_like">Προσθήκη στα αγαπημένα τραγούδια</string>
     <string name="player_unlike">Αφαίρεση από τα αγαπημένα τραγούδια</string>
+    <string name="player_shuffle_on">Τυχαία σειρά ενεργή</string>
+    <string name="player_shuffle_off">Τυχαία σειρά ανενεργή</string>
+    <string name="player_repeat_off">Επανάληψη ανενεργή</string>
+    <string name="player_repeat_all">Επανάληψη όλων</string>
+    <string name="player_repeat_one">Επανάληψη ενός τραγουδιού</string>
     <string name="car_refine_search">Πάρα πολλά αποτελέσματα. Περιορίστε την αναζήτηση.</string>
 </resources>

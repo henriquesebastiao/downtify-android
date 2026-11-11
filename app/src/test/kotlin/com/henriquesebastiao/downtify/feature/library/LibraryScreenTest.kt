@@ -1,5 +1,6 @@
 package com.henriquesebastiao.downtify.feature.library
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -15,6 +16,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.henriquesebastiao.downtify.core.data.settings.LibrarySort
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyTheme
 import com.henriquesebastiao.downtify.core.model.formatDuration
+import com.henriquesebastiao.downtify.core.network.dto.MusicAiCapabilitiesDto
+import com.henriquesebastiao.downtify.ui.common.LocalMusicAiCapabilities
 import com.henriquesebastiao.downtify.ui.common.PreviewData
 import com.henriquesebastiao.downtify.ui.common.TrackActions
 import org.junit.Assert.assertEquals
@@ -176,7 +179,7 @@ class LibraryScreenTest {
 
     @Test
     fun trackMenuFindsSimilarTracks() {
-        var similar: Pair<String, String>? = null
+        var similar: Triple<String, String, String>? = null
         compose.setContent {
             DowntifyTheme {
                 LibraryScreen(
@@ -188,13 +191,47 @@ class LibraryScreenTest {
                     onRefresh = {},
                     onPlaySong = {},
                     trackActions = TrackActions(
-                        onFindSimilar = { artist, title -> similar = artist to title },
+                        onFindSimilar = { artist, title, seed -> similar = Triple(artist, title, seed) },
                     ),
                 )
             }
         }
         compose.onNodeWithContentDescription("More options for Low Tide").performClick()
         compose.onNodeWithText("Find similar").performClick()
-        assertEquals("Kenji Aoki" to "Low Tide", similar)
+        assertEquals(
+            Triple(
+                "Kenji Aoki",
+                "Low Tide",
+                PreviewData.tracks.first {
+                    it.displayTitle == "Low Tide"
+                }.id,
+            ),
+            similar,
+        )
+    }
+
+    @Test
+    fun anOpenMenuHidesSimilarWhenItsModuleIsDisabled() {
+        var caps by mutableStateOf(MusicAiCapabilitiesDto(version = 1, features = mapOf("similarity" to true)))
+        compose.setContent {
+            DowntifyTheme {
+                CompositionLocalProvider(LocalMusicAiCapabilities provides caps) {
+                    LibraryScreen(
+                        state = songsState(),
+                        navigation = LibraryNavigation(),
+                        onSelectTab = {},
+                        onSort = {},
+                        onToggleLayout = {},
+                        onRefresh = {},
+                        onPlaySong = {},
+                        trackActions = TrackActions(onFindSimilar = { _, _, _ -> }),
+                    )
+                }
+            }
+        }
+        compose.onNodeWithContentDescription("More options for Low Tide").performClick()
+        compose.onNodeWithText("Find similar").assertIsEnabled()
+        compose.runOnIdle { caps = caps.copy(features = mapOf("similarity" to false)) }
+        compose.onNodeWithText("Find similar").assertDoesNotExist()
     }
 }

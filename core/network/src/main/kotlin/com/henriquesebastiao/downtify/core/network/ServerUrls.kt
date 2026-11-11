@@ -6,6 +6,28 @@ import java.net.URLEncoder
 
 /** Absolute URLs on a server for things loaded outside Retrofit (images, audio). */
 object ServerUrls {
+    fun djFile(baseUrl: String, id: String, mode: String = "prepared"): String {
+        require(com.henriquesebastiao.downtify.core.model.DjIds.valid(id))
+        require(mode in setOf("prepared", "interactive"))
+        val resource = if (mode == "prepared") "media" else "hls/index.m3u8"
+        return baseUrl.trimEnd('/') + "/api/v1/music-ai/dj/sessions/$id/$resource"
+    }
+
+    fun isDjHlsResource(baseUrl: String, url: String): Boolean = try {
+        val base = java.net.URI(baseUrl)
+        val target = java.net.URI(url)
+        val path = base.rawPath.orEmpty().trimEnd('/') + "/api/v1/music-ai/dj/sessions/"
+        val resource = target.rawPath.orEmpty().removePrefix(path)
+        if (base.scheme != target.scheme || base.authority != target.authority) {
+            false
+        } else {
+            val plain = target.rawQuery == null && target.rawFragment == null
+            plain && target.rawPath.orEmpty().startsWith(path) &&
+                Regex("[a-f0-9]{32}/hls/(index\\.m3u8|segment-[0-9]{8}\\.ts)").matches(resource)
+        }
+    } catch (_: java.net.URISyntaxException) {
+        false
+    }
     const val COVER_SMALL = 150
     const val COVER_MEDIUM = 300
     const val COVER_LARGE = 600

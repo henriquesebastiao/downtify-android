@@ -551,4 +551,9 @@
     <string name="settings_normalization_louder">Πιο δυνατά</string>
     <string name="settings_normalization_maximum">Μέγιστο</string>
     <string name="settings_normalization_level_hint">Αυξάνει την ένταση εντός του ασφαλούς ορίου κάθε τραγουδιού. Τα αρχεία ήχου δεν αλλάζουν.</string>
+    <string name="nav_music_ai">Η μουσική σας</string>
+    <string name="music_dj_server">Διακομιστής</string>
+    <string name="music_dj_device_beta">Αυτή η συσκευή · Beta</string>
+    <string name="music_dj_local_description">Μίξη της τρέχουσας ουράς στο τηλέφωνο με σύντομες μεταβάσεις. Η ανάλυση ρυθμού ετοιμάζεται. Δεν γίνεται αυτόματη λήψη μοντέλου. Εκκρεμούν δοκιμές μπαταρίας και ήχου.</string>
+    <string name="music_dj_server_description">Ο διακομιστής ετοιμάζει τις μεταβάσεις. Το τηλέφωνο αναπαράγει την πιστοποιημένη ροή ήχου.</string>
 </resources>

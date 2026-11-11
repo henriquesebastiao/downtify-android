@@ -92,6 +92,7 @@ fun SettingsRoute(
     onOpenAbout: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SettingsViewModel = hiltViewModel(),
+    onOpenAi: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -109,6 +110,7 @@ fun SettingsRoute(
             onFont = viewModel::setFont,
             onFloatingNavBar = viewModel::setFloatingNavBar,
             onOpenAbout = onOpenAbout,
+            onOpenAi = onOpenAi,
             onOpenLanguage = { openAppLanguageSettings(context) },
             onDownloadWifiOnly = viewModel::setDownloadWifiOnly,
             onOfflineLimit = viewModel::setOfflineLimit,
@@ -136,6 +138,7 @@ data class SettingsActions(
     val onFont: (AppFont) -> Unit = {},
     val onFloatingNavBar: (Boolean) -> Unit = {},
     val onOpenAbout: () -> Unit = {},
+    val onOpenAi: () -> Unit = {},
     val onOpenLanguage: () -> Unit = {},
     val onDownloadWifiOnly: (Boolean) -> Unit = {},
     val onOfflineLimit: (Long) -> Unit = {},
@@ -179,6 +182,14 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
                 .verticalScroll(rememberScrollState()),
         ) {
             ServerCard(state, onChangeServer = { dialog = SettingsDialog.Unpair }, onOpenWeb = actions.onOpenWeb)
+
+            SectionCard(
+                icon = DowntifyIcons.Graphic,
+                title = "IA",
+                onClick = actions.onOpenAi,
+                trailing = { Tag("Expérimental", tone = TagTone.Secondary) },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.screen, vertical = Spacing.sm),
+            ) { Text("Playlists personnalisées et DJ en temps réel") }
 
             GroupTitle(stringResource(R.string.settings_playback))
             GroupedList(playbackRows(state, actions) { dialog = it })
