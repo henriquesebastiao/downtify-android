@@ -7,6 +7,7 @@
     <string name="car_albums">Албуми</string>
     <string name="car_tracks">Песни</string>
     <string name="car_offline">Офлайн</string>
+    <string name="car_shuffle_all">Разбъркване на всички</string>
     <string name="car_pair">Свържете Downtify от телефона си.</string>
     <string name="car_loading">Библиотеката се зарежда. Опитайте отново.</string>
     <string name="car_unavailable">Тази песен не е налична.</string>

@@ -119,12 +119,10 @@ class CarBrowserTest {
         assertEquals(9000L, result.startPositionMs)
     }
 
-    @Test fun `untrusted controller cannot connect and trusted car cannot impersonate the app`() {
+    @Test fun `external controllers can connect and non app controllers cannot impersonate the app`() {
         every { controller.uid } returns 200
         every { controller.packageName } returns "untrusted.example"
         every { controller.isTrusted } returns false
-        assertFalse(ControllerAccess.canConnect(controller, "app.example", 100))
-        every { controller.isTrusted } returns true
         assertTrue(ControllerAccess.canConnect(controller, "app.example", 100))
         assertFalse(ControllerAccess.isApp(controller, "app.example", 100))
         every { controller.uid } returns 100
@@ -135,12 +133,15 @@ class CarBrowserTest {
     @Test fun `known playlist row expands to the same ordered player queue`() {
         val folder = browser.onGetChildren(session, controller, CarLibrary.PLAYLISTS, 0, 20, null)
             .get(5, TimeUnit.SECONDS).value!!.single()
-        val row = browser.onGetChildren(session, controller, folder.mediaId, 1, 1, null)
-            .get(5, TimeUnit.SECONDS).value!!.single()
+        val rows = browser.onGetChildren(session, controller, folder.mediaId, 0, 20, null)
+            .get(5, TimeUnit.SECONDS).value!!
+        val row = rows.first {
+            it.mediaMetadata.isPlayable == true && !it.mediaId.startsWith(CarLibrary.SHUFFLE_PREFIX)
+        }
         val result = browser.onSetMediaItems(session, controller, mutableListOf(row), 0, 5000)
             .get(5, TimeUnit.SECONDS)
         assertEquals(listOf("b", "a"), result.mediaItems.map { it.mediaId })
-        assertEquals(1, result.startIndex)
+        assertEquals(0, result.startIndex)
         assertEquals(5000L, result.startPositionMs)
     }
 

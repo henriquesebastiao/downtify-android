@@ -17,7 +17,9 @@ import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.henriquesebastiao.downtify.core.data.library.LibraryRepository
+import com.henriquesebastiao.downtify.core.data.library.LibrarySnapshot
 import com.henriquesebastiao.downtify.core.data.offline.OfflineRepository
+import com.henriquesebastiao.downtify.core.model.Playlist
 import com.henriquesebastiao.downtify.core.network.ServerUrls
 import com.henriquesebastiao.downtify.core.network.session.SessionStore
 import kotlinx.coroutines.CoroutineScope
@@ -47,13 +49,11 @@ internal open class CarBrowser(
     private val indexed = MutableStateFlow<Pair<String?, CarLibrary?>>(null to null)
     private val warmups = mutableMapOf<String, Job>()
     private val subscriptions = mutableMapOf<MediaSession.ControllerInfo, MutableSet<String>>()
-    private var initialOwner: String? = null
     private val compactRoots = mutableSetOf<MediaSession.ControllerInfo>()
 
     fun observe(session: MediaLibrarySession) {
         scope.launch {
             withContext(Dispatchers.IO) { sessions.ensureLoaded() }
-            initialOwner = sessions.current?.artworkOwner
             combine(library.library, library.playlists, library.likedIds, offline.state, sessions.session) {
                     snapshot,
                     playlists,
@@ -61,11 +61,26 @@ internal open class CarBrowser(
                     files,
                     association,
                 ->
-                val next = snapshot?.let {
-                    withContext(Dispatchers.Default) { CarLibrary(it, playlists, likes, files?.files?.keys.orEmpty()) }
+                IndexInputs(
+                    snapshot = snapshot,
+                    playlists = playlists,
+                    likes = likes,
+                    offlineKeys = files?.files?.keys.orEmpty(),
+                    artworkOwner = association?.artworkOwner,
+                )
+            }.debounce(250).collect { inputs ->
+                val next = inputs.snapshot?.let {
+                    withContext(Dispatchers.Default) {
+                        CarLibrary(
+                            snapshot = it,
+                            playlists = inputs.playlists,
+                            likedIds = inputs.likes,
+                            offlineIds = inputs.offlineKeys,
+                            shuffleTitle = context.getString(R.string.car_shuffle_all),
+                        )
+                    }
                 }
-                association?.artworkOwner to next
-            }.debounce(250).collect { (association, next) ->
+                val association = inputs.artworkOwner
                 val (previousOwner, previous) = indexed.value
                 warmups.values.forEach(Job::cancel)
                 warmups.clear()
@@ -84,7 +99,7 @@ internal open class CarBrowser(
     }
 
     private fun current(): CarLibrary? = indexed.value.let { (owner, index) ->
-        index.takeIf { owner != null && owner == initialOwner && owner == sessions.current?.artworkOwner }
+        index.takeIf { owner != null && owner == sessions.current?.artworkOwner }
     }
 
     private fun childCount(parent: String): Int = if (parent == CarLibrary.ROOT || parent == COLLECTIONS) {
@@ -110,11 +125,32 @@ internal open class CarBrowser(
         folder(CarLibrary.TRACKS, context.getString(R.string.car_tracks)),
     )
 
-    private fun folder(id: String, title: String): MediaItem = MediaItem.Builder().setMediaId(id)
-        .setMediaMetadata(
-            MediaMetadata.Builder().setTitle(title).setIsBrowsable(true).setIsPlayable(false)
-                .setMediaType(MediaMetadata.MEDIA_TYPE_FOLDER_MIXED).build(),
-        ).build()
+    private fun folder(id: String, title: String): MediaItem {
+        val styleHint = when {
+            id == CarLibrary.ARTISTS || id == CarLibrary.ALBUMS || id.startsWith("auto:artist:") ->
+                MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_GRID_ITEM
+
+            else ->
+                MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM
+        }
+        val extras = Bundle().apply {
+            putInt(MediaConstants.EXTRAS_KEY_CONTENT_STYLE_BROWSABLE, styleHint)
+            putInt(
+                MediaConstants.EXTRAS_KEY_CONTENT_STYLE_PLAYABLE,
+                MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM,
+            )
+        }
+        return MediaItem.Builder().setMediaId(id)
+            .setMediaMetadata(
+                MediaMetadata.Builder()
+                    .setTitle(title)
+                    .setIsBrowsable(true)
+                    .setIsPlayable(false)
+                    .setExtras(extras)
+                    .setMediaType(MediaMetadata.MEDIA_TYPE_FOLDER_MIXED)
+                    .build(),
+            ).build()
+    }
 
     override fun onGetLibraryRoot(
         session: MediaLibrarySession,
@@ -208,13 +244,15 @@ internal open class CarBrowser(
     ): ListenableFuture<LibraryResult<Void>> = scope.future {
         withContext(Dispatchers.IO) { sessions.ensureLoaded() }
         if (sessions.current == null) return@future LibraryResult.ofError(authenticationError())
-        if (parentId !in (CarLibrary.ROOTS + listOf(CarLibrary.ROOT, COLLECTIONS, LIBRARY)) &&
-            current()?.children(parentId) == null
-        ) {
-            return@future LibraryResult.ofError(SessionError.ERROR_BAD_VALUE)
+        val isStaticRoot = parentId in (CarLibrary.ROOTS + listOf(CarLibrary.ROOT, COLLECTIONS, LIBRARY))
+        if (!isStaticRoot) {
+            val catalog = awaitIndex()
+            if (catalog?.children(parentId) == null) {
+                return@future LibraryResult.ofError(SessionError.ERROR_BAD_VALUE)
+            }
         }
         subscriptions.getOrPut(browser) { mutableSetOf() }.add(parentId)
-        // Media3 sends the initial children notification after accepting the subscription.
+        session.notifyChildrenChanged(browser, parentId, childCount(parentId), params)
         LibraryResult.ofVoid(params)
     }
 
@@ -303,8 +341,11 @@ internal open class CarBrowser(
         } ?: throw IllegalArgumentException(context.getString(R.string.car_choose_result))
         require(sessions.current?.artworkOwner == expectedOwner) { context.getString(R.string.car_pair) }
         val base = sessions.current?.baseUrl ?: throw IllegalArgumentException(context.getString(R.string.car_pair))
+        val items = withContext(Dispatchers.Default) {
+            playback.first.map { MediaItems.from(it, base) }
+        }
         MediaSession.MediaItemsWithStartPosition(
-            playback.first.map { MediaItems.from(it, base) },
+            items,
             playback.second,
             startPositionMs.takeIf { it >= 0 } ?: C.TIME_UNSET,
         )
@@ -325,23 +366,68 @@ internal open class CarBrowser(
         if (sessions.current == null) return null
         val expected = sessions.current?.artworkOwner
         return withTimeoutOrNull(3000) {
-            indexed.first { it.first == expected && it.second != null }
-            current()
+            indexed.first { it.first == expected && it.second != null }.second
         }
     }
 
     private suspend fun item(entry: CarLibrary.Entry): MediaItem {
+        if (entry.id.startsWith(CarLibrary.SHUFFLE_PREFIX)) {
+            val extras = Bundle().apply {
+                putInt(
+                    MediaConstants.EXTRAS_KEY_CONTENT_STYLE_BROWSABLE,
+                    MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM,
+                )
+                putInt(
+                    MediaConstants.EXTRAS_KEY_CONTENT_STYLE_PLAYABLE,
+                    MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM,
+                )
+            }
+            return MediaItem.Builder()
+                .setMediaId(entry.id)
+                .setMediaMetadata(
+                    MediaMetadata.Builder()
+                        .setTitle(entry.title)
+                        .setIsBrowsable(false)
+                        .setIsPlayable(true)
+                        .setExtras(extras)
+                        .setMediaType(MediaMetadata.MEDIA_TYPE_FOLDER_MIXED)
+                        .build(),
+                )
+                .build()
+        }
+
         val base = sessions.current?.baseUrl
         val cover = entry.coverTrackId?.takeIf { base != null }?.let {
             artwork.cached(it, Uri.parse(ServerUrls.cover(checkNotNull(base), it, ServerUrls.COVER_LARGE)))
         }
+        val styleHint = when {
+            entry.id == CarLibrary.ARTISTS || entry.id == CarLibrary.ALBUMS || entry.id.startsWith("auto:artist:") ->
+                MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_GRID_ITEM
+
+            else ->
+                MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM
+        }
+        val metadataExtras = Bundle().apply {
+            putInt(MediaConstants.EXTRAS_KEY_CONTENT_STYLE_BROWSABLE, styleHint)
+            putInt(
+                MediaConstants.EXTRAS_KEY_CONTENT_STYLE_PLAYABLE,
+                MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM,
+            )
+        }
+
         return (
             entry.track?.let { MediaItems.from(it, base).buildUpon().setMediaId(entry.id).build() }
                 ?: folder(entry.id, entry.title)
             ).let { media ->
+            val mergedExtras = Bundle(media.mediaMetadata.extras ?: Bundle.EMPTY).apply {
+                putAll(metadataExtras)
+            }
             media.buildUpon().setMediaMetadata(
-                media.mediaMetadata.buildUpon().setSubtitle(entry.subtitle)
-                    .setArtworkUri(cover).build(),
+                media.mediaMetadata.buildUpon()
+                    .setSubtitle(entry.subtitle)
+                    .setArtworkUri(cover)
+                    .setExtras(mergedExtras)
+                    .build(),
             ).build()
         }
     }
@@ -372,4 +458,12 @@ internal open class CarBrowser(
         const val LIBRARY = "auto:library"
         const val COLLECTIONS = "auto:collections"
     }
+
+    private data class IndexInputs(
+        val snapshot: LibrarySnapshot?,
+        val playlists: List<Playlist>,
+        val likes: List<String>,
+        val offlineKeys: Set<String>,
+        val artworkOwner: String?,
+    )
 }

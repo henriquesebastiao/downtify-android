@@ -24,7 +24,6 @@ import androidx.media3.session.CacheBitmapLoader
 import androidx.media3.session.CommandButton
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaLibraryService
-import androidx.media3.session.MediaLibraryService.MediaLibrarySession
 import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionError
@@ -378,10 +377,20 @@ class PlaybackService : MediaLibraryService() {
         ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> = scope.future {
             persistence?.awaitReady()
             val player = mediaSession.player
+            val count = player.mediaItemCount
+            if (count == 0) {
+                return@future MediaSession.MediaItemsWithStartPosition(
+                    emptyList(),
+                    C.INDEX_UNSET,
+                    C.TIME_UNSET,
+                )
+            }
+            val index = player.currentMediaItemIndex.coerceIn(0, count - 1)
+            val position = player.currentPosition.coerceAtLeast(0)
             MediaSession.MediaItemsWithStartPosition(
-                (0 until player.mediaItemCount).map(player::getMediaItemAt),
-                player.currentMediaItemIndex,
-                player.currentPosition.coerceAtLeast(0),
+                (0 until count).map(player::getMediaItemAt),
+                index,
+                position,
             )
         }
 
@@ -449,25 +458,34 @@ class PlaybackService : MediaLibraryService() {
             controller: MediaSession.ControllerInfo,
             mediaItems: MutableList<MediaItem>,
         ): ListenableFuture<MutableList<MediaItem>> {
-            if (!own(controller)) return scope.future { carAddItems(mediaItems).toMutableList() }
+            if (!own(controller)) {
+                return scope.future {
+                    withContext(Dispatchers.Default) { carAddItems(mediaItems).toMutableList() }
+                }
+            }
             val snapshot = library.library.value
             val baseUrl = sessions.current?.baseUrl
-            val resolved = mediaItems.mapNotNull { item ->
-                // An episode carries its file's address in the request metadata.
-                if (EpisodeIds.isEpisode(item.mediaId)) {
-                    return@mapNotNull item.requestMetadata.mediaUri?.let { item.buildUpon().setUri(it).build() }
+            return scope.future {
+                val resolved = withContext(Dispatchers.Default) {
+                    mediaItems.mapNotNull { item ->
+                        // An episode carries its file's address in the request metadata.
+                        if (EpisodeIds.isEpisode(item.mediaId)) {
+                            return@mapNotNull item.requestMetadata.mediaUri?.let { item.buildUpon().setUri(it).build() }
+                        }
+                        // A stream rebuilt as a library address would point the
+                        // resolver at `/api/v1/tracks/stream:…` (404): keep its own.
+                        StreamIds.videoIdOf(item.mediaId)?.let { videoId ->
+                            return@mapNotNull item.buildUpon().setUri(MediaItems.streamUri(videoId)).build()
+                        }
+                        snapshot?.byId?.get(item.mediaId)?.let {
+                            MediaItems.from(it, baseUrl, MediaItems.isQueued(item))
+                        } ?: item.takeIf {
+                            it.mediaId.isNotEmpty()
+                        }?.let { it.buildUpon().setUri(MediaItems.uriFor(it.mediaId)).build() }
+                    }
                 }
-                // A stream rebuilt as a library address would point the
-                // resolver at `/api/v1/tracks/stream:…` (404): keep its own.
-                StreamIds.videoIdOf(item.mediaId)?.let { videoId ->
-                    return@mapNotNull item.buildUpon().setUri(MediaItems.streamUri(videoId)).build()
-                }
-                snapshot?.byId?.get(item.mediaId)?.let { MediaItems.from(it, baseUrl, MediaItems.isQueued(item)) }
-                    ?: item.takeIf {
-                        it.mediaId.isNotEmpty()
-                    }?.let { it.buildUpon().setUri(MediaItems.uriFor(it.mediaId)).build() }
+                resolved.toMutableList()
             }
-            return Futures.immediateFuture(resolved.toMutableList())
         }
     }
 
