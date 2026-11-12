@@ -91,6 +91,7 @@ class CarServiceIntegrationTest {
                 context.getString(com.henriquesebastiao.downtify.core.player.R.string.car_favorites)
         }
         val tracks = await(controller.getChildren(favorites.mediaId, 0, 20, null)).value!!
+            .filter { !it.mediaId.startsWith("auto:shuffle:") }
         assertEquals(listOf("One"), tracks.map { it.mediaMetadata.title.toString() })
         assertTrue(tracks.single().mediaMetadata.isPlayable == true)
         assertEquals(

@@ -7,6 +7,7 @@
     <string name="car_albums">Άλμπουμ</string>
     <string name="car_tracks">Τραγούδια</string>
     <string name="car_offline">Εκτός σύνδεσης</string>
+    <string name="car_shuffle_all">Τυχαία αναπαραγωγή όλων</string>
     <string name="car_pair">Συνδέστε το Downtify από το τηλέφωνό σας.</string>
     <string name="car_loading">Φόρτωση βιβλιοθήκης. Δοκιμάστε ξανά.</string>
     <string name="car_unavailable">Το τραγούδι δεν είναι διαθέσιμο.</string>

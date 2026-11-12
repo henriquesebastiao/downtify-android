@@ -551,4 +551,12 @@
     <string name="settings_normalization_louder">По-силно</string>
     <string name="settings_normalization_maximum">Максимум</string>
     <string name="settings_normalization_level_hint">Увеличава звука до безопасната граница за всяка песен. Аудиофайловете не се променят.</string>
+    <string name="connect_client_certificate">Клиентски сертификат</string>
+    <string name="connect_client_certificate_selected">Клиентски сертификат: %1$s</string>
+    <string name="connect_client_certificate_clear">Премахни клиентския сертификат</string>
+    <string name="settings_client_certificate">Клиентски сертификат</string>
+    <string name="settings_client_certificate_none">Няма · за обратни проксита с взаимен TLS</string>
+    <string name="settings_client_certificate_active">Представя „%1$s“ от хранилището за идентификационни данни на Android, когато сървърът поиска клиентски сертификат.</string>
+    <string name="settings_client_certificate_change">Промени</string>
+    <string name="settings_client_certificate_remove">Премахни</string>
 </resources>

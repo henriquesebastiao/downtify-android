@@ -36,6 +36,8 @@ data class SettingsUiState(
     val qualityOptions: List<StreamQuality> = listOf(StreamQuality.Original),
     /** Bytes the offline copies take now. */
     val offlineUsedBytes: Long = 0,
+    /** KeyChain alias of the client certificate for mutual TLS (mTLS), when selected. */
+    val clientCertificate: String? = null,
 )
 
 @HiltViewModel
@@ -46,12 +48,12 @@ class SettingsViewModel @Inject constructor(
 ) : ViewModel() {
 
     val uiState: StateFlow<SettingsUiState> = combine(
-        server.session,
+        combine(server.session, server.clientCertificate, ::Pair),
         server.serverInfo,
         server.connection,
         settings.settings,
         offline.state,
-    ) { session, info, connection, prefs, offlineState ->
+    ) { (session, clientCert), info, connection, prefs, offlineState ->
         val transcoding = info?.capabilities?.transcoding ?: Transcoding()
         SettingsUiState(
             serverName = session?.serverName.orEmpty().ifBlank { info?.name.orEmpty() },
@@ -65,6 +67,7 @@ class SettingsViewModel @Inject constructor(
             settings = prefs,
             qualityOptions = qualityOptions(transcoding),
             offlineUsedBytes = offlineState?.usedBytes ?: 0,
+            clientCertificate = clientCert,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), SettingsUiState())
 
@@ -86,6 +89,10 @@ class SettingsViewModel @Inject constructor(
     fun setReadAhead(tracks: Int) = launch { settings.setReadAhead(tracks) }
     fun setStreamCacheMb(mb: Int) = launch { settings.setStreamCacheMb(mb) }
     fun setReadAheadMobile(enabled: Boolean) = launch { settings.setReadAheadMobile(enabled) }
+    fun setClientCertificate(alias: String?) = launch {
+        server.setClientCertificate(alias)
+        server.refresh()
+    }
     fun unpair() = launch { server.unpair() }
 
     private fun launch(block: suspend () -> Unit) {

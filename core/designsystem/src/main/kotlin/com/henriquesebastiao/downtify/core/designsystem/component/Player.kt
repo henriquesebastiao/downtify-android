@@ -24,6 +24,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ButtonShapes
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
@@ -159,10 +160,11 @@ fun MiniPlayerButton(
     modifier: Modifier = Modifier,
     main: Boolean = false,
     playing: Boolean = false,
+    buffering: Boolean = false,
 ) {
     val scheme = MaterialTheme.colorScheme
     val corner by animateFloatAsState(
-        if (main && playing) PLAYING_PERCENT else PILL_PERCENT,
+        if (main && (playing || buffering)) PLAYING_PERCENT else PILL_PERCENT,
         MaterialTheme.motionScheme.fastSpatialSpec(),
         label = "miniButtonCorner",
     )
@@ -178,7 +180,18 @@ fun MiniPlayerButton(
         ),
         modifier = modifier.size(48.dp),
     ) {
-        Icon(painterResource(icon), contentDescription = contentDescription)
+        if (buffering) {
+            val progressColor = if (main) scheme.onPrimary else scheme.onPrimaryContainer
+            CircularProgressIndicator(
+                color = progressColor,
+                strokeWidth = 2.5.dp,
+                modifier = Modifier
+                    .size(22.dp)
+                    .semantics { this.contentDescription = contentDescription },
+            )
+        } else {
+            Icon(painterResource(icon), contentDescription = contentDescription)
+        }
     }
 }
 
@@ -204,6 +217,7 @@ fun PlaybackControls(
     compact: Boolean = false,
     previousIcon: Int = DowntifyIcons.Previous,
     nextIcon: Int = DowntifyIcons.Next,
+    buffering: Boolean = false,
 ) {
     val height = if (compact) 56.dp else 76.dp
     val scheme = MaterialTheme.colorScheme
@@ -213,7 +227,7 @@ fun PlaybackControls(
     )
     val playColors = ButtonDefaults.buttonColors(containerColor = scheme.primary, contentColor = scheme.onPrimary)
     val playCorner by animateDpAsState(
-        if (playing) PLAYING_CORNER else height / 2,
+        if (playing || buffering) PLAYING_CORNER else height / 2,
         MaterialTheme.motionScheme.fastSpatialSpec(),
         label = "playCorner",
     )
@@ -246,9 +260,14 @@ fun PlaybackControls(
                 TransportButton(
                     if (playing) DowntifyIcons.Pause else DowntifyIcons.Play,
                     if (playing) labels.pause else labels.play,
-                    onTogglePlay, playShapes, playColors, interaction,
-                    Modifier.weight(PLAY_WEIGHT).animateWidth(interaction).height(height), PLAY_ICON,
+                    onTogglePlay,
+                    playShapes,
+                    playColors,
+                    interaction,
+                    Modifier.weight(PLAY_WEIGHT).animateWidth(interaction).height(height),
+                    PLAY_ICON,
                     filled = true,
+                    buffering = buffering,
                 )
             },
             menuContent = {},
@@ -285,9 +304,25 @@ private fun TransportButton(
     modifier: Modifier,
     iconSize: Dp,
     filled: Boolean = false,
+    buffering: Boolean = false,
 ) {
     val content: @Composable RowScope.() -> Unit = {
-        Icon(painterResource(icon), contentDescription = label, modifier = Modifier.size(iconSize))
+        if (buffering) {
+            val progressColor = if (filled) {
+                MaterialTheme.colorScheme.onPrimary
+            } else {
+                MaterialTheme.colorScheme.onPrimaryContainer
+            }
+            CircularProgressIndicator(
+                color = progressColor,
+                strokeWidth = 3.dp,
+                modifier = Modifier
+                    .size(iconSize)
+                    .semantics { this.contentDescription = label },
+            )
+        } else {
+            Icon(painterResource(icon), contentDescription = label, modifier = Modifier.size(iconSize))
+        }
     }
     if (filled) {
         Button(

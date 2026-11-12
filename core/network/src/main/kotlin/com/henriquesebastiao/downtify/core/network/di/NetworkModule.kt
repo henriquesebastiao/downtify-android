@@ -2,6 +2,8 @@ package com.henriquesebastiao.downtify.core.network.di
 
 import android.util.Log
 import com.henriquesebastiao.downtify.core.network.session.AuthInterceptor
+import com.henriquesebastiao.downtify.core.network.session.ClientCertificateManager
+import com.henriquesebastiao.downtify.core.network.session.SessionStore
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -31,12 +33,23 @@ object NetworkModule {
     @Provides
     @Singleton
     @DefaultClient
-    fun defaultClient(auth: AuthInterceptor): OkHttpClient = OkHttpClient.Builder()
+    fun defaultClient(
+        auth: AuthInterceptor,
+        clientCerts: ClientCertificateManager,
+        store: SessionStore,
+    ): OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
+        .let(clientCerts::configureTls)
         .addInterceptor(auth)
         .build()
+        .also { client ->
+            store.onClientCertificateChanged = {
+                clientCerts.clearCache()
+                client.connectionPool.evictAll()
+            }
+        }
 
     @Provides
     @Singleton

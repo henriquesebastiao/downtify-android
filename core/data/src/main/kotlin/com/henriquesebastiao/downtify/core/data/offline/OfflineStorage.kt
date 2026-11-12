@@ -17,16 +17,17 @@ class OfflineStorage @Inject constructor(@ApplicationContext context: Context) {
     private val dir = File(context.filesDir, "offline")
     private val health = OfflineFileHealth()
 
-    fun file(fileName: String): File = File(dir, fileName)
+    fun file(fileName: String): File = safeFile(fileName)
 
     fun usable(fileName: String, bytes: Long): Boolean = health.usable(file(fileName), bytes)
 
-    fun partFile(trackId: String): File = File(ensureDir(), "$trackId$PART")
+    fun partFile(trackId: String): File = safeFile("${sanitize(trackId)}$PART")
 
     /** The name a complete copy of [track] gets: its id, and the extension of the server's file. */
     fun fileName(track: Track): String {
         val ext = track.file.substringAfterLast('.', "").lowercase()
-        return track.id + "." + ext.takeIf { it.isNotEmpty() && it.length <= MAX_EXT && it.all(Char::isLetterOrDigit) }
+        val safeId = sanitize(track.id)
+        return safeId + "." + ext.takeIf { it.isNotEmpty() && it.length <= MAX_EXT && it.all(Char::isLetterOrDigit) }
             .orEmpty().ifEmpty { "audio" }
     }
 
@@ -51,6 +52,15 @@ class OfflineStorage @Inject constructor(@ApplicationContext context: Context) {
 
     /** Space left on the phone's internal storage. */
     fun freeBytes(): Long = StatFs(ensureDir().path).availableBytes
+
+    private fun sanitize(input: String): String = input.replace(Regex("[^a-zA-Z0-9_-]"), "_")
+
+    private fun safeFile(name: String): File {
+        val baseDir = ensureDir().canonicalFile
+        val target = File(baseDir, name).canonicalFile
+        check(target.parentFile == baseDir) { "Path traversal attempt: $name" }
+        return target
+    }
 
     private fun ensureDir(): File = dir.apply { mkdirs() }
 

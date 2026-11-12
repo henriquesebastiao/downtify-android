@@ -13,6 +13,7 @@ internal class CarLibrary(
     playlists: List<Playlist>,
     likedIds: List<String>,
     offlineIds: Set<String>,
+    private val shuffleTitle: String = "Shuffle all",
 ) {
     data class Entry(
         val id: String,
@@ -45,9 +46,8 @@ internal class CarLibrary(
         }
         children[ARTISTS] = snapshot.artists.sortedWith(compareBy({ normalized(it.name) }, { it.id })).map { artist ->
             val id = folder("artist", artist.id)
-            children[id] = artist.albums.sortedWith(compareBy({ normalized(it.title) }, { it.id })).map { album ->
-                Entry(folder("album", album.id), album.title, album.artist, coverTrackId = album.coverTrackId)
-            }
+            val artistTracks = artist.albums.flatMap { it.tracks }
+            addTracks(id, artistTracks)
             Entry(id, artist.name, coverTrackId = artist.coverTrackId)
         }
         children.values.flatten().forEach { entries[it.id] = it }
@@ -59,16 +59,49 @@ internal class CarLibrary(
 
     /** Hierarchical ranges work with legacy clients that never request another page. */
     private fun group(parent: String, rows: List<Entry>) {
+        val hasPlayableTracks = rows.any { it.track != null }
+        val prefixItems = if (hasPlayableTracks) {
+            val shuffleId = "$SHUFFLE_PREFIX${encode(parent)}"
+            val shuffleEntry = Entry(
+                id = shuffleId,
+                title = "🔀 $shuffleTitle",
+                subtitle = "",
+                track = null,
+                coverTrackId = null,
+            )
+            entries[shuffleId] = shuffleEntry
+            listOf(shuffleEntry)
+        } else {
+            emptyList()
+        }
+
         if (rows.size <= MAX_CHILDREN) {
-            browseChildren[parent] = rows
+            browseChildren[parent] = prefixItems + rows
             return
         }
         var span = MAX_CHILDREN
         while ((rows.size.toLong() + span - 1) / span > MAX_CHILDREN) span *= MAX_CHILDREN
-        browseChildren[parent] = rows.chunked(span).mapIndexed { index, part ->
+        browseChildren[parent] = prefixItems + rows.chunked(span).mapIndexed { index, part ->
             val id = "auto:range:${encode(parent)}:$index"
             group(id, part)
-            Entry(id, "${part.first().title} \u2013 ${part.last().title}").also { entries[id] = it }
+            val firstTitle = part.first().title.trim()
+            val lastTitle = part.last().title.trim()
+            val rangeTitle = formatRangeTitle(firstTitle, lastTitle, index, span, part.size)
+            Entry(id, rangeTitle).also { entries[id] = it }
+        }
+    }
+
+    private fun formatRangeTitle(first: String, last: String, index: Int, span: Int, count: Int): String {
+        val startChar = first.firstOrNull { it.isLetterOrDigit() }?.uppercaseChar()
+        val endChar = last.firstOrNull { it.isLetterOrDigit() }?.uppercaseChar()
+        return if (startChar != null && endChar != null && startChar != endChar) {
+            "[ $startChar – $endChar ]  $first – $last"
+        } else if (startChar != null && endChar != null) {
+            "[ $startChar ]  $first – $last"
+        } else {
+            val start = index * span + 1
+            val end = start + count - 1
+            "$start – $end"
         }
     }
 
@@ -86,6 +119,12 @@ internal class CarLibrary(
 
     /** Starting a row keeps the rest of that playlist/album in the shared player queue. */
     fun playback(id: String): Pair<List<Track>, Int>? {
+        if (id.startsWith(SHUFFLE_PREFIX)) {
+            val encodedParent = id.removePrefix(SHUFFLE_PREFIX)
+            val parent = decode(encodedParent)
+            val tracks = children[parent].orEmpty().mapNotNull(Entry::track)
+            return if (tracks.isNotEmpty()) tracks.shuffled() to 0 else null
+        }
         val entry = entries[id]
         if (entry?.track != null) {
             val (parent, index) = positions[id] ?: return null
@@ -117,6 +156,7 @@ internal class CarLibrary(
         const val ALBUMS = "auto:albums"
         const val TRACKS = "auto:tracks"
         const val OFFLINE = "auto:offline"
+        const val SHUFFLE_PREFIX = "auto:shuffle:"
         val ROOTS = listOf(PLAYLISTS, FAVORITES, ARTISTS, ALBUMS, TRACKS, OFFLINE)
         private val MARKS = Regex("\\p{M}+")
 
@@ -130,6 +170,7 @@ internal class CarLibrary(
         private fun folder(type: String, key: String): String = "auto:$type:${encode(key)}"
         private fun encode(value: String): String = Base64.getUrlEncoder().withoutPadding()
             .encodeToString(value.toByteArray(Charsets.UTF_8))
+        private fun decode(value: String): String = String(Base64.getUrlDecoder().decode(value), Charsets.UTF_8)
         private fun normalized(value: String): String = Normalizer.normalize(value, Normalizer.Form.NFD)
             .replace(MARKS, "").lowercase(Locale.ROOT).trim()
     }

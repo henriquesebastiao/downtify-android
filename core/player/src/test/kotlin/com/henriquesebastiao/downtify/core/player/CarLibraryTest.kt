@@ -21,28 +21,29 @@ class CarLibraryTest {
     ) = CarLibrary(snapshot, playlists, likes, offline)
 
     @Test fun `tracks sort by name without depending on feed order`() {
-        assertEquals(listOf("b", "a"), catalog().children(CarLibrary.TRACKS)!!.map { it.track!!.id })
+        assertEquals(listOf("b", "a"), catalog().children(CarLibrary.TRACKS)!!.mapNotNull { it.track?.id })
     }
 
     @Test fun `playlist order and selected position survive browsing`() {
         val index = catalog(listOf(Playlist("list:/été", false, "", listOf("a", "gone", "b"))))
         val playlist = index.children(CarLibrary.PLAYLISTS)!!.single()
         val rows = index.children(playlist.id)!!
-        assertEquals(listOf("a", "b"), rows.map { it.track!!.id })
-        val playback = index.playback(rows[1].id)!!
+        assertEquals(listOf("a", "b"), rows.mapNotNull { it.track?.id })
+        val trackRow = rows.first { it.track?.id == "b" }
+        val playback = index.playback(trackRow.id)!!
         assertEquals(listOf(first, second), playback.first)
         assertEquals(1, playback.second)
     }
 
     @Test fun `offline includes only completed known library IDs`() {
         val index = catalog(offline = setOf("a", "missing"))
-        assertEquals(listOf("a"), index.children(CarLibrary.OFFLINE)!!.map { it.track!!.id })
+        assertEquals(listOf("a"), index.children(CarLibrary.OFFLINE)!!.mapNotNull { it.track?.id })
     }
 
     @Test fun `a repeated playlist track can start at its second occurrence`() {
         val index = catalog(listOf(Playlist("repeat", false, "", listOf("a", "b", "a"))))
         val folder = index.children(CarLibrary.PLAYLISTS)!!.single()
-        val rows = index.children(folder.id)!!
+        val rows = index.children(folder.id)!!.filter { it.track != null }
         assertEquals(3, rows.map { it.id }.distinct().size)
         assertEquals(2, index.playback(rows.last().id)!!.second)
         assertEquals(listOf(first, second, first), index.playback(rows.last().id)!!.first)
@@ -52,7 +53,7 @@ class CarLibraryTest {
         assertEquals(
             listOf("a", "b"),
             catalog(likes = listOf("a", "missing", "b"))
-                .children(CarLibrary.FAVORITES)!!.map { it.track!!.id },
+                .children(CarLibrary.FAVORITES)!!.mapNotNull { it.track?.id },
         )
     }
 
@@ -102,7 +103,7 @@ class CarLibraryTest {
         val tracks = (0 until 10_000).map { track("id$it", "Track %05d".format(it), "Artist", "Album") }
         val index = CarLibrary(LibrarySnapshot(tracks), emptyList(), emptyList(), emptySet())
         fun walk(parent: String): List<CarLibrary.Entry> {
-            val rows = checkNotNull(index.children(parent))
+            val rows = checkNotNull(index.children(parent)).filterNot { it.id.startsWith(CarLibrary.SHUFFLE_PREFIX) }
             assertTrue(rows.size <= CarLibrary.MAX_CHILDREN)
             return rows.flatMap { if (it.track == null) walk(it.id) else listOf(it) }
         }

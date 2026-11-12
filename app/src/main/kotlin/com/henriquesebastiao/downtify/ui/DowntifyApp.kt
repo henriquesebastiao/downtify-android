@@ -188,13 +188,8 @@ private fun MainShell() {
     RequestNotificationPermission()
 
     val openTab: (TopLevelDestination) -> Unit = { tab ->
-        if (tab == currentTab) {
-            // Re-tapping the open tab closes whatever was opened above it (Discover, an album, a
-            // search) and shows the tab's start view. Falls back to a plain switch when the tab
-            // has no entry in the stack.
-            if (!navController.popBackStack(tab.route, inclusive = false)) navController.navigateTopLevel(tab)
-        } else {
-            currentTab = tab
+        currentTab = tab
+        if (!navController.popBackStack(tab.route, inclusive = false)) {
             navController.navigateTopLevel(tab)
         }
     }

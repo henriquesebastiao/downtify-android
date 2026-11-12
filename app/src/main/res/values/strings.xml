@@ -559,4 +559,12 @@
     <string name="settings_normalization_louder">Louder</string>
     <string name="settings_normalization_maximum">Maximum</string>
     <string name="settings_normalization_level_hint">Raises playback volume within each track’s safe limit. Your audio files stay unchanged.</string>
+    <string name="connect_client_certificate">Client certificate</string>
+    <string name="connect_client_certificate_selected">Client certificate: %1$s</string>
+    <string name="connect_client_certificate_clear">Remove client certificate</string>
+    <string name="settings_client_certificate">Client certificate</string>
+    <string name="settings_client_certificate_none">None · for reverse proxies using mutual TLS</string>
+    <string name="settings_client_certificate_active">Presenting “%1$s” from Android’s credential storage when the server asks for a client certificate.</string>
+    <string name="settings_client_certificate_change">Change</string>
+    <string name="settings_client_certificate_remove">Remove</string>
 </resources>

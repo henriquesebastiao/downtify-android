@@ -7,6 +7,7 @@
     <string name="car_albums">Albums</string>
     <string name="car_tracks">Tracks</string>
     <string name="car_offline">Offline</string>
+    <string name="car_shuffle_all">Shuffle all</string>
     <string name="car_pair">Connect Downtify on your phone first.</string>
     <string name="car_loading">Library loading. Please try again.</string>
     <string name="car_unavailable">This track is unavailable.</string>
