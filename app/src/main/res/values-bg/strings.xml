@@ -300,6 +300,10 @@
     <string name="settings_offline_limit">Лимит на офлайн хранилището</string>
     <string name="settings_offline_limit_summary">%1$s · %2$s използвани</string>
     <string name="settings_offline_limit_none">Без лимит</string>
+    <string name="settings_offline_directory">Папка за изтегляния</string>
+    <string name="settings_offline_directory_reset">Използване на папката по подразбиране</string>
+    <string name="settings_offline_directory_moving">Преместване на офлайн музиката…</string>
+    <string name="settings_offline_directory_error">Неуспешно преместване на офлайн музиката. Проверете достъпа до папката и опитайте отново.</string>
 
     <!-- Settings -->
     <string name="settings_title">Настройки</string>

@@ -309,6 +309,10 @@
     <string name="settings_offline_limit">Limite de armazenamento offline</string>
     <string name="settings_offline_limit_summary">%1$s · %2$s usados</string>
     <string name="settings_offline_limit_none">Sem limite</string>
+    <string name="settings_offline_directory">Pasta de downloads</string>
+    <string name="settings_offline_directory_reset">Usar pasta de downloads padrão</string>
+    <string name="settings_offline_directory_moving">Movendo músicas offline…</string>
+    <string name="settings_offline_directory_error">Não foi possível mover as músicas offline. Verifique o acesso à pasta e tente novamente.</string>
 
     <!-- Settings -->
     <string name="settings_title">Configurações</string>

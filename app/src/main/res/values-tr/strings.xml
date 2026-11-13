@@ -300,6 +300,10 @@
     <string name="settings_offline_limit">Çevrimdışı depolama sınırı</string>
     <string name="settings_offline_limit_summary">%1$s · %2$s kullanıldı</string>
     <string name="settings_offline_limit_none">Sınır yok</string>
+    <string name="settings_offline_directory">İndirilenler klasörü</string>
+    <string name="settings_offline_directory_reset">Varsayılan indirme klasörünü kullan</string>
+    <string name="settings_offline_directory_moving">Çevrimdışı müzik taşınıyor…</string>
+    <string name="settings_offline_directory_error">Çevrimdışı müzik taşınamadı. Klasör erişimini kontrol edip tekrar deneyin.</string>
 
     <!-- Settings -->
     <string name="settings_title">Ayarlar</string>
