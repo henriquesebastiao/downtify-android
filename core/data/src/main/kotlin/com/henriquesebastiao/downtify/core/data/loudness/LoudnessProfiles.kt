@@ -1,8 +1,10 @@
 package com.henriquesebastiao.downtify.core.data.loudness
 
 import android.content.Context
+import android.net.Uri
 import android.util.LruCache
 import com.henriquesebastiao.downtify.core.data.di.ApplicationScope
+import com.henriquesebastiao.downtify.core.data.offline.OfflineAudio
 import com.henriquesebastiao.downtify.core.data.settings.SettingsRepository
 import com.henriquesebastiao.downtify.core.model.LoudnessProfile
 import com.henriquesebastiao.downtify.core.model.NormalizationLevel
@@ -11,6 +13,7 @@ import com.henriquesebastiao.downtify.core.network.session.SessionStore
 import com.henriquesebastiao.downtify.core.network.session.cacheOwner
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
+import java.io.IOException
 import java.security.MessageDigest
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -35,7 +38,7 @@ import kotlinx.serialization.json.Json
 @Suppress("TooGenericExceptionCaught")
 @Singleton
 class LoudnessProfiles @Inject constructor(
-    @ApplicationContext context: Context,
+    @ApplicationContext private val context: Context,
     private val sessions: SessionStore,
     private val apis: ApiFactory,
     settings: SettingsRepository,
@@ -82,16 +85,15 @@ class LoudnessProfiles @Inject constructor(
         }
     }
 
-    /**
-     * Uses the measurement bound to the offline copy [file], if it still is that copy. The file
-     * is hashed once per size and modification time, not on every play. Loader thread only.
-     */
-    fun prepareLocalBlocking(trackId: String, file: File) {
+    /** Uses the measurement bound to this exact offline copy. Loader thread only. */
+    fun prepareLocalBlocking(trackId: String, file: File) = prepareLocalBlocking(trackId, audio(file))
+
+    fun prepareLocalBlocking(trackId: String, audio: OfflineAudio) {
         if (!enabled.value) return
         val key = key(trackId) ?: return
-        val origin = "${file.absolutePath}:${file.length()}:${file.lastModified()}"
+        val origin = "${audio.uri}:${audio.bytes}:${audio.lastModified}"
         if (known[key]?.origin == origin) return
-        known.put(key, Known(readBound(key, file), origin))
+        known.put(key, Known(readBound(key, audio), origin))
     }
 
     private suspend fun fetch(trackId: String): LoudnessProfile? {
@@ -108,48 +110,52 @@ class LoudnessProfiles @Inject constructor(
         }
     }
 
-    /**
-     * Binds the server's measurement to a finished offline download, whatever the setting, so
-     * the copy is ready when normalization is switched on. Only a whole download can prove it
-     * is the measured file ([etag] and [bytes] match the original's); a resumed one has no
-     * [etag] and keeps its original volume.
-     */
-    suspend fun bindDownloaded(trackId: String, file: File, etag: String?, bytes: Long) = withContext(Dispatchers.IO) {
-        val owner = key(trackId) ?: return@withContext
-        // Whatever was bound before described an earlier copy.
-        receiptFile(owner).delete()
-        if (etag.isNullOrBlank()) return@withContext
-        val profile = fetch(trackId) ?: return@withContext
-        if (!profile.bindable || profile.sourceEtag != etag || profile.sourceSize != bytes) return@withContext
-        try {
-            val receipt = Receipt.of(file.length(), file.lastModified(), digest(file), profile)
-            receipts.mkdirs()
-            receiptFile(owner).writeText(json.encodeToString(Receipt.serializer(), receipt))
-        } catch (_: Exception) {
-            // Optional metadata must never fail a completed audio download.
-        }
-    }
+    /** Binds a measurement only to a complete download with the server's matching ETag. */
+    suspend fun bindDownloaded(trackId: String, file: File, etag: String?, bytes: Long) =
+        bindDownloaded(trackId, audio(file), etag, bytes)
 
-    private fun readBound(owner: String, file: File): LoudnessProfile? = try {
+    suspend fun bindDownloaded(trackId: String, audio: OfflineAudio, etag: String?, bytes: Long) =
+        withContext(Dispatchers.IO) {
+            val owner = key(trackId) ?: return@withContext
+            receiptFile(owner).delete()
+            if (etag.isNullOrBlank()) return@withContext
+            val profile = fetch(trackId) ?: return@withContext
+            if (!profile.bindable || profile.sourceEtag != etag || profile.sourceSize != bytes) return@withContext
+            try {
+                val receipt = Receipt.of(audio.bytes, audio.lastModified, digest(audio), profile)
+                receipts.mkdirs()
+                receiptFile(owner).writeText(json.encodeToString(Receipt.serializer(), receipt))
+            } catch (_: Exception) {
+                // Optional metadata must never fail a completed audio download.
+            }
+        }
+
+    private fun readBound(owner: String, audio: OfflineAudio): LoudnessProfile? = try {
         val receipt = json.decodeFromString(Receipt.serializer(), receiptFile(owner).readText())
         receipt.profile().takeIf {
-            file.length() == receipt.bytes && file.lastModified() == receipt.modified &&
-                digest(file) == receipt.sha256
+            audio.bytes == receipt.bytes && audio.lastModified == receipt.modified && digest(audio) == receipt.sha256
         }
     } catch (_: Exception) {
         null
     }
 
+    private fun audio(file: File) = OfflineAudio(Uri.fromFile(file), file.path, file.length(), file.lastModified())
+
     private fun receiptFile(owner: String) = File(receipts, hash(owner.toByteArray()) + ".json")
 
-    private fun digest(file: File): String {
+    private fun digest(audio: OfflineAudio): String {
         val digest = MessageDigest.getInstance("SHA-256")
-        file.inputStream().use { input ->
+        val input = if (audio.uri.scheme == "file") {
+            File(audio.uri.path ?: return@digest "").inputStream()
+        } else {
+            context.contentResolver.openInputStream(audio.uri) ?: throw IOException("Cannot open ${audio.uri}")
+        }
+        input.use { stream ->
             val buffer = ByteArray(BUFFER_BYTES)
-            var count = input.read(buffer)
+            var count = stream.read(buffer)
             while (count >= 0) {
                 digest.update(buffer, 0, count)
-                count = input.read(buffer)
+                count = stream.read(buffer)
             }
         }
         return digest.digest().toHex()
