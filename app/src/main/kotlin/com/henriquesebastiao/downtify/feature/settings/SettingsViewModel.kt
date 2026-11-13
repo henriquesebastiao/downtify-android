@@ -2,6 +2,7 @@ package com.henriquesebastiao.downtify.feature.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.henriquesebastiao.downtify.core.data.offline.OfflineLocationChange
 import com.henriquesebastiao.downtify.core.data.offline.OfflineRepository
 import com.henriquesebastiao.downtify.core.data.session.ConnectionState
 import com.henriquesebastiao.downtify.core.data.session.ServerRepository
@@ -23,7 +24,6 @@ import kotlinx.coroutines.launch
 
 data class SettingsUiState(
     val serverName: String = "",
-    /** The account this phone belongs to; blank on servers without accounts. */
     val username: String = "",
     val address: String = "",
     val baseUrl: String = "",
@@ -32,11 +32,10 @@ data class SettingsUiState(
     val connection: ConnectionState = ConnectionState.Unknown,
     val transcoding: Transcoding = Transcoding(),
     val settings: UserSettings = UserSettings(),
-    /** Qualities to offer for mobile data (and Wi-Fi): Original first, then what the server can make. */
     val qualityOptions: List<StreamQuality> = listOf(StreamQuality.Original),
-    /** Bytes the offline copies take now. */
     val offlineUsedBytes: Long = 0,
-    /** KeyChain alias of the client certificate for mutual TLS (mTLS), when selected. */
+    val offlineDirectory: String = "",
+    val locationChange: OfflineLocationChange = OfflineLocationChange.Idle,
     val clientCertificate: String? = null,
 )
 
@@ -44,7 +43,7 @@ data class SettingsUiState(
 class SettingsViewModel @Inject constructor(
     private val server: ServerRepository,
     private val settings: SettingsRepository,
-    offline: OfflineRepository,
+    private val offline: OfflineRepository,
 ) : ViewModel() {
 
     val uiState: StateFlow<SettingsUiState> = combine(
@@ -52,8 +51,8 @@ class SettingsViewModel @Inject constructor(
         server.serverInfo,
         server.connection,
         settings.settings,
-        offline.state,
-    ) { (session, clientCert), info, connection, prefs, offlineState ->
+        combine(offline.state, offline.locationChange, ::Pair),
+    ) { (session, clientCert), info, connection, prefs, (offlineState, locationChange) ->
         val transcoding = info?.capabilities?.transcoding ?: Transcoding()
         SettingsUiState(
             serverName = session?.serverName.orEmpty().ifBlank { info?.name.orEmpty() },
@@ -67,6 +66,8 @@ class SettingsViewModel @Inject constructor(
             settings = prefs,
             qualityOptions = qualityOptions(transcoding),
             offlineUsedBytes = offlineState?.usedBytes ?: 0,
+            offlineDirectory = offline.locationLabel(),
+            locationChange = locationChange,
             clientCertificate = clientCert,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), SettingsUiState())
@@ -86,6 +87,7 @@ class SettingsViewModel @Inject constructor(
     fun setFloatingNavBar(value: Boolean) = launch { settings.setFloatingNavBar(value) }
     fun setDownloadWifiOnly(value: Boolean) = launch { settings.setDownloadWifiOnly(value) }
     fun setOfflineLimit(bytes: Long) = launch { settings.setOfflineLimit(bytes) }
+    fun setOfflineDirectory(uri: String?) = launch { offline.setDirectory(uri) }
     fun setReadAhead(tracks: Int) = launch { settings.setReadAhead(tracks) }
     fun setStreamCacheMb(mb: Int) = launch { settings.setStreamCacheMb(mb) }
     fun setReadAheadMobile(enabled: Boolean) = launch { settings.setReadAheadMobile(enabled) }
@@ -102,7 +104,6 @@ class SettingsViewModel @Inject constructor(
     companion object {
         private const val STOP_TIMEOUT_MS = 5_000L
 
-        /** A short list per format rather than every format × bitrate the server allows. */
         private val SUGGESTED = mapOf(
             StreamFormat.Opus to listOf(96, 128, 160, 256),
             StreamFormat.Aac to listOf(128, 192, 256),
@@ -112,9 +113,7 @@ class SettingsViewModel @Inject constructor(
         fun qualityOptions(transcoding: Transcoding): List<StreamQuality> {
             if (!transcoding.available) return listOf(StreamQuality.Original)
             val transcoded = SUGGESTED.flatMap { (format, bitrates) ->
-                if (transcoding.formats.isNotEmpty() &&
-                    format.wireName !in transcoding.formats
-                ) {
+                if (transcoding.formats.isNotEmpty() && format.wireName !in transcoding.formats) {
                     return@flatMap emptyList()
                 }
                 bitrates.filter {

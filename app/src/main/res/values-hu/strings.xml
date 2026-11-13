@@ -300,6 +300,10 @@
     <string name="settings_offline_limit">Offline tárhelykorlát</string>
     <string name="settings_offline_limit_summary">%1$s · %2$s felhasználva</string>
     <string name="settings_offline_limit_none">Nincs korlát</string>
+    <string name="settings_offline_directory">Letöltési mappa</string>
+    <string name="settings_offline_directory_reset">Alapértelmezett letöltési mappa használata</string>
+    <string name="settings_offline_directory_moving">Offline zene áthelyezése…</string>
+    <string name="settings_offline_directory_error">Nem sikerült áthelyezni az offline zenét. Ellenőrizze a mappa elérését, és próbálja újra.</string>
 
     <!-- Settings -->
     <string name="settings_title">Beállítások</string>

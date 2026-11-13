@@ -302,6 +302,10 @@
     <string name="settings_offline_limit">Offline storage limit</string>
     <string name="settings_offline_limit_summary">%1$s · %2$s used</string>
     <string name="settings_offline_limit_none">No limit</string>
+    <string name="settings_offline_directory">Download folder</string>
+    <string name="settings_offline_directory_reset">Use default download folder</string>
+    <string name="settings_offline_directory_moving">Moving offline music…</string>
+    <string name="settings_offline_directory_error">Could not move offline music. Check folder access and try again.</string>
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>

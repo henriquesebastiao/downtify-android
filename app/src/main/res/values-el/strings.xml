@@ -300,6 +300,10 @@
     <string name="settings_offline_limit">Όριο αποθήκευσης εκτός σύνδεσης</string>
     <string name="settings_offline_limit_summary">%1$s · %2$s σε χρήση</string>
     <string name="settings_offline_limit_none">Χωρίς όριο</string>
+    <string name="settings_offline_directory">Φάκελος λήψεων</string>
+    <string name="settings_offline_directory_reset">Χρήση προεπιλεγμένου φακέλου λήψεων</string>
+    <string name="settings_offline_directory_moving">Μεταφορά μουσικής εκτός σύνδεσης…</string>
+    <string name="settings_offline_directory_error">Αδυναμία μεταφοράς μουσικής εκτός σύνδεσης. Ελέγξτε την πρόσβαση στον φάκελο και δοκιμάστε ξανά.</string>
 
     <!-- Settings -->
     <string name="settings_title">Ρυθμίσεις</string>
