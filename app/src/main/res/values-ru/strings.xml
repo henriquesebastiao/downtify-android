@@ -1,0 +1,602 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">Downtify</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Главная</string>
+    <string name="nav_search">Поиск</string>
+    <string name="nav_library">Библиотека</string>
+    <string name="nav_downloads">Загрузки</string>
+    <string name="nav_trash">Корзина</string>
+    <string name="action_back">Назад</string>
+    <string name="action_settings">Настройки</string>
+    <string name="action_open_menu">Открыть меню</string>
+    <string name="action_retry">Повторить</string>
+    <string name="action_cancel">Отмена</string>
+
+    <!-- Connect -->
+    <string name="connect_title_line1">Ваша музыка,</string>
+    <string name="connect_title_line2">с вашего сервера.</string>
+    <string name="connect_address_label">Адрес сервера</string>
+    <string name="connect_address_hint">Тот же адрес, по которому вы открываете Downtify в браузере.</string>
+    <string name="connect_found">Найдено в этой сети</string>
+    <string name="connect_searching">Ищем серверы…</string>
+    <string name="connect_none_found">Серверы в этой сети пока не найдены.</string>
+    <string name="connect_server_subtitle">%1$s · Downtify %2$s</string>
+    <string name="connect_action">Подключиться</string>
+    <string name="connect_step">Шаг %1$d из %2$d</string>
+    <string name="connect_scan">Сканировать QR-код сопряжения</string>
+    <string name="connect_cleartext_warning">Этот адрес не в вашей домашней сети и не использует HTTPS: ключ телефона будет передан без шифрования.</string>
+    <string name="connect_revoked">Этот телефон был отключён от сервера. Войдите снова, чтобы продолжить слушать.</string>
+    <string name="connect_error_invalid">Это не похоже на адрес. Попробуйте http://192.168.1.20:8000.</string>
+    <string name="connect_error_unreachable">По этому адресу сервер не отвечает. Проверьте адрес и убедитесь, что телефон находится в той же сети.</string>
+    <string name="connect_error_not_downtify">Получен ответ, но это не Downtify.</string>
+    <string name="connect_error_too_new">Этот сервер (Downtify %1$s) новее версии, которую понимает приложение. Обновите приложение.</string>
+
+    <string name="sign_in_title">Вход в %1$s</string>
+    <string name="sign_in_body">Используйте свою учётную запись с веб-страницы.</string>
+    <string name="sign_in_username">Имя пользователя</string>
+    <string name="sign_in_password">Пароль</string>
+    <string name="sign_in_show_password">Показать пароль</string>
+    <string name="sign_in_hide_password">Скрыть пароль</string>
+    <string name="sign_in_action">Войти</string>
+    <string name="sign_in_use_code">Сопрячь с помощью кода</string>
+    <string name="sign_in_use_password">Вместо этого войти с паролем</string>
+    <string name="sign_in_error_wrong">Неверное имя пользователя или пароль.</string>
+    <string name="sign_in_error_off">Вход на этом сервере отключён. Используйте код сопряжения.</string>
+    <string name="sign_in_error_failed">Серверу не удалось выполнить вход на этом телефоне (ошибка %1$d).</string>
+    <string name="sign_in_cleartext_warning">Этот адрес не в вашей домашней сети и не использует HTTPS: ваш пароль будет передан без шифрования.</string>
+
+    <string name="pair_title">Сопряжение с %1$s</string>
+    <string name="pair_body">На веб-странице откройте Настройки › Приложения и нажмите «Сопрячь телефон». Отсканируйте QR-код или введите код, показанный под ним.</string>
+    <string name="pair_code_label">Код сопряжения</string>
+    <string name="pair_code_placeholder">XXXX-XXXX</string>
+    <string name="pair_action">Сопрячь</string>
+    <string name="pair_scan">Отсканируйте QR-код</string>
+    <string name="pair_other_server">Другой сервер</string>
+    <string name="pair_error_wrong_code">Код неверный, истёк или уже использован. Коды работают один раз и пять минут.</string>
+    <string name="pair_error_too_many">Слишком много попыток. Попробуйте через %1$d с.</string>
+    <string name="pair_error_unreachable">Сервер недоступен. Проверьте подключение и попробуйте снова.</string>
+    <string name="pair_error_failed">Сервер не смог сопрячь этот телефон (ошибка %1$d).</string>
+    <string name="pair_error_other_server">Этот код для другого сервера, а не для того, что по этому адресу.</string>
+
+    <string name="scan_title">Сканируйте код сопряжения</string>
+    <string name="scan_hint">Направьте камеру на QR-код в веб-настройках: Приложения › Сопрячь телефон.</string>
+    <string name="scan_close">Закрыть сканер</string>
+    <string name="connect_local_network_denied">Доступ к локальной сети выключен, поэтому Downtify может дотянуться только до сервера, выбранного из списка. Чтобы ввести адрес вручную, разрешите доступ в настройках приложения.</string>
+    <string name="scan_permission_denied">Доступ к камере выключен. Введите код вручную или разрешите камеру в настройках телефона.</string>
+    <string name="scan_not_downtify">Этот QR-код — не код сопряжения Downtify.</string>
+
+    <!-- Home -->
+    <string name="home_streaming_from">Играем с %1$s</string>
+    <string name="home_unreachable">%1$s недоступен · показана синхронизированная библиотека</string>
+    <string name="home_different_server">По этому адресу отвечает другой сервер · войдите снова в настройках</string>
+    <string name="home_syncing">Синхронизация с %1$s…</string>
+    <string name="home_jump_back_in">Продолжить прослушивание</string>
+    <string name="home_recently_added">Недавно добавленные</string>
+    <string name="home_see_all">Показать все</string>
+    <string name="home_empty_title">Ваша библиотека пуста</string>
+    <string name="home_empty_body">Музыка, скачанная на сервере, появится здесь. Потяните вниз, чтобы проверить.</string>
+    <string name="home_loading">Загружаем библиотеку…</string>
+
+    <!-- Library -->
+    <string name="library_title">Библиотека</string>
+    <string name="library_search">Искать в библиотеке</string>
+    <string name="library_albums">Альбомы</string>
+    <string name="library_artists">Артисты</string>
+    <string name="library_playlists">Плейлисты</string>
+    <string name="library_songs">Песни</string>
+    <string name="library_sort">Сортировка: %1$s</string>
+    <string name="library_sort_recent">Недавно добавленные</string>
+    <string name="library_sort_alpha">По алфавиту</string>
+    <string name="library_sort_artist">Артист</string>
+    <string name="library_sort_by">Сортировать по</string>
+    <string name="library_sort_order">Порядок</string>
+    <string name="library_sort_ascending">По возрастанию</string>
+    <string name="library_sort_descending">По убыванию</string>
+    <string name="library_show_list">Показать списком</string>
+    <string name="library_show_grid">Показать сеткой</string>
+    <string name="library_empty_albums">Альбомов пока нет</string>
+    <string name="library_empty_artists">Артистов пока нет</string>
+    <string name="library_empty_playlists">Плейлистов пока нет</string>
+    <string name="library_empty_songs">Песен пока нет</string>
+    <string name="library_empty_body">Потяните вниз, чтобы синхронизироваться с сервером.</string>
+
+    <string name="liked_songs">Любимые песни</string>
+    <string name="album_subtitle">%1$s · %2$s</string>
+    <plurals name="songs_count">
+        <item quantity="one">%d песня</item>
+        <item quantity="few">%d песни</item>
+        <item quantity="many">%d песен</item>
+        <item quantity="other">%d песни</item>
+    </plurals>
+    <plurals name="albums_count">
+        <item quantity="one">%d альбом</item>
+        <item quantity="few">%d альбома</item>
+        <item quantity="many">%d альбомов</item>
+        <item quantity="other">%d альбома</item>
+    </plurals>
+    <string name="minutes_short">%d мин</string>
+    <string name="unknown_artist">Неизвестный артист</string>
+    <string name="unknown_album">Неизвестный альбом</string>
+
+    <!-- Album / playlist / artist -->
+    <string name="collection_play">Играть %1$s</string>
+    <string name="collection_pause">Пауза: %1$s</string>
+    <string name="collection_shuffle">Перемешать</string>
+    <string name="collection_not_found">Этого больше нет в вашей библиотеке.</string>
+    <string name="track_more">Ещё для %1$s</string>
+    <string name="track_like">В любимые песни</string>
+    <string name="track_unlike">Из любимых песен</string>
+    <string name="track_go_to_album">К альбому</string>
+    <string name="track_go_to_artist">К артисту</string>
+    <string name="track_playing">Играет</string>
+    <string name="track_add_to_queue">В очередь</string>
+    <string name="track_added_to_queue">Добавлено в очередь</string>
+    <string name="artist_songs">Песни</string>
+    <string name="artist_albums">Альбомы</string>
+
+    <!-- Search -->
+    <string name="search_placeholder">Ищите или вставьте ссылку Spotify или YouTube</string>
+    <string name="search_clear">Очистить поиск</string>
+    <string name="search_all">Все</string>
+    <string name="search_in_library">В библиотеке</string>
+    <string name="search_no_results">В библиотеке ничего не нашлось по запросу «%1$s».</string>
+    <string name="search_prompt">Ищите в библиотеке или новую музыку — сервер её скачает. Работает и ссылка Spotify или YouTube Music.</string>
+    <string name="search_not_in_library">Пока нет в библиотеке</string>
+    <string name="search_server_body">Слушайте целиком или скачайте на сервер.</string>
+    <string name="search_server_loading">Ищем на сервере…</string>
+    <string name="search_link_loading">Открываем ссылку…</string>
+    <string name="search_server_unreachable">Сервер недоступен — искали только в вашей библиотеке.</string>
+    <string name="search_server_failed">Сервер пока не смог выполнить поиск.</string>
+    <string name="search_link_unsupported">Сервер не может открыть эту ссылку.</string>
+    <string name="search_link_empty">По этой ссылке ничего нет.</string>
+    <string name="search_server_nothing">Сервер больше ничего не нашёл по запросу «%1$s».</string>
+    <string name="search_retry">Попробовать снова</string>
+    <string name="search_play_full">Играть %1$s целиком</string>
+    <string name="search_stop_full">Остановить %1$s</string>
+    <string name="search_similar">Треки как %1$s</string>
+
+    <string name="search_download_to_server">Скачать %1$s на сервер</string>
+    <string name="search_job_queued">Запрошено у сервера</string>
+    <string name="search_job_downloading">Сервер скачивает</string>
+    <string name="search_job_done">Скачано на сервер</string>
+    <string name="search_job_error">Загрузка не удалась. Попробуйте снова</string>
+    <string name="search_album_progress">Скачивается %1$d/%2$d</string>
+    <string name="search_album_done">На сервере</string>
+    <string name="search_link_download">Скачать на сервер</string>
+    <plurals name="search_link_download_all">
+        <item quantity="one">Скачать %1$d песню на сервер</item>
+        <item quantity="few">Скачать %1$d песни на сервер</item>
+        <item quantity="many">Скачать все %1$d песен на сервер</item>
+        <item quantity="other">Скачать все %1$d песен на сервер</item>
+    </plurals>
+    <string name="search_link_play_all">Играть всё целиком</string>
+    <string name="search_source_spotify">Spotify</string>
+    <string name="search_source_youtube">YT Music</string>
+    <string name="search_source_soulseek">Soulseek</string>
+    <string name="search_queued_one">Сервер скачает %1$s</string>
+    <plurals name="search_queued_many">
+        <item quantity="one">Сервер скачает %2$d песню из %1$s</item>
+        <item quantity="few">Сервер скачает %2$d песни из %1$s</item>
+        <item quantity="many">Сервер скачает %2$d песен из %1$s</item>
+        <item quantity="other">Сервер скачает %2$d песни из %1$s</item>
+    </plurals>
+    <string name="search_no_stream">Эту песню сейчас не воспроизвести</string>
+    <string name="search_request_failed">Сервер не принял загрузку</string>
+    <string name="search_unreachable">Сервер недоступен</string>
+    <string name="search_kind_album">Альбом</string>
+    <string name="search_kind_artist">Артист</string>
+    <string name="search_kind_song">Песня</string>
+    <string name="search_kind_playlist">Плейлист</string>
+
+    <!-- Similar -->
+    <string name="similar_title">Похожее</string>
+    <string name="similar_artist">Артист</string>
+    <string name="similar_track">Трек</string>
+    <string name="similar_find">Найти похожее</string>
+    <string name="similar_empty">Назовите артиста или трек, чтобы услышать похожее.</string>
+    <string name="similar_failed">Не удалось найти похожие треки</string>
+    <string name="similar_unreachable">Сервер недоступен</string>
+    <string name="similar_no_results">Похожих не нашлось</string>
+    <string name="similar_no_stream">Эту песню сейчас не воспроизвести</string>
+    <string name="home_shortcut_similar">Похожие треки</string>
+    <string name="home_shortcut_similar_body">Назовите трек, чтобы услышать похожее — ничего скачивать не нужно.</string>
+    <string name="search_play">Играть %1$s</string>
+
+    <!-- Downloads -->
+    <string name="downloads_title">Загрузки</string>
+    <string name="load_error_unreachable">Сервер недоступен.</string>
+    <string name="load_error_failed">Сервер сейчас не смог ответить.</string>
+    <string name="discover_title">Открытия</string>
+    <string name="discover_refresh">Обновить подборку</string>
+    <string name="discover_loading">Запрашиваем подборку у сервера. Первая может занять немного времени.</string>
+    <string name="discover_loading_more">Ищем альбомы и плейлисты…</string>
+    <string name="discover_empty_title">Отталкиваться пока не от чего</string>
+    <string name="discover_empty_body">Открытия подбирают новых артистов по вашей библиотеке. Сначала добавьте музыку.</string>
+    <string name="discover_none_title">Подборки пока нет</string>
+    <string name="discover_none_body">Слушайте и отмечайте больше вашей музыки или попробуйте позже. Скрытый вами не предлагается.</string>
+    <string name="discover_try_again">Нажмите «Обновить», чтобы попробовать снова.</string>
+    <string name="discover_partial">Сервер не смог связаться с Deezer для части ваших артистов, поэтому список короче обычного. Попробуйте позже.</string>
+    <string name="discover_artists">Артисты для вас</string>
+    <string name="discover_albums">Альбомы для вас</string>
+    <string name="discover_more_albums">Ещё от ваших артистов</string>
+    <string name="discover_playlists">Плейлисты для вас</string>
+    <string name="discover_because">Потому что вам нравится %1$s</string>
+    <string name="discover_show_all">Показать все (%1$d)</string>
+    <string name="discover_artist_options">Параметры %1$s</string>
+    <string name="discover_preview">Предпрослушать %1$s</string>
+    <string name="discover_not_interested">Не интересно</string>
+    <string name="discover_hidden">%1$s больше не предложится</string>
+    <string name="discover_undo">Отменить</string>
+    <string name="home_shortcut_discover">Открытия</string>
+    <string name="home_shortcut_discover_body">Новые артисты, альбомы и плейлисты по тому, что вы слушаете</string>
+    <string name="home_shortcut_podcasts">Подкасты</string>
+    <string name="home_shortcut_podcasts_body">Шоу, за которыми следит сервер, с вашим местом в каждом</string>
+    <string name="podcasts_title">Подкасты</string>
+    <string name="podcasts_empty_title">Подкастов пока нет</string>
+    <string name="podcasts_empty_body">Подкасты добавляются на странице Downtify в разделе «Подкасты». Они появятся здесь и будут играть с вашего сервера.</string>
+    <string name="podcasts_pull_to_retry">Потяните вниз, чтобы попробовать снова.</string>
+    <plurals name="podcasts_episodes">
+        <item quantity="one">%1$d эпизод</item>
+        <item quantity="few">%1$d эпизода</item>
+        <item quantity="many">%1$d эпизодов</item>
+        <item quantity="other">%1$d эпизода</item>
+    </plurals>
+    <string name="show_no_episodes">Эпизодов пока нет. Сервер проверяет ленту по своему расписанию.</string>
+    <string name="show_untitled_episode">Эпизод без названия</string>
+    <string name="show_played">Прослушан</string>
+    <string name="show_resume_at">Продолжить с %1$s</string>
+    <string name="show_play_episode">Играть %1$s</string>
+    <string name="show_download_episode">Скачать %1$s на сервер</string>
+    <string name="show_downloading">Сервер скачивает</string>
+    <string name="show_episode_options">Параметры %1$s</string>
+    <string name="show_mark_played">Отметить прослушанным</string>
+    <string name="show_mark_unplayed">Отметить непрослушанным</string>
+    <string name="show_download_failed">Сервер не смог скачать %1$s</string>
+    <string name="downloads_used">%1$s занято</string>
+    <string name="downloads_of_limit">из лимита %1$s</string>
+    <string name="downloads_no_limit">без лимита</string>
+    <plurals name="downloads_storage_body">
+        <item quantity="one">%1$d песня играет без сервера. Свободно %2$s.</item>
+        <item quantity="few">%1$d песни играют без сервера. Свободно %2$s.</item>
+        <item quantity="many">%1$d песен играют без сервера. Свободно %2$s.</item>
+        <item quantity="other">%1$d песни играют без сервера. Свободно %2$s.</item>
+    </plurals>
+    <string name="downloads_storage_a11y">Занято офлайн-хранилище</string>
+    <string name="downloads_keep_liked">Держать любимые песни офлайн</string>
+    <string name="downloads_keep_liked_body_wifi">Песня из «любимых» скачивается на этот телефон по Wi-Fi.</string>
+    <string name="downloads_keep_liked_body">Песня из «любимых» скачивается на этот телефон.</string>
+    <string name="downloads_on_phone">На этом телефоне</string>
+    <string name="downloads_tab_phone">На телефоне</string>
+    <string name="downloads_tab_server">На сервере</string>
+    <plurals name="downloads_server_card">
+        <item quantity="one">Сервер скачивает %1$d песню</item>
+        <item quantity="few">Сервер скачивает %1$d песни</item>
+        <item quantity="many">Сервер скачивает %1$d песен</item>
+        <item quantity="other">Сервер скачивает %1$d песни</item>
+    </plurals>
+    <string name="downloads_server_card_detail">%1$s · %2$d из %3$d</string>
+    <string name="downloads_server_empty_title">Сервер ничего не скачивает</string>
+    <string name="downloads_server_empty_body">Найдите новую музыку в поиске или вставьте ссылку Spotify или YouTube Music там — сервер скачает её в библиотеку.</string>
+    <string name="downloads_server_job_queued">Ожидает</string>
+    <string name="downloads_server_job_downloading">Скачивается · %1$d%%</string>
+    <string name="downloads_server_job_done">В библиотеке</string>
+    <string name="downloads_server_job_error">Ошибка</string>
+    <string name="downloads_server_job_error_detail">Ошибка: %1$s</string>
+    <string name="downloads_empty_title">На этом телефоне пока ничего нет</string>
+    <string name="downloads_empty_body">Нажмите «Скачать» у альбома или плейлиста или держите любимые песни офлайн, чтобы слушать без сервера.</string>
+    <plurals name="downloads_status_done">
+        <item quantity="one">%1$d песня · %2$s</item>
+        <item quantity="few">%1$d песни · %2$s</item>
+        <item quantity="many">%1$d песен · %2$s</item>
+        <item quantity="other">%1$d песни · %2$s</item>
+    </plurals>
+    <string name="downloads_status_done_synced">%1$s · синхронизируется</string>
+    <string name="downloads_status_progress">Скачивается %1$d из %2$d</string>
+    <string name="downloads_status_waiting_wifi">%1$s · ждём Wi-Fi</string>
+    <string name="downloads_status_waiting_network">%1$s · ждём связи</string>
+    <plurals name="downloads_status_over_limit">
+        <item quantity="one">%1$d из %2$d · 1 песня не влезает в лимит хранилища</item>
+        <item quantity="few">%1$d из %2$d · %3$d песни не влезают в лимит хранилища</item>
+        <item quantity="many">%1$d из %2$d · %3$d песен не влезают в лимит хранилища</item>
+        <item quantity="other">%1$d из %2$d · %3$d песни не влезают в лимит хранилища</item>
+    </plurals>
+    <string name="downloads_status_missing">Больше нет в библиотеке</string>
+    <string name="downloads_options">Параметры %1$s</string>
+    <string name="downloads_remove">Убрать с телефона</string>
+    <string name="downloads_downloaded">Скачано</string>
+    <string name="collection_download">Скачать</string>
+    <string name="collection_downloading">Скачивается %1$d из %2$d</string>
+    <string name="collection_on_phone">На телефоне</string>
+    <string name="collection_remove_title">Убрать с телефона?</string>
+    <string name="collection_remove_message">%1$s останется в библиотеке и продолжит играть с сервера.</string>
+    <string name="collection_remove_confirm">Убрать</string>
+    <string name="settings_downloads">Загрузки</string>
+    <string name="settings_server_version" translatable="false">Downtify %1$s</string>
+    <string name="settings_signed_in_as">Вы вошли как %1$s</string>
+    <string name="settings_download_wifi_only">Скачивать только по Wi-Fi</string>
+    <string name="settings_download_wifi_only_body">Офлайн-копии ждут Wi-Fi</string>
+    <string name="settings_offline_limit">Лимит офлайн-хранилища</string>
+    <string name="settings_offline_limit_summary">%1$s · занято %2$s</string>
+    <string name="settings_offline_limit_none">Без лимита</string>
+    <string name="settings_offline_directory">Папка загрузок</string>
+    <string name="settings_offline_directory_reset">Использовать папку загрузок по умолчанию</string>
+    <string name="settings_offline_directory_moving">Переносим офлайн-музыку…</string>
+    <string name="settings_offline_directory_error">Не удалось перенести офлайн-музыку. Проверьте доступ к папке и попробуйте снова.</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Настройки</string>
+    <string name="settings_connected">Подключено</string>
+    <string name="settings_unreachable">Недоступно</string>
+    <string name="settings_checking">Проверяем…</string>
+    <string name="settings_different_server">Другой сервер</string>
+    <string name="settings_change_server">Сменить сервер</string>
+    <string name="settings_open_web">Настройки сервера</string>
+    <string name="settings_playback">Воспроизведение</string>
+    <string name="settings_normalize_volume">Нормализовать громкость</string>
+    <string name="settings_normalize_volume_hint">Песни будут играть с примерно одинаковой громкостью, начиная со следующей, используя измерения сервера. Песни без измерения сохраняют исходную громкость.</string>
+    <string name="settings_quality_wifi">Качество стрима по Wi-Fi</string>
+    <string name="settings_quality_mobile">Качество стрима в мобильной сети</string>
+    <string name="settings_quality_no_transcoding">Сервер не может транскодировать (нет ffmpeg): файлы играют как есть.</string>
+    <string name="settings_quality_original">Оригинальное · как скачано</string>
+    <string name="settings_quality_transcoded">%1$s · %2$d кбит/с · транскодируется сервером</string>
+    <string name="settings_quality_label">%1$s · %2$d кбит/с</string>
+    <string name="settings_appearance">Оформление</string>
+    <string name="settings_theme">Тема</string>
+    <string name="settings_theme_system">Как в системе</string>
+    <string name="settings_theme_dark">Тёмная</string>
+    <string name="settings_theme_light">Светлая</string>
+    <string name="settings_theme_body">Системный вариант следует светлой или тёмной теме устройства.</string>
+    <string name="settings_dynamic_color">Цвета из обоев</string>
+    <string name="settings_dynamic_color_body">Material You вместо зелёного Downtify</string>
+    <string name="settings_about">О приложении</string>
+    <string name="settings_app_version">Downtify для Android %1$s</string>
+    <string name="settings_server_api">Версия API сервера %1$d</string>
+    <string name="settings_unpair">Отключить этот телефон</string>
+    <string name="settings_unpair_body">Забыть ключ этого сервера на телефоне</string>
+    <string name="settings_unpair_title">Отключить этот телефон?</string>
+    <string name="settings_unpair_message">Телефон забудет ключ и вернётся к экрану подключения. Чтобы отключить его и на сервере, откройте на веб-странице Настройки › Приложения › Сопряжённые приложения. Синхронизированная библиотека останется, пока не выполнится сопряжение с другим сервером.</string>
+    <string name="settings_unpair_confirm">Отключить</string>
+
+    <!-- Player -->
+    <string name="player_play">Играть</string>
+    <string name="player_pause">Пауза</string>
+    <string name="player_next">Далее</string>
+    <string name="player_previous">Назад</string>
+    <string name="player_shuffle_on">Перемешать, вкл</string>
+    <string name="player_shuffle_off">Перемешать, выкл</string>
+    <string name="player_repeat_off">Повтор, выкл</string>
+    <string name="player_repeat_all">Повторять всё</string>
+    <string name="player_repeat_one">Повторять одну</string>
+    <string name="player_seek">Перемотка</string>
+    <string name="player_close">Закрыть «Играет сейчас»</string>
+    <string name="player_open">Открыть «Играет сейчас»</string>
+    <string name="player_lyrics">Текст</string>
+    <string name="player_queue">Очередь</string>
+    <string name="player_queue_close">Закрыть очередь</string>
+    <string name="player_queue_now_playing">Играет сейчас</string>
+    <string name="player_queue_next_in_queue">Далее в очереди</string>
+    <string name="player_queue_next_from">Далее из: %1$s</string>
+    <string name="player_queue_next_up">Далее</string>
+    <string name="player_queue_clear">Очистить очередь</string>
+    <string name="player_queue_empty">После этой песни ничего не играет.</string>
+    <string name="player_queue_remove">Из очереди</string>
+    <string name="player_queue_reorder">Перетащите, чтобы поменять порядок</string>
+    <string name="player_queue_move_up">Выше</string>
+    <string name="player_queue_move_down">Ниже</string>
+    <string name="player_like">В любимые песни</string>
+    <string name="player_source_stream">Играем с %1$s</string>
+    <string name="player_unlike">Из любимых песен</string>
+    <string name="player_playing_from_album">Играет альбом</string>
+    <string name="player_playing_from_artist">Играет артист</string>
+    <string name="player_playing_from_playlist">Играет плейлист</string>
+    <string name="player_now_playing">Играет сейчас</string>
+    <string name="player_source_original_quality">Играем с %1$s · исходное качество</string>
+    <string name="player_sample_rate">%1$s кГц</string>
+    <string name="player_bitrate">%1$d кбит/с</string>
+    <string name="player_source_unknown">Играем с %1$s</string>
+    <string name="player_playing_from_podcast">Подкаст</string>
+    <string name="player_skip_back">Назад 10 секунд</string>
+    <string name="player_skip_forward">Вперёд 30 секунд</string>
+    <string name="player_speed">Скорость воспроизведения %1$s. Нажмите, чтобы изменить</string>
+    <string name="player_source_this_phone">Играет с этого телефона</string>
+    <string name="player_lyrics_none">Текста у этой песни нет.</string>
+    <string name="player_lyrics_loading">Загружаем текст…</string>
+    <string name="player_lyrics_synced">Синхронизированный</string>
+    <string name="player_lyrics_static">Обычный</string>
+    <string name="player_lyrics_timing">Настроить синхронизацию</string>
+    <string name="player_lyrics_earlier">Показывать строки раньше</string>
+    <string name="player_lyrics_later">Показывать строки позже</string>
+    <string name="player_lyrics_timing_reset">Сбросить синхронизацию</string>
+    <string name="player_lyrics_offset">%1$s с</string>
+    <string name="player_error_network">Сервер недоступен, чтобы играть эту песню.</string>
+    <string name="player_error_not_found">Этой песни больше нет на сервере.</string>
+    <string name="player_error_old_server">Сервер слишком стар для стрима — обновите Downtify на сервере.</string>
+    <string name="player_error_other">Эту песню не получилось воспроизвести.</string>
+    <string name="player_notifications_rationale">Разрешите уведомления, чтобы управлять воспроизведением с экрана блокировки и из панели.</string>
+
+    <!-- Settings: appearance, language, about -->
+    <string name="action_close">Закрыть</string>
+    <string name="settings_server">Сервер</string>
+    <string name="settings_language">Язык</string>
+    <string name="settings_language_summary">%1$s · задаётся в языке приложения в Android</string>
+    <string name="settings_amoled">Чистый чёрный</string>
+    <string name="settings_amoled_body">Настоящий чёрный в тёмной теме. Экономит заряд на OLED-экранах.</string>
+    <string name="settings_floating_nav_bar">Плавающая панель навигации</string>
+    <string name="settings_floating_nav_bar_body">На телефонах панель имеет форму округлой капсулы вместо полосы на весь экран</string>
+    <string name="settings_font">Шрифт</string>
+    <string name="settings_font_downtify">Downtify</string>
+    <string name="settings_font_system">Системный шрифт</string>
+    <string name="settings_font_google_sans_flex" translatable="false">Google Sans Flex</string>
+    <string name="settings_about_entry">О приложении</string>
+
+    <!-- About -->
+    <string name="about_title">О приложении</string>
+    <string name="about_tagline">Официальный Android-клиент вашего собственного сервера Downtify.</string>
+    <string name="about_report_bug">Сообщить об ошибке</string>
+    <string name="about_report_bug_body">Открыть issue на GitHub</string>
+    <string name="about_version">Версия</string>
+    <string name="about_version_value">%1$s (%2$d)</string>
+    <string name="about_version_copied">Версия скопирована</string>
+    <string name="about_source">Исходный код</string>
+    <string name="about_source_body">Проект на GitHub</string>
+    <string name="about_license">Лицензия</string>
+    <string name="about_terms">Условия и дисклеймер</string>
+    <string name="about_terms_body">Условия использования и дисклеймер разработчиков</string>
+    <string name="about_donate">Поддержать проект</string>
+    <string name="about_donate_body">Купить разработчику кофе или поддержать на GitHub</string>
+
+    <!-- Support sheet -->
+    <string name="donate_title">Поддержать Downtify</string>
+    <string name="donate_body">Downtify для Android — бесплатное приложение с открытым кодом, сделанное в свободное время. Если оно вам полезно, вы можете помочь ему развиваться. Это никогда не обязательно и всегда приятно.</string>
+    <string name="donate_buy_me_a_coffee" translatable="false">Buy Me a Coffee</string>
+    <string name="donate_buy_me_a_coffee_body">Разовый кофе для разработчика</string>
+    <string name="donate_github_sponsors" translatable="false">GitHub Sponsors</string>
+    <string name="donate_github_sponsors_body">Спонсировать работу на GitHub</string>
+
+    <!-- Terms and disclaimer sheet -->
+    <string name="terms_title">Условия и дисклеймер</string>
+    <string name="terms_use_title">Что это за приложение</string>
+    <string name="terms_use_body">Downtify для Android — бесплатный клиент с открытым кодом для Downtify, музыкального сервера, который вы держите сами. Он слушает и управляет музыкой на вашем собственном сервере. Это не музыкальный сервис и музыки он не хранит.</string>
+    <string name="terms_responsibility_title">Ваша ответственность</string>
+    <string name="terms_responsibility_body">Вы отвечаете за музыку, которую ищете, скачиваете, храните и слушаете через Downtify, и за соблюдение законов об авторских правах и условий задействованных сервисов там, где живёте. Downtify не поддерживает несанкционированное скачивание материалов под защитой авторских прав. Используйте приложение только с музыкой, на использование которой у вас есть право.</string>
+    <string name="terms_affiliation_title">Без принадлежности</string>
+    <string name="terms_affiliation_body">Downtify не аффилирован, не одобрен и не спонсирован Spotify, YouTube, YouTube Music, Deezer, Soulseek или любым другим сервисом, через который он может находить музыку, предпрослушивания или обложки. Их названия и логотипы принадлежат их владельцам.</string>
+    <string name="terms_warranty_title">Без гарантии и ответственности</string>
+    <string name="terms_warranty_body">Приложение предоставляется «как есть» — без гарантий любого рода, прямых или подразумеваемых, включая пригодность для конкретных целей. Разработчики не отвечают ни за какие претензии, ущерб, потерю данных или юридические последствия, возникшие при его использовании или от того, что вы с ним делаете. Полный текст — в лицензии.</string>
+    <string name="terms_privacy_title">Ваши данные</string>
+    <string name="terms_privacy_body">В приложении нет рекламы, аналитики и слежения, и разработчикам оно ничего не отправляет. Оно общается только с сервером, с которым сопряглось. Предпрослушивания, обложки, обложки подкастов и скачиваемые шрифты приходят с чужих хостов (Spotify, Deezer, авторы подкастов, Google), которые видят ваш IP при использовании. Токен устройства, сопрягающий телефон с вашим сервером, хранится на телефоне зашифрованным.</string>
+
+    <!-- License screen -->
+    <string name="license_title">Лицензия</string>
+    <string name="license_name" translatable="false">GNU General Public License v3.0</string>
+    <string name="license_spdx" translatable="false">GPL-3.0</string>
+    <string name="license_intro">Downtify для Android — свободное программное обеспечение. Использовать, изучать, распространять и изменять его можно на условиях GNU General Public License версии 3, опубликованной Free Software Foundation. Коротко:</string>
+    <string name="license_permissions">Разрешения</string>
+    <string name="license_conditions">Условия</string>
+    <string name="license_limitations">Ограничения</string>
+    <string name="license_permission_commercial">Коммерческое использование</string>
+    <string name="license_permission_commercial_body">Программное обеспечение и его исходный код можно использовать в коммерческих целях.</string>
+    <string name="license_permission_modification">Изменение</string>
+    <string name="license_permission_modification_body">Программу можно изменять.</string>
+    <string name="license_permission_distribution">Распространение</string>
+    <string name="license_permission_distribution_body">Программу и ваши изменённые версии можно распространять.</string>
+    <string name="license_permission_patent">Патенты</string>
+    <string name="license_permission_patent_body">Авторы дают вам лицензию на использование своих патентов в этой программе.</string>
+    <string name="license_permission_private">Личное применение</string>
+    <string name="license_permission_private_body">Можно использовать и изменять для себя, ничего не распространяя.</string>
+    <string name="license_condition_notice">Уведомление о лицензии и авторстве</string>
+    <string name="license_condition_notice_body">Сохраняйте уведомление о правах и копию лицензии с каждой распространяемой копией.</string>
+    <string name="license_condition_changes">Указывать изменения</string>
+    <string name="license_condition_changes_body">Указывайте, что и когда вы изменили.</string>
+    <string name="license_condition_source">Открытый исходный код</string>
+    <string name="license_condition_source_body">При распространении делайте доступным исходный код.</string>
+    <string name="license_condition_same">Та же лицензия</string>
+    <string name="license_condition_same_body">Распространяемые версии — под той же лицензией GPL-3.0.</string>
+    <string name="license_limitation_liability">Отсутствие ответственности</string>
+    <string name="license_limitation_liability_body">Авторы не несут ответственности за ущерб.</string>
+    <string name="license_limitation_warranty">Отсутствие гарантии</string>
+    <string name="license_limitation_warranty_body">Программа не предоставляет никакой гарантии.</string>
+    <string name="license_full_text">Полный текст лицензии</string>
+    <string name="license_text_unavailable">Текст лицензии не удалось загрузить.</string>
+
+    <string name="settings_read_ahead">Предзагружать следующие песни</string>
+    <string name="settings_read_ahead_off">Выключено</string>
+    <string name="settings_read_ahead_count">Песен впереди: %1$d</string>
+    <string name="settings_stream_cache">Временный аудиокэш</string>
+    <string name="settings_stream_cache_size">%1$d МБ</string>
+    <string name="settings_stream_cache_body">Место для недавно прослушанного и предзагруженного аудио. Сохранённые офлайн-загрузки учитываются отдельно. Большие песни могут превышать этот лимит; готовыми считаются только полные песни.</string>
+    <string name="settings_read_ahead_mobile">Предзагружать через мобильную сеть</string>
+    <string name="settings_read_ahead_mobile_body">Разрешить дополнительный расход трафика для подготовки следующих песен.</string>
+    <string name="settings_cache_apply">Применить</string>
+    <string name="player_buffer_ready">Офлайн-буфер: %1$d/%2$d</string>
+
+    <!-- Music trash (admins, when the server has it on) -->
+    <string name="trash_title">Корзина</string>
+    <string name="trash_move">Переместить в корзину</string>
+    <string name="trash_checking">Проверяем файлы…</string>
+    <string name="trash_checking_body">Сервер точно определяет, какие файлы будут перемещены. Это может занять некоторое время.</string>
+    <string name="trash_failed">Не удалось выполнить операцию</string>
+    <string name="trash_admin_only">Это видят только администраторы</string>
+    <string name="trash_admin_only_body">Попросите администратора этого сервера восстановить песню.</string>
+    <string name="trash_tab_trash">В корзине</string>
+    <string name="trash_tab_kept_out">Исключённые из загрузок</string>
+    <string name="trash_search">Поиск в корзине</string>
+    <string name="trash_empty">Корзина пуста</string>
+    <string name="trash_empty_body">Перемещённые в корзину песни будут здесь до истечения срока хранения.</string>
+    <string name="trash_no_match">В корзине ничего не найдено</string>
+    <string name="trash_show_more">Показать больше</string>
+    <string name="trash_kept_out_body">Песни с истёкшим сроком в корзине. Автоматические загрузки пропускают их, пока вы не разрешите их снова.</string>
+    <string name="trash_kept_out_empty">Нет песен, исключённых из загрузок</string>
+    <string name="trash_allow">Разрешить загрузки</string>
+    <string name="trash_allow_title">Разрешить снова скачивать «%1$s»?</string>
+    <string name="trash_allow_body">Автоматические загрузки могут скачать её снова. Сейчас ничего не скачивается.</string>
+    <string name="trash_kept_until">Хранится до %1$s</string>
+    <string name="trash_restore">Восстановить</string>
+    <string name="trash_error_admin">Корзиной может пользоваться только администратор.</string>
+    <string name="trash_error_changed">Файл изменился после проверки. Ничего не потеряно; выберите песню снова.</string>
+    <string name="trash_error_missing">Файл отсутствует. Проверьте хранилище сервера и попробуйте снова.</string>
+    <string name="trash_error_collision">На его месте уже есть другой файл. Ничего не перезаписано; песня остаётся в корзине.</string>
+    <string name="trash_error_playing">Кто-то сейчас слушает эту песню. Сначала поставьте её на паузу.</string>
+    <string name="trash_error_upgrade">Выполняется обновление библиотеки. Дождитесь его или сначала поставьте на паузу.</string>
+    <string name="trash_error_confirmation">Срок проверки истёк. Выберите песни снова.</string>
+    <string name="trash_error_identity">Метаданных песни недостаточно, чтобы исключить её из автоматических загрузок. Ничего не перемещено.</string>
+    <string name="trash_error_busy">Операция ещё выполняется. Дождитесь её завершения.</string>
+    <string name="trash_error_expired">Срок хранения в корзине истёк.</string>
+    <string name="trash_error_folder">Папка этой песни не входит в область корзины.</string>
+    <string name="trash_error_storage">Хранилище сервера не готово. Ничего не перемещено; проверьте его и попробуйте снова.</string>
+    <string name="trash_error_off">Корзина отключена на этом сервере.</string>
+    <string name="trash_error">Корзина не ответила. Ничего не перемещено и не удалено.</string>
+    <string name="trash_state_pending">Ожидает перемещения</string>
+    <string name="trash_state_moving">Перемещается</string>
+    <string name="trash_state_trashed">В корзине</string>
+    <string name="trash_state_restoring">Восстанавливается</string>
+    <string name="trash_state_restored">Восстановлена</string>
+    <string name="trash_state_expired">Срок истёк</string>
+    <string name="trash_state_error">Остановлено — файлы сохранены</string>
+    <string name="trash_state_unknown">Обновляется</string>
+    <plurals name="trash_moving">
+        <item quantity="one">Перемещаем %1$d песню в корзину</item>
+        <item quantity="few">Перемещаем %1$d песни в корзину</item>
+        <item quantity="many">Перемещаем %1$d песен в корзину</item>
+        <item quantity="other">Перемещаем %1$d песни в корзину</item>
+    </plurals>
+    <plurals name="trash_confirm_title">
+        <item quantity="one">Переместить %1$d песню в корзину?</item>
+        <item quantity="few">Переместить %1$d песни в корзину?</item>
+        <item quantity="many">Переместить %1$d песен в корзину?</item>
+        <item quantity="other">Переместить %1$d песни в корзину?</item>
+    </plurals>
+    <plurals name="trash_confirm_body">
+        <item quantity="one">Будут перемещены только эти файлы и их тексты. Они исчезнут из библиотеки для всех, но их можно будет восстановить в течение %1$d дня.</item>
+        <item quantity="few">Будут перемещены только эти файлы и их тексты. Они исчезнут из библиотеки для всех, но их можно будет восстановить в течение %1$d дней.</item>
+        <item quantity="many">Будут перемещены только эти файлы и их тексты. Они исчезнут из библиотеки для всех, но их можно будет восстановить в течение %1$d дней.</item>
+        <item quantity="other">Будут перемещены только эти файлы и их тексты. Они исчезнут из библиотеки для всех, но их можно будет восстановить в течение %1$d дня.</item>
+    </plurals>
+    <plurals name="trash_summary">
+        <item quantity="one">%1$d песня · %2$s</item>
+        <item quantity="few">%1$d песни · %2$s</item>
+        <item quantity="many">%1$d песен · %2$s</item>
+        <item quantity="other">%1$d песни · %2$s</item>
+    </plurals>
+    <plurals name="trash_kept_days">
+        <item quantity="one">хранится %1$d день после перемещения</item>
+        <item quantity="few">хранится %1$d дня после перемещения</item>
+        <item quantity="many">хранится %1$d дней после перемещения</item>
+        <item quantity="other">хранится %1$d дня после перемещения</item>
+    </plurals>
+    <string name="settings_normalization_level">Уровень громкости</string>
+    <string name="settings_normalization_normal">Обычный</string>
+    <string name="settings_normalization_louder">Громче</string>
+    <string name="settings_normalization_maximum">Максимум</string>
+    <string name="settings_normalization_level_hint">Повышает громкость воспроизведения в пределах безопасного лимита каждого трека. Ваши аудиофайлы остаются без изменений.</string>
+    <string name="connect_client_certificate">Клиентский сертификат</string>
+    <string name="connect_client_certificate_selected">Клиентский сертификат: %1$s</string>
+    <string name="connect_client_certificate_clear">Удалить клиентский сертификат</string>
+    <string name="settings_client_certificate">Клиентский сертификат</string>
+    <string name="settings_client_certificate_none">Нет · для обратных прокси с взаимным TLS</string>
+    <string name="settings_client_certificate_active">«%1$s» из хранилища учётных данных Android будет предъявлен, когда сервер запросит клиентский сертификат.</string>
+    <string name="settings_client_certificate_change">Изменить</string>
+    <string name="settings_client_certificate_remove">Удалить</string>
+</resources>
