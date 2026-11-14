@@ -11,6 +11,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.henriquesebastiao.downtify.core.data.offline.OfflineLocationChange
 import com.henriquesebastiao.downtify.core.data.settings.ThemeMode
 import com.henriquesebastiao.downtify.core.data.settings.UserSettings
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyTheme
@@ -160,5 +161,47 @@ class SettingsScreenTest {
         compose.onNodeWithText("Remove").performClick()
         assertEquals(true, cleared)
         assertEquals(false, selected)
+    }
+
+    @Test
+    fun downloadFolderShowsItsLocationAndOpensTheSystemPicker() {
+        var choose = false
+        val location = "Android/media/com.henriquesebastiao.downtify"
+        show(
+            state = SettingsUiState(offlineDirectory = location),
+            actions = SettingsActions(onChooseOfflineDirectory = { choose = true }),
+        )
+
+        compose.onNodeWithText(location).performScrollTo().assertExists()
+        compose.onNodeWithText("Download folder").performClick()
+        assertEquals(true, choose)
+    }
+
+    @Test
+    fun customDownloadFolderCanResetToTheDefault() {
+        var reset = false
+        show(
+            state = SettingsUiState(
+                settings = UserSettings(offlineDirectoryUri = "content://music/tree/primary%3AMusic"),
+                offlineDirectory = "Music",
+            ),
+            actions = SettingsActions(onResetOfflineDirectory = { reset = true }),
+        )
+
+        compose.onNodeWithText("Use default download folder").performScrollTo().performClick()
+        assertEquals(true, reset)
+    }
+
+    @Test
+    fun downloadFolderReportsMoving() {
+        show(state = SettingsUiState(locationChange = OfflineLocationChange.Moving))
+        compose.onNodeWithText("Moving offline music…").performScrollTo().assertExists()
+    }
+
+    @Test
+    fun downloadFolderReportsFailures() {
+        show(state = SettingsUiState(locationChange = OfflineLocationChange.Failed(Throwable("denied"))))
+        compose.onNodeWithText("Could not move offline music. Check folder access and try again.")
+            .performScrollTo().assertExists()
     }
 }

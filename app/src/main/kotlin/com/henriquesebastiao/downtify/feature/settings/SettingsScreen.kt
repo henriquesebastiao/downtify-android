@@ -5,6 +5,8 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -56,6 +58,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.henriquesebastiao.downtify.BuildConfig
 import com.henriquesebastiao.downtify.R
+import com.henriquesebastiao.downtify.core.data.offline.OfflineLocationChange
 import com.henriquesebastiao.downtify.core.data.session.ConnectionState
 import com.henriquesebastiao.downtify.core.data.settings.ThemeMode
 import com.henriquesebastiao.downtify.core.data.settings.UserSettings
@@ -96,6 +99,9 @@ fun SettingsRoute(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        uri?.let { viewModel.setOfflineDirectory(it.toString()) }
+    }
     SettingsScreen(
         state = state,
         actions = SettingsActions(
@@ -113,6 +119,8 @@ fun SettingsRoute(
             onOpenLanguage = { openAppLanguageSettings(context) },
             onDownloadWifiOnly = viewModel::setDownloadWifiOnly,
             onOfflineLimit = viewModel::setOfflineLimit,
+            onChooseOfflineDirectory = { folderPicker.launch(null) },
+            onResetOfflineDirectory = { viewModel.setOfflineDirectory(null) },
             onReadAhead = viewModel::setReadAhead,
             onStreamCacheMb = viewModel::setStreamCacheMb,
             onReadAheadMobile = viewModel::setReadAheadMobile,
@@ -149,6 +157,8 @@ data class SettingsActions(
     val onOpenLanguage: () -> Unit = {},
     val onDownloadWifiOnly: (Boolean) -> Unit = {},
     val onOfflineLimit: (Long) -> Unit = {},
+    val onChooseOfflineDirectory: () -> Unit = {},
+    val onResetOfflineDirectory: () -> Unit = {},
     val onReadAhead: (Int) -> Unit = {},
     val onStreamCacheMb: (Int) -> Unit = {},
     val onReadAheadMobile: (Boolean) -> Unit = {},
@@ -495,30 +505,58 @@ private fun downloadRows(
     state: SettingsUiState,
     actions: SettingsActions,
     open: (SettingsDialog) -> Unit,
-): List<GroupedRow> = listOf(
-    GroupedRow(
-        title = stringResource(R.string.settings_download_wifi_only),
-        summary = stringResource(R.string.settings_download_wifi_only_body),
-        icon = DowntifyIcons.Downloads,
-        action = RowAction.Toggle(state.settings.downloadWifiOnly, actions.onDownloadWifiOnly),
-    ),
-    GroupedRow(
-        title = stringResource(R.string.settings_offline_limit),
-        summary = stringResource(
-            R.string.settings_offline_limit_summary,
-            limitLabel(state.settings.offlineLimitBytes),
-            formatBytes(state.offlineUsedBytes),
+): List<GroupedRow> {
+    val moving = state.locationChange is OfflineLocationChange.Moving
+    val directorySummary = when (state.locationChange) {
+        OfflineLocationChange.Moving -> stringResource(R.string.settings_offline_directory_moving)
+        is OfflineLocationChange.Failed -> stringResource(R.string.settings_offline_directory_error)
+        OfflineLocationChange.Idle -> state.offlineDirectory
+    }
+    return listOfNotNull(
+        GroupedRow(
+            title = stringResource(R.string.settings_download_wifi_only),
+            summary = stringResource(R.string.settings_download_wifi_only_body),
+            icon = DowntifyIcons.Downloads,
+            action = RowAction.Toggle(state.settings.downloadWifiOnly, actions.onDownloadWifiOnly),
         ),
-        summaryValues = listOfNotNull(
-            limitLabel(state.settings.offlineLimitBytes).takeIf {
-                state.settings.offlineLimitBytes != OfflinePlanner.UNLIMITED
-            },
-            formatBytes(state.offlineUsedBytes),
+        GroupedRow(
+            title = stringResource(R.string.settings_offline_directory),
+            summary = directorySummary,
+            summaryValues = listOfNotNull(
+                state.offlineDirectory.takeIf { state.locationChange is OfflineLocationChange.Idle },
+            ),
+            icon = DowntifyIcons.Storage,
+            enabled = !moving,
+            action = RowAction.Click(actions.onChooseOfflineDirectory, DowntifyIcons.ChevronRight),
         ),
-        icon = DowntifyIcons.Storage,
-        action = RowAction.Click({ open(SettingsDialog.OfflineLimit) }),
-    ),
-)
+        if (state.settings.offlineDirectoryUri != null) {
+            GroupedRow(
+                title = stringResource(R.string.settings_offline_directory_reset),
+                icon = DowntifyIcons.Downloads,
+                enabled = !moving,
+                action = RowAction.Click(actions.onResetOfflineDirectory),
+            )
+        } else {
+            null
+        },
+        GroupedRow(
+            title = stringResource(R.string.settings_offline_limit),
+            summary = stringResource(
+                R.string.settings_offline_limit_summary,
+                limitLabel(state.settings.offlineLimitBytes),
+                formatBytes(state.offlineUsedBytes),
+            ),
+            summaryValues = listOfNotNull(
+                limitLabel(state.settings.offlineLimitBytes).takeIf {
+                    state.settings.offlineLimitBytes != OfflinePlanner.UNLIMITED
+                },
+                formatBytes(state.offlineUsedBytes),
+            ),
+            icon = DowntifyIcons.Storage,
+            action = RowAction.Click({ open(SettingsDialog.OfflineLimit) }),
+        ),
+    )
+}
 
 @Composable
 private fun bufferRows(

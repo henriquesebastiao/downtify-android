@@ -61,11 +61,11 @@ class StreamResolver @Inject constructor(
                 .setKey(cache.key(StreamIds.mediaId(videoId), "source")).build()
         }
         val trackId = MediaItems.trackIdOf(dataSpec.uri) ?: return dataSpec
-        offline.localFile(trackId)?.let { file ->
+        offline.localAudio(trackId)?.let { audio ->
             chosen.put(trackId, StreamQuality.Original)
             local.put(trackId, true)
-            loudness.prepareLocalBlocking(trackId, file)
-            return dataSpec.withUri(Uri.fromFile(file))
+            loudness.prepareLocalBlocking(trackId, audio)
+            return dataSpec.withUri(audio.uri)
         }
         local.remove(trackId)
         val session = sessions.current ?: throw IOException("Not paired with a server")
@@ -89,7 +89,7 @@ class StreamResolver @Inject constructor(
                 .setKey(cache.key(StreamIds.mediaId(videoId), "source")).build()
         }
         val trackId = MediaItems.trackIdOf(uri) ?: return null
-        offline.localFile(trackId)?.let { return DataSpec.Builder().setUri(Uri.fromFile(it)).build() }
+        offline.localAudio(trackId)?.let { return DataSpec.Builder().setUri(it.uri).build() }
         val selected = if (!network.status.value.online) cache.completedQuality(trackId) ?: quality else quality
         return DataSpec.Builder().setUri(ServerUrls.stream(paired.baseUrl, trackId, selected))
             .setKey(cache.key(trackId, selected.encode())).build()
@@ -108,7 +108,7 @@ class StreamResolver @Inject constructor(
      * session. Touches the disk (the offline check): call it off the main thread.
      */
     fun transcodedUrl(trackId: String): String? {
-        if (offline.localFile(trackId) != null) return null
+        if (offline.localAudio(trackId) != null) return null
         val quality = qualityNow().takeUnless { it.isOriginal } ?: return null
         val session = sessions.current ?: return null
         return ServerUrls.stream(session.baseUrl, trackId, quality)

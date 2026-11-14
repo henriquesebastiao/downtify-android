@@ -309,6 +309,10 @@
     <string name="settings_offline_limit">Límite de almacenamiento sin conexión</string>
     <string name="settings_offline_limit_summary">%1$s · %2$s usados</string>
     <string name="settings_offline_limit_none">Sin límite</string>
+    <string name="settings_offline_directory">Carpeta de descargas</string>
+    <string name="settings_offline_directory_reset">Usar carpeta de descargas predeterminada</string>
+    <string name="settings_offline_directory_moving">Moviendo música sin conexión…</string>
+    <string name="settings_offline_directory_error">No se pudo mover la música sin conexión. Comprueba el acceso a la carpeta e inténtalo de nuevo.</string>
 
     <!-- Settings -->
     <string name="settings_title">Ajustes</string>
