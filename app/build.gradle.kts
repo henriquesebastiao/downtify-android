@@ -68,7 +68,11 @@ android {
 androidComponents {
     onVariants(selector().withBuildType("beta")) { variant ->
         val betaCode = providers.gradleProperty("musicAiBetaVersionCode").orNull?.let { value ->
-            requireNotNull(value.toIntOrNull()?.takeIf { it > 0 }) { "musicAiBetaVersionCode must be a positive integer" }
+            requireNotNull(
+                value.toIntOrNull()?.takeIf {
+                    it > 0
+                },
+            ) { "musicAiBetaVersionCode must be a positive integer" }
         }
         val betaName = providers.gradleProperty("musicAiBetaVersionName").orNull?.also { value ->
             require(value.isNotBlank()) { "musicAiBetaVersionName must not be blank" }

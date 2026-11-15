@@ -214,12 +214,21 @@ class CarBrowserTest {
             }
         }
         val gated = CarBrowser(
-            RuntimeEnvironment.getApplication(), repository, offline, sessions, artwork, scope,
+            RuntimeEnvironment.getApplication(),
+            repository,
+            offline,
+            sessions,
+            artwork,
+            scope,
             playbackDispatcher = paused,
         )
         gated.observe(session)
         val result = gated.onSetMediaItems(
-            session, controller, mutableListOf(MediaItem.Builder().setMediaId("a").build()), 0, 0,
+            session,
+            controller,
+            mutableListOf(MediaItem.Builder().setMediaId("a").build()),
+            0,
+            0,
         )
         val work = requireNotNull(tasks.poll(5, TimeUnit.SECONDS)) { "Queue construction did not start" }
         assertFalse(result.isDone)
