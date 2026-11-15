@@ -2,10 +2,13 @@ package com.henriquesebastiao.downtify.core.designsystem.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material.ripple.RippleAlpha
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LocalRippleConfiguration
 import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MotionScheme
+import androidx.compose.material3.RippleConfiguration
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
@@ -44,7 +47,10 @@ fun DowntifyTheme(
         else -> DowntifyLightColors
     }.let { if (darkTheme && amoled) it.amoled() else it }
     val typography = remember(font) { downtifyTypography(font) }
-    CompositionLocalProvider(LocalFloatingNavBar provides floatingNavBar) {
+    CompositionLocalProvider(
+        LocalFloatingNavBar provides floatingNavBar,
+        LocalRippleConfiguration provides FocusVisibleRipple,
+    ) {
         MaterialExpressiveTheme(
             colorScheme = colors,
             motionScheme = MotionScheme.expressive(),
@@ -57,6 +63,20 @@ fun DowntifyTheme(
 
 /** Whether the navigation bar floats as a pill over the content (the default) or spans the screen's width. */
 val LocalFloatingNavBar = staticCompositionLocalOf { true }
+
+/**
+ * Material's state layers, with the focused one stronger than its 10 %: on a TV the remote moves
+ * focus, and a faint tint on a button doesn't read from the sofa. The others stay Material's.
+ * Touch never focuses a button, so a phone looks the same.
+ */
+private val FocusVisibleRipple = RippleConfiguration(
+    rippleAlpha = RippleAlpha(
+        draggedAlpha = 0.16f,
+        focusedAlpha = 0.28f,
+        hoveredAlpha = 0.08f,
+        pressedAlpha = 0.1f,
+    ),
+)
 
 /**
  * [this] with true black behind everything, for OLED screens: black pixels are off. The raised

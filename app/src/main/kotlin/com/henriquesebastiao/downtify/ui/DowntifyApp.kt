@@ -39,8 +39,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
@@ -62,6 +65,8 @@ import androidx.navigation.compose.rememberNavController
 import com.henriquesebastiao.downtify.AppState
 import com.henriquesebastiao.downtify.MainViewModel
 import com.henriquesebastiao.downtify.R
+import com.henriquesebastiao.downtify.core.designsystem.component.focusTrap
+import com.henriquesebastiao.downtify.core.designsystem.component.requestFocusWhenPlaced
 import com.henriquesebastiao.downtify.core.designsystem.theme.LocalFloatingNavBar
 import com.henriquesebastiao.downtify.core.designsystem.theme.Spacing
 import com.henriquesebastiao.downtify.core.model.PlaybackContext
@@ -100,6 +105,8 @@ import com.henriquesebastiao.downtify.feature.similar.SimilarRoute as SimilarScr
 import com.henriquesebastiao.downtify.feature.trash.MoveToTrashHost
 import com.henriquesebastiao.downtify.feature.trash.MoveToTrashViewModel
 import com.henriquesebastiao.downtify.feature.trash.TrashRoute as TrashScreenRoute
+import com.henriquesebastiao.downtify.tv.TvShell
+import com.henriquesebastiao.downtify.tv.isTelevision
 import com.henriquesebastiao.downtify.ui.common.CoverUrls
 import com.henriquesebastiao.downtify.ui.common.LocalBottomBarsInset
 import com.henriquesebastiao.downtify.ui.common.LocalCoverUrls
@@ -126,6 +133,7 @@ import com.henriquesebastiao.downtify.ui.navigation.SimilarRoute
 import com.henriquesebastiao.downtify.ui.navigation.TopLevelDestination
 import com.henriquesebastiao.downtify.ui.navigation.TrashRoute as TrashDestination
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /** The app: the connect screen until the phone is paired, then the main shell. */
@@ -133,6 +141,8 @@ import kotlinx.coroutines.launch
 fun DowntifyApp(viewModel: MainViewModel, modifier: Modifier = Modifier) {
     val appState by viewModel.appState.collectAsStateWithLifecycle()
     val pairingRequest by viewModel.pairingRequest.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val isTelevision = remember(context) { context.isTelevision() }
     Surface(modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
         when (val state = appState) {
             AppState.Loading -> Unit
@@ -146,7 +156,8 @@ fun DowntifyApp(viewModel: MainViewModel, modifier: Modifier = Modifier) {
                 // Opening a pairing link while paired does nothing: unpair in Settings first.
                 LaunchedEffect(pairingRequest) { if (pairingRequest != null) viewModel.consumePairingRequest() }
                 CompositionLocalProvider(LocalCoverUrls provides remember(state.baseUrl) { CoverUrls(state.baseUrl) }) {
-                    MainShell()
+                    // A TV gets its own shell (the tv package); phones and tablets this one.
+                    if (isTelevision) TvShell() else MainShell()
                 }
             }
         }
@@ -175,6 +186,8 @@ private fun MainShell() {
     }
     // Now Playing, open or closed or anywhere between: it grows out of the mini player and shrinks back into it.
     val expansion = rememberPlayerExpansion()
+    // Where a TV remote's focus goes back to when Now Playing closes: the mini player's play/pause.
+    val miniPlayFocus = remember { FocusRequester() }
     val scope = rememberCoroutineScope()
     LaunchedEffect(hasMedia) { if (!hasMedia) expansion.snapTo(open = false) }
     // The side menu, opened from Home's menu button.
@@ -275,6 +288,7 @@ private fun MainShell() {
                                     expansion = expansion,
                                     onOpen = { scope.launch { expansion.expand() } },
                                     attached = floatingBar,
+                                    playFocus = miniPlayFocus,
                                 )
                             }
                             if (floatingBar) FloatingNavBar(currentTab, openTab, attached = miniPlayer)
@@ -288,6 +302,7 @@ private fun MainShell() {
                     expansion = expansion,
                     player = player,
                     attached = floatingBar,
+                    miniPlayFocus = miniPlayFocus,
                     onOpen = { scope.launch { expansion.expand() } },
                     onClose = { scope.launch { expansion.collapse() } },
                     onNavigate = { route ->
@@ -413,7 +428,13 @@ private fun AppNavHost(navController: NavHostController, onOpenMenu: () -> Unit)
  * where Now Playing grows out of: a drag up on it opens Now Playing under the finger.
  */
 @Composable
-private fun MiniPlayerHost(player: PlayerViewModel, expansion: PlayerExpansion, onOpen: () -> Unit, attached: Boolean) {
+private fun MiniPlayerHost(
+    player: PlayerViewModel,
+    expansion: PlayerExpansion,
+    onOpen: () -> Unit,
+    attached: Boolean,
+    playFocus: FocusRequester,
+) {
     val state by player.state.collectAsStateWithLifecycle()
     MiniPlayer(
         state = state,
@@ -425,6 +446,7 @@ private fun MiniPlayerHost(player: PlayerViewModel, expansion: PlayerExpansion, 
         onSkipForward = player::skipForward,
         attached = attached,
         coverModifier = Modifier.onGloballyPositioned { expansion.miniCover = it },
+        playButtonModifier = Modifier.focusRequester(playFocus),
         modifier = Modifier
             .padding(horizontal = Spacing.screen, vertical = Spacing.xs)
             .miniPlayerAnchor(expansion),
@@ -435,12 +457,18 @@ private fun MiniPlayerHost(player: PlayerViewModel, expansion: PlayerExpansion, 
  * Now Playing: it grows out of the mini player ([attached] to the floating bar or not) and shrinks
  * back into it, under a finger, a tap or predictive back. Closed, only the light part of it stays
  * composed, off screen (see [ExpandingPlayer]); Now Playing itself is composed while it shows.
+ *
+ * With a TV remote, focus follows: once Now Playing is open it lands on play/pause and stays inside
+ * (the screens under it are still laid out), the queue and the lyrics take it while they're up, and
+ * once Now Playing has closed it goes back to the mini player's play/pause ([miniPlayFocus]).
  */
+@Suppress("LongParameterList")
 @Composable
 private fun NowPlayingOverlay(
     expansion: PlayerExpansion,
     player: PlayerViewModel,
     attached: Boolean,
+    miniPlayFocus: FocusRequester,
     onOpen: () -> Unit,
     onClose: () -> Unit,
     onNavigate: (Any) -> Unit,
@@ -460,6 +488,21 @@ private fun NowPlayingOverlay(
         if (!open) {
             queueOpen = false
             lyricsOpen = false
+        }
+    }
+    val playFocus = remember { FocusRequester() }
+    val onTop = open && !lyricsOpen && !queueOpen
+    // Whether focus went into Now Playing, so closing it hands focus back (not at the app's start).
+    var focusedInside by remember { mutableStateOf(false) }
+    LaunchedEffect(onTop, open) {
+        if (onTop) {
+            snapshotFlow { expansion.fraction }.first { it >= 1f }
+            playFocus.requestFocusWhenPlaced()
+            focusedInside = true
+        } else if (!open && focusedInside) {
+            snapshotFlow { expansion.fraction }.first { it <= 0f }
+            miniPlayFocus.requestFocusWhenPlaced()
+            focusedInside = false
         }
     }
     BackHandler(enabled = open && queueOpen) { queueOpen = false }
@@ -508,6 +551,7 @@ private fun NowPlayingOverlay(
         largeCoverUrl = playingCoverUrl(state, ServerUrls.COVER_LARGE),
         attached = attached,
         dragEnabled = !lyricsOpen && !queueOpen,
+        modifier = Modifier.focusTrap(onTop),
         mini = { coverModifier ->
             MiniPlayer(
                 state = state,
@@ -531,6 +575,7 @@ private fun NowPlayingOverlay(
                 libraryTrack = streamTrack,
                 actions = controls,
                 coverModifier = coverModifier,
+                playFocus = playFocus,
             )
         },
     )
@@ -541,6 +586,8 @@ private fun NowPlayingOverlay(
         enter = slideInVertically { it },
         exit = slideOutVertically { it },
     ) {
+        val queueFocus = remember { FocusRequester() }
+        LaunchedEffect(Unit) { queueFocus.requestFocusWhenPlaced() }
         QueueScreen(
             state = state,
             actions = QueueActions(
@@ -551,6 +598,7 @@ private fun NowPlayingOverlay(
                 onMove = player::moveInQueue,
             ),
             controls = controls,
+            modifier = Modifier.focusRequester(queueFocus).focusTrap(queueOpen),
         )
     }
 
@@ -561,12 +609,15 @@ private fun NowPlayingOverlay(
         exit = slideOutVertically { it },
     ) {
         LaunchedEffect(state.track?.id, streamTrack?.id) { player.loadLyrics() }
+        val lyricsFocus = remember { FocusRequester() }
+        LaunchedEffect(Unit) { lyricsFocus.requestFocusWhenPlaced() }
         LyricsScreen(
             lyrics = lyrics,
             offsetMs = lyricsOffset,
             state = state,
             controls = controls,
             onBack = { lyricsOpen = false },
+            modifier = Modifier.focusRequester(lyricsFocus).focusTrap(lyricsOpen),
         )
     }
 }

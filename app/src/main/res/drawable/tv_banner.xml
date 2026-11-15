@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The TV launcher's banner (Android TV, Fire TV): 320 × 180 dp of the icon's green with its shield
+     centred, the launcher icon's own foreground at the banner's height. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <size
+                android:width="320dp"
+                android:height="180dp" />
+            <solid android:color="@color/brand_green" />
+        </shape>
+    </item>
+    <item
+        android:width="180dp"
+        android:height="180dp"
+        android:drawable="@drawable/ic_launcher_foreground"
+        android:gravity="center" />
+</layer-list>

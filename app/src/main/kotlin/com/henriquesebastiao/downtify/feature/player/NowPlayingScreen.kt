@@ -33,6 +33,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.res.painterResource
@@ -56,6 +58,7 @@ import com.henriquesebastiao.downtify.core.designsystem.component.PlayerToggles
 import com.henriquesebastiao.downtify.core.designsystem.component.Tag
 import com.henriquesebastiao.downtify.core.designsystem.component.TagTone
 import com.henriquesebastiao.downtify.core.designsystem.component.WavySeekBar
+import com.henriquesebastiao.downtify.core.designsystem.component.focusRing
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyShape
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyTheme
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyType
@@ -112,7 +115,8 @@ data class NowPlayingActions(
  * the library set (like, lyrics, the artist link) and the download button goes away. A finished
  * server job ([ServerJobStatus.Done]) hides the download button at once; like and lyrics appear
  * with the library sync, when there is a track id behind them to act on. [coverModifier] goes on
- * the cover (it flies from and to the mini player's).
+ * the cover (it flies from and to the mini player's). [playFocus] is play/pause's: a TV remote's
+ * focus lands there when Now Playing opens.
  */
 @Composable
 fun NowPlayingScreen(
@@ -125,6 +129,7 @@ fun NowPlayingScreen(
     hasLibraryCopy: Boolean = false,
     libraryTrack: Track? = null,
     coverModifier: Modifier = Modifier,
+    playFocus: FocusRequester? = null,
 ) {
     val track = state.track
     val episode = state.episode
@@ -181,13 +186,14 @@ fun NowPlayingScreen(
                     )
                     SeekBar(state, actions.onSeek, formatOf(track, state))
                     if (episode != null) {
-                        EpisodeTransport(state, actions, compact)
+                        EpisodeTransport(state, actions, compact, playFocus)
                     } else {
                         TrackTransport(
                             state = state,
                             actions = actions,
                             compact = compact,
                             isLiked = isLiked.takeIf { stream == null || hasLibraryCopy },
+                            playFocus = playFocus,
                             trailing = if (stream != null && !downloaded) {
                                 {
                                     StreamDownloadButton(
@@ -240,8 +246,16 @@ private fun Header(
                 .weight(1f)
                 .then(
                     when {
-                        episode != null -> Modifier.clickable { actions.onGoToShow(episode.showId) }
-                        context != null && from != null -> Modifier.clickable { actions.onOpenContext(context) }
+                        episode != null ->
+                            Modifier
+                                .focusRing(LinkShape, playerContent())
+                                .clickable { actions.onGoToShow(episode.showId) }
+
+                        context != null && from != null ->
+                            Modifier
+                                .focusRing(LinkShape, playerContent())
+                                .clickable { actions.onOpenContext(context) }
+
                         else -> Modifier
                     },
                 ),
@@ -318,7 +332,13 @@ private fun TitleBlock(title: String, artist: String, onArtist: (() -> Unit)?) {
             style = MaterialTheme.typography.titleLarge,
             modifier = Modifier
                 .alpha(SUBTITLE_ALPHA)
-                .then(if (onArtist != null) Modifier.clickable(onClick = onArtist) else Modifier),
+                .then(
+                    if (onArtist != null) {
+                        Modifier.focusRing(LinkShape, playerContent()).clickable(onClick = onArtist)
+                    } else {
+                        Modifier
+                    },
+                ),
         )
     }
 }
@@ -359,6 +379,7 @@ internal fun TrackTransport(
     compact: Boolean,
     isLiked: Boolean?,
     trailing: (@Composable () -> Unit)? = null,
+    playFocus: FocusRequester? = null,
 ) {
     PlaybackControls(
         playing = state.isPlaying,
@@ -368,6 +389,7 @@ internal fun TrackTransport(
         onNext = actions.onNext,
         labels = transportLabels(R.string.player_previous, R.string.player_next),
         compact = compact,
+        playModifier = playFocus?.let { Modifier.focusRequester(it) } ?: Modifier,
     )
     val toggles = buildList {
         add(
@@ -421,7 +443,12 @@ internal fun TrackTransport(
 
 /** An episode: 10 s back, play, 30 s forward, and its speed — no shuffle, repeat or like. */
 @Composable
-private fun EpisodeTransport(state: PlayerState, actions: NowPlayingActions, compact: Boolean) {
+private fun EpisodeTransport(
+    state: PlayerState,
+    actions: NowPlayingActions,
+    compact: Boolean,
+    playFocus: FocusRequester? = null,
+) {
     PlaybackControls(
         playing = state.isPlaying,
         buffering = state.isBuffering,
@@ -432,6 +459,7 @@ private fun EpisodeTransport(state: PlayerState, actions: NowPlayingActions, com
         compact = compact,
         previousIcon = DowntifyIcons.SkipBack,
         nextIcon = DowntifyIcons.SkipForward,
+        playModifier = playFocus?.let { Modifier.focusRequester(it) } ?: Modifier,
     )
     val speedText = speedLabel(state.speed)
     val speedDescription = stringResource(R.string.player_speed, speedText)
@@ -597,6 +625,9 @@ internal fun playerContent(): Color = MaterialTheme.colorScheme.onPrimaryContain
 
 private val COMPACT_HEIGHT = 720.dp
 private val MAX_COVER = 420.dp
+
+// The ring a remote's focus draws around a text that is a link (where it plays from, the artist).
+private val LinkShape = RoundedCornerShape(12.dp)
 private const val TOGGLES_WIDTH = 0.82f
 private const val TINT_ALPHA = 0.12f
 private const val MUTED_ALPHA = 0.72f

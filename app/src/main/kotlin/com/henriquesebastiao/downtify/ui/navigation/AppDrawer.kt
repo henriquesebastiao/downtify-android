@@ -17,14 +17,21 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.henriquesebastiao.downtify.R
 import com.henriquesebastiao.downtify.core.designsystem.component.DowntifyLogo
 import com.henriquesebastiao.downtify.core.designsystem.component.PhonePreviews
+import com.henriquesebastiao.downtify.core.designsystem.component.focusTrap
+import com.henriquesebastiao.downtify.core.designsystem.component.requestFocusWhenPlaced
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyShape
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyTheme
 import com.henriquesebastiao.downtify.core.designsystem.theme.Spacing
@@ -34,6 +41,9 @@ import com.henriquesebastiao.downtify.core.designsystem.theme.Spacing
  * player too) with the destinations that don't need a tab ([DrawerDestination]). It opens only
  * from Home's menu button, since a swipe from the edge would fight the system's back gesture;
  * once open, a swipe, the scrim or (predictive) back closes it.
+ *
+ * With a TV remote, focus goes into the menu as it opens and stays there until it closes; closed,
+ * its items (laid out off screen) can't take focus, so moving left off the rail doesn't find them.
  */
 @Composable
 fun AppDrawer(
@@ -61,7 +71,14 @@ private fun AppDrawerSheet(
     onSelect: (DrawerDestination) -> Unit,
     destinations: List<DrawerDestination>,
 ) {
-    ModalDrawerSheet(drawerState = drawerState, drawerShape = DowntifyShape.Drawer) {
+    val open = drawerState.isOpen
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(open) { if (open) focus.requestFocusWhenPlaced() }
+    ModalDrawerSheet(
+        drawerState = drawerState,
+        drawerShape = DowntifyShape.Drawer,
+        modifier = Modifier.focusRequester(focus).focusTrap(open),
+    ) {
         Row(
             Modifier.padding(start = HEADER_INSET, end = Spacing.xl, top = Spacing.xl, bottom = Spacing.lg),
             verticalAlignment = Alignment.CenterVertically,
@@ -82,7 +99,9 @@ private fun AppDrawerSheet(
                         contentDescription = null,
                     )
                 },
-                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+                modifier = Modifier
+                    .padding(NavigationDrawerItemDefaults.ItemPadding)
+                    .focusProperties { canFocus = open },
             )
         }
     }

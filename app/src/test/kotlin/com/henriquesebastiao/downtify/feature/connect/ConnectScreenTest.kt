@@ -51,6 +51,7 @@ class ConnectScreenTest {
         onUsePairingCode: () -> Unit = {},
         onUsePassword: () -> Unit = {},
         onPair: () -> Unit = {},
+        canScan: Boolean = true,
     ) = compose.setContent {
         DowntifyTheme {
             ConnectScreen(
@@ -69,6 +70,7 @@ class ConnectScreenTest {
                 onPair = onPair,
                 onBackToAddress = {},
                 onScan = {},
+                canScan = canScan,
             )
         }
     }
@@ -147,6 +149,27 @@ class ConnectScreenTest {
         show(ConnectUiState(step = ConnectStep.Pair(base, signInInfo)), onUsePassword = { usedPassword = true })
         compose.onNodeWithText("Sign in with your password instead").performClick()
         assertTrue(usedPassword)
+    }
+
+    @Test
+    fun withACameraBothStepsOfferTheQrCode() {
+        show(ConnectUiState(searching = false))
+        compose.onNodeWithText("Scan a pairing QR code").assertExists()
+    }
+
+    @Test
+    fun withoutACameraTheAddressStepOffersNoScan() {
+        // A TV: nothing to scan with, so no button that would open a camera.
+        show(ConnectUiState(searching = false), canScan = false)
+        compose.onNodeWithText("Scan a pairing QR code").assertDoesNotExist()
+        compose.onNodeWithText("Server address").assertExists()
+    }
+
+    @Test
+    fun withoutACameraTheCodeIsTyped() {
+        show(ConnectUiState(step = ConnectStep.Pair(base, info)), canScan = false)
+        compose.onNodeWithText("Scan the QR code").assertDoesNotExist()
+        compose.onNodeWithText("Pairing code").assertExists()
     }
 
     @Test

@@ -22,7 +22,8 @@ import com.henriquesebastiao.downtify.ui.common.PreviewData
  * opens Now Playing. Its buttons are the transport only, as on Now Playing: previous, play/pause
  * and next, or an episode's skips back and forward. Saving a stream to the server lives on Now
  * Playing. [attached] joins it to the floating bar right under it. [modifier] is the card's (the
- * caller sets its margins), [coverModifier] its cover's.
+ * caller sets its margins), [coverModifier] its cover's, [playButtonModifier] play/pause's (where a
+ * TV remote's focus goes back to when Now Playing closes).
  */
 @Composable
 fun MiniPlayer(
@@ -36,6 +37,7 @@ fun MiniPlayer(
     onSkipForward: () -> Unit = {},
     attached: Boolean = false,
     coverModifier: Modifier = Modifier,
+    playButtonModifier: Modifier = Modifier,
 ) {
     val track = state.track
     val episode = state.episode
@@ -62,6 +64,7 @@ fun MiniPlayer(
                 if (state.isPlaying) DowntifyIcons.Pause else DowntifyIcons.Play,
                 stringResource(if (state.isPlaying) R.string.player_pause else R.string.player_play),
                 onTogglePlay,
+                modifier = playButtonModifier,
                 main = true,
                 playing = state.isPlaying,
                 buffering = state.isBuffering,

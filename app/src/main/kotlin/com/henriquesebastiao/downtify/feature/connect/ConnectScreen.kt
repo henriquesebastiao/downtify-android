@@ -135,6 +135,8 @@ fun ConnectRoute(
             ContextCompat.checkSelfPermission(context, ACCESS_LOCAL_NETWORK) != PackageManager.PERMISSION_GRANTED
         if (needed) localNetwork.launch(ACCESS_LOCAL_NETWORK) else viewModel.startDiscovery()
     }
+    // A TV (Fire TV, Android TV) has no camera: there the code is typed, and the scan button goes.
+    val canScan = remember { context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY) }
     val cameraPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         permissionDenied = !granted
         if (granted) viewModel.startScan()
@@ -155,6 +157,7 @@ fun ConnectRoute(
 
     ConnectScreen(
         state = state,
+        canScan = canScan,
         permissionDenied = permissionDenied,
         localNetworkDenied = localNetworkDenied,
         onAddressChange = viewModel::onAddressChange,
@@ -195,7 +198,8 @@ fun ConnectRoute(
  * as onboarding: a big title, a picture of the step, the form, and a footer whose 96 dp button
  * connects, signs in or pairs. Each step fits the screen without scrolling: the picture takes the
  * room the rest leaves and goes when there's too little, and while typing the other ways in step
- * aside. It rises with the keyboard, so the action is in reach while typing.
+ * aside. It rises with the keyboard, so the action is in reach while typing. Without a camera
+ * ([canScan] false: a TV) there is no QR code to scan, only the typed code.
  */
 @Composable
 fun ConnectScreen(
@@ -213,6 +217,7 @@ fun ConnectScreen(
     onBackToAddress: () -> Unit,
     onScan: () -> Unit,
     modifier: Modifier = Modifier,
+    canScan: Boolean = true,
     permissionDenied: Boolean = false,
     localNetworkDenied: Boolean = false,
     onSelectClientCertificate: () -> Unit = {},
@@ -244,7 +249,7 @@ fun ConnectScreen(
                                 onAddressChange = onAddressChange,
                                 onPickDiscovered = onPickDiscovered,
                                 onConnect = onConnect,
-                                onScan = onScan,
+                                onScan = onScan.takeIf { canScan },
                                 permissionDenied = permissionDenied,
                                 localNetworkDenied = localNetworkDenied,
                                 onSelectClientCertificate = onSelectClientCertificate,
@@ -270,7 +275,7 @@ fun ConnectScreen(
                                 onPair,
                                 onUsePassword,
                                 onBackToAddress,
-                                onScan,
+                                onScan.takeIf { canScan },
                                 permissionDenied,
                             )
                     }
@@ -311,7 +316,7 @@ private fun AddressStep(
     onAddressChange: (String) -> Unit,
     onPickDiscovered: (DiscoveredServer) -> Unit,
     onConnect: () -> Unit,
-    onScan: () -> Unit,
+    onScan: (() -> Unit)?,
     permissionDenied: Boolean,
     localNetworkDenied: Boolean,
     onSelectClientCertificate: () -> Unit,
@@ -384,7 +389,7 @@ private fun AddressStep(
             }
             // While typing an address, scanning isn't what's wanted: the room goes to the field.
             if (!typing) {
-                ScanButton(stringResource(R.string.connect_scan), onScan, state.busy)
+                if (onScan != null) ScanButton(stringResource(R.string.connect_scan), onScan, state.busy)
                 if (permissionDenied) Notice(stringResource(R.string.scan_permission_denied), DowntifyIcons.Warning)
                 if (state.error == ConnectError.NotAPairingCode || state.error == ConnectError.OtherServer) {
                     Notice(errorText(state.error).orEmpty(), DowntifyIcons.Error, error = true)
@@ -552,7 +557,7 @@ private fun PairStep(
     onPair: () -> Unit,
     onUsePassword: () -> Unit,
     onBackToAddress: () -> Unit,
-    onScan: () -> Unit,
+    onScan: (() -> Unit)?,
     permissionDenied: Boolean,
 ) {
     val canUsePassword = step.info.capabilities.passwordSignIn
@@ -599,7 +604,7 @@ private fun PairStep(
                 modifier = Modifier.fillMaxWidth(),
             )
             if (!typing) {
-                ScanButton(stringResource(R.string.pair_scan), onScan, state.busy)
+                if (onScan != null) ScanButton(stringResource(R.string.pair_scan), onScan, state.busy)
                 if (permissionDenied) Notice(stringResource(R.string.scan_permission_denied), DowntifyIcons.Warning)
                 // Two text buttons, one under the other: their 48 dp touch targets are the gap.
                 Column {

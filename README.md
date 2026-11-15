@@ -33,6 +33,12 @@ This is an Android Auto installation-source requirement; signing an APK or chang
 
 Opening the library does not start music. Android Auto/your receiver chooses the last media source and requests playback; Downtify does not force itself over another player. See [Android Auto setup, troubleshooting and validation](docs/android-auto.md) for missing apps, resumption and tests.
 
+## Android TV and Fire TV
+
+The same APK installs on Android TV, Google TV and Amazon Fire TV (Fire OS 7 or newer; Fire OS 6 is Android 7.1, below the app's Android 8), where it shows in the launcher with its own banner. It is driven by the remote: the D-pad moves a ring from button to row, OK picks, Back goes back. Opening Now Playing puts the focus on play/pause and keeps it there until Now Playing closes; the queue, the lyrics and the side menu do the same. To reorder the queue, focus a song's handle, press OK to pick it up, move it with up and down, and press OK to put it down (Back puts it back). A TV has no camera, so it pairs with the 8-character code typed on the screen keyboard, or with the account's password.
+
+On a TV the app has an interface of its own, after the TV music apps, over the same data and player as the phone: a top bar with what's playing on the left (OK opens the player, full screen), Home, Search and Library in the middle and Settings on the right; the library as a wide grid of covers (round for artists) with its sections as pills, the focused row scrolling to the top; the focus drawn as a ring a little away from what it surrounds, along its shape. Home, Search and the album, artist and playlist pages are still the phone's screens inside that bar, until they get TV versions of their own. Phones and tablets keep their layout.
+
 ## Languages, fonts and theme
 
 - **Languages:** the same eight as the Downtify web app — Bulgarian, English, French, Greek, Hungarian, Portuguese (Brazil), Spanish and Turkish. The app follows the phone's language and falls back to English when it isn't one of these. On Android 13+ the language can also be set per app (**Settings › Appearance › Language** opens Android's own screen for it).
