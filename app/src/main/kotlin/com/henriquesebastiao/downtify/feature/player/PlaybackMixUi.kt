@@ -63,6 +63,7 @@ internal fun LocalDjFeedback(readiness: LocalDjReadiness, onRetry: () -> Unit, o
             DjLocalProblem.Network -> R.string.music_dj_profiles_network
             DjLocalProblem.InvalidResponse -> R.string.music_dj_profiles_invalid
             DjLocalProblem.UnsupportedPlayback -> R.string.music_dj_profiles_speed
+            DjLocalProblem.UnsupportedQueue -> R.string.music_dj_profiles_queue
             DjLocalProblem.MissingAnalysis, DjLocalProblem.StaleAnalysis, DjLocalProblem.UnreliableAnalysis ->
                 R.string.music_dj_profiles_missing
             null -> null

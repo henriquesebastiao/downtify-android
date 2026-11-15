@@ -599,4 +599,5 @@
     <string name="music_dj_profiles_missing">Analyses rythmiques vérifiées manquantes ou inadaptées. La lecture continue ; essayez le moteur serveur.</string>
     <string name="music_dj_profiles_retry">Vérifier à nouveau</string>
     <string name="music_dj_profiles_server">Utiliser le DJ serveur</string>
+    <string name="music_dj_profiles_queue">Le DJ sur cet appareil exige au moins deux titres locaux, sans aléatoire ni répétition du titre. La lecture continue ; utilisez le DJ serveur ou adaptez la file.</string>
 </resources>

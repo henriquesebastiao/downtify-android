@@ -584,4 +584,5 @@
     <string name="music_dj_profiles_missing">Липсват проверени ритмични анализи или са неподходящи. Възпроизвеждането продължава; опитайте сървърния двигател.</string>
     <string name="music_dj_profiles_retry">Проверка отново</string>
     <string name="music_dj_profiles_server">Използване на сървърен DJ</string>
+    <string name="music_dj_profiles_queue">DJ на устройството изисква поне две локални песни, без разбъркване и повторение на песента. Възпроизвеждането продължава; използвайте сървърен DJ или променете опашката.</string>
 </resources>

@@ -592,4 +592,5 @@
     <string name="music_dj_profiles_missing">Verified rhythmic analyses are missing or unsuitable. Normal playback continues; try the server engine.</string>
     <string name="music_dj_profiles_retry">Check again</string>
     <string name="music_dj_profiles_server">Use server DJ</string>
+    <string name="music_dj_profiles_queue">Device DJ beta requires at least two local tracks, with shuffle and repeat-one off. Normal playback continues; use server DJ or change the queue.</string>
 </resources>

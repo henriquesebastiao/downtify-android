@@ -584,4 +584,5 @@
     <string name="music_dj_profiles_missing">Λείπουν κατάλληλες επαληθευμένες ρυθμικές αναλύσεις. Η αναπαραγωγή συνεχίζεται· δοκιμάστε τη μηχανή διακομιστή.</string>
     <string name="music_dj_profiles_retry">Έλεγχος ξανά</string>
     <string name="music_dj_profiles_server">Χρήση DJ διακομιστή</string>
+    <string name="music_dj_profiles_queue">Το DJ συσκευής απαιτεί τουλάχιστον δύο τοπικά κομμάτια, χωρίς τυχαία σειρά ή επανάληψη κομματιού. Η αναπαραγωγή συνεχίζεται· χρησιμοποιήστε το DJ διακομιστή ή αλλάξτε την ουρά.</string>
 </resources>

@@ -1,5 +1,7 @@
 package com.henriquesebastiao.downtify.core.player
 
+import com.henriquesebastiao.downtify.core.model.DjLocalProblem
+
 /** Occurrence indices survive duplicate IDs; position ticks are deliberately not request keys. */
 internal data class LocalDjWindow(
     val generation: Long,
@@ -11,6 +13,15 @@ internal data class LocalDjWindow(
     val speed: Float,
     val pitch: Float,
 )
+
+/** Native shuffled timelines and repeat-one are not reproduced by the beta's second deck. */
+internal fun localDjWindowProblem(window: LocalDjWindow, protocol: Int, sourcesPresent: Boolean): DjLocalProblem? = when {
+    protocol != 1 -> DjLocalProblem.Unsupported
+    window.shuffled || window.repeatOne || window.ids.size < 2 -> DjLocalProblem.UnsupportedQueue
+    !sourcesPresent -> DjLocalProblem.MissingAnalysis
+    window.speed != 1f || window.pitch != 1f -> DjLocalProblem.UnsupportedPlayback
+    else -> null
+}
 
 internal fun localDjWindowIndices(count: Int, current: Int, repeatAll: Boolean): List<Int> {
     if (current !in 0 until count) return emptyList()

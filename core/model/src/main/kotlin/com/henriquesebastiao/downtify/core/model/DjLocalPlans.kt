@@ -20,7 +20,7 @@ data class DjLocalPlan(
 
 data class DjLocalPlans(val revision: String, val analysisModel: String, val tracks: List<DjLocalTrack>, val plans: List<DjLocalPlan>)
 
-enum class DjLocalProblem { Unsupported, Disabled, Network, MissingAnalysis, StaleAnalysis, UnreliableAnalysis, InvalidResponse, UnsupportedPlayback }
+enum class DjLocalProblem { Unsupported, Disabled, Network, MissingAnalysis, StaleAnalysis, UnreliableAnalysis, InvalidResponse, UnsupportedPlayback, UnsupportedQueue }
 
 sealed interface DjLocalResult {
     data class Available(val value: DjLocalPlans) : DjLocalResult

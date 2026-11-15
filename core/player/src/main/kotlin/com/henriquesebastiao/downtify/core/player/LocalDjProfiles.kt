@@ -96,13 +96,7 @@ internal class LocalDjProfiles(
         previous = window
         sources = cohort
         transitionMs = request.activation.milliseconds
-        val unavailable = when {
-            request.protocol != 1 -> DjLocalProblem.Unsupported
-            window.shuffled || window.repeatOne || window.ids.size < 2 || request.sources.any { it == null } ->
-                DjLocalProblem.MissingAnalysis
-            window.speed != 1f || window.pitch != 1f -> DjLocalProblem.UnsupportedPlayback
-            else -> null
-        }
+        val unavailable = localDjWindowProblem(window, request.protocol, request.sources.all { it != null })
         if (unavailable != null) {
             player.clearEvidence()
             settings.publishReadiness(LocalDjReadiness(problem = unavailable))
