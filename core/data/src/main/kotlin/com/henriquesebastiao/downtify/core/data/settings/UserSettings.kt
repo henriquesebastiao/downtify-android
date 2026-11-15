@@ -4,6 +4,7 @@ import com.henriquesebastiao.downtify.core.model.AppFont
 import com.henriquesebastiao.downtify.core.model.NormalizationLevel
 import com.henriquesebastiao.downtify.core.model.OfflinePlanner
 import com.henriquesebastiao.downtify.core.model.ReadAheadPolicy
+import com.henriquesebastiao.downtify.core.model.SavedSleepTimer
 import com.henriquesebastiao.downtify.core.model.StreamQuality
 
 enum class ThemeMode { System, Dark, Light }
@@ -44,6 +45,11 @@ data class UserSettings(
     /** Persisted SAF tree for offline media, or null for Android/media/<package>. */
     val offlineDirectoryUri: String? = null,
     val readAhead: ReadAheadPolicy = ReadAheadPolicy(),
+    /**
+     * The sleep timer running when playback last changed, so a service Android stopped comes back
+     * counting rather than silently without it. Null when there is none.
+     */
+    val sleepTimer: SavedSleepTimer? = null,
 ) {
     companion object {
         const val DEFAULT_OFFLINE_LIMIT = 8_000_000_000L

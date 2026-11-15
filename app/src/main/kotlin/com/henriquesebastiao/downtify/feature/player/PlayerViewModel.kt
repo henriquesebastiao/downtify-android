@@ -11,6 +11,7 @@ import com.henriquesebastiao.downtify.core.model.PlaybackSpeeds
 import com.henriquesebastiao.downtify.core.model.RemoteSong
 import com.henriquesebastiao.downtify.core.model.ServerJob
 import com.henriquesebastiao.downtify.core.model.ServerJobStatus
+import com.henriquesebastiao.downtify.core.model.SleepTimerMode
 import com.henriquesebastiao.downtify.core.model.Track
 import com.henriquesebastiao.downtify.core.network.CatalogJson
 import com.henriquesebastiao.downtify.core.player.PlayerController
@@ -112,6 +113,15 @@ class PlayerViewModel @Inject constructor(
     fun clearQueued() = player.clearQueued()
     fun moveInQueue(from: Int, after: Int, queued: Boolean) = player.moveInQueue(from, after, queued)
     fun dismissError() = player.dismissError()
+
+    /** Sets (or replaces) the sleep timer; it runs in the service, so it outlives the app. */
+    fun setSleepTimer(mode: SleepTimerMode) = player.setSleepTimer(mode)
+
+    /** Turns the sleep timer off and gives the volume back. */
+    fun cancelSleepTimer() = player.cancelSleepTimer()
+
+    /** Adds minutes to a running sleep timer. */
+    fun extendSleepTimer(minutes: Int) = player.extendSleepTimer(minutes)
 
     fun toggleLike() {
         val id = state.value.track?.id ?: streamTrack.value?.id ?: return

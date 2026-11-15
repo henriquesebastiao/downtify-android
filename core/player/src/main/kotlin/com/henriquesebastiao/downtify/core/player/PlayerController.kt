@@ -22,6 +22,7 @@ import com.henriquesebastiao.downtify.core.model.PlaybackContext
 import com.henriquesebastiao.downtify.core.model.PodcastEpisode
 import com.henriquesebastiao.downtify.core.model.PodcastShow
 import com.henriquesebastiao.downtify.core.model.RemoteSong
+import com.henriquesebastiao.downtify.core.model.SleepTimerMode
 import com.henriquesebastiao.downtify.core.model.Track
 import com.henriquesebastiao.downtify.core.network.session.SessionStore
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -65,6 +66,7 @@ class PlayerController @Inject constructor(
     private val sessions: SessionStore,
     private val resolver: StreamResolver,
     private val readAhead: ReadAheadBuffer,
+    private val sleepTimer: SleepTimerController,
     @ApplicationScope scope: CoroutineScope,
 ) {
     private val main = CoroutineScope(scope.coroutineContext + Dispatchers.Main.immediate)
@@ -115,6 +117,10 @@ class PlayerController @Inject constructor(
             readAhead.state.collect { status ->
                 mutableState.update { it.copy(readAheadReady = status.ready, readAheadTarget = status.target) }
             }
+        }
+        // The timer runs in the service; its countdown reaches the UI through the player state.
+        main.launch {
+            sleepTimer.state.collect { timer -> mutableState.update { it.copy(sleepTimer = timer) } }
         }
         // Library changes (a sync) can fill in details of the playing track.
         main.launch { library.library.collect { refresh() } }
@@ -308,6 +314,15 @@ class PlayerController @Inject constructor(
     }
 
     fun dismissError() = mutableState.update { it.copy(error = null) }
+
+    /** Sets (or replaces) the sleep timer; it runs in the service, so it outlives this app. */
+    fun setSleepTimer(mode: SleepTimerMode) = sleepTimer.start(mode)
+
+    /** Turns the sleep timer off and gives the volume back. */
+    fun cancelSleepTimer() = sleepTimer.cancel()
+
+    /** Adds minutes to a running sleep timer. */
+    fun extendSleepTimer(minutes: Int) = sleepTimer.extend(minutes)
 
     private fun command(block: (MediaController) -> Unit) {
         main.launch { block(connect()) }

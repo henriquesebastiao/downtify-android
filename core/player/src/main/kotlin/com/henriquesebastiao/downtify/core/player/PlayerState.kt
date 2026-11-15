@@ -1,6 +1,7 @@
 package com.henriquesebastiao.downtify.core.player
 
 import com.henriquesebastiao.downtify.core.model.PlaybackContext
+import com.henriquesebastiao.downtify.core.model.SleepTimerState
 import com.henriquesebastiao.downtify.core.model.StreamQuality
 import com.henriquesebastiao.downtify.core.model.Track
 
@@ -73,6 +74,8 @@ data class PlayerState(
     val fromPhone: Boolean = false,
     /** The last playback error, for a message; cleared by the next track. */
     val error: PlaybackError? = null,
+    /** The sleep timer, when one is set: it runs in the service, not here. */
+    val sleepTimer: SleepTimerState = SleepTimerState.Inactive,
 ) {
     val hasMedia: Boolean get() = track != null || episode != null || stream != null
     val progress: Float get() = if (durationMs > 0) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
