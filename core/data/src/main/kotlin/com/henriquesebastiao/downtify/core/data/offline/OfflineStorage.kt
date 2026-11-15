@@ -21,6 +21,7 @@ class OfflineStorage @Inject constructor(@ApplicationContext private val context
             MediaScannerConnection.scanFile(context, arrayOf(file.path), null, null)
         },
     )
+
     @Volatile private var treeUri: String? = null
 
     internal constructor(context: Context, root: File) : this(context) {
