@@ -104,6 +104,7 @@ class PlayerViewModel @Inject constructor(
     fun togglePlayPause() = player.togglePlayPause()
     fun next() = player.next()
     fun previous() = player.previous()
+    val returnToClassic: (String) -> Unit = player::exitDj
     fun seekTo(positionMs: Long) = player.seekTo(positionMs)
     fun skipBack() = player.skipBack()
     fun skipForward() = player.skipForward()

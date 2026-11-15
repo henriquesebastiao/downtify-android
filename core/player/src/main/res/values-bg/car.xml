@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="car_for_you">За вас</string>
+    <string name="car_daily_mix">Подборка за деня</string>
+    <string name="car_most_played_playlist">Най-слушан плейлист</string>
+    <string name="car_playlist_pick">Вашият плейлист</string>
     <string name="car_library">Библиотека</string>
     <string name="car_playlists">Плейлисти</string>
     <string name="car_favorites">Любими</string>

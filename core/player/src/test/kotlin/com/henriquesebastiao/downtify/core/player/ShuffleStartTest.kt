@@ -50,6 +50,21 @@ class ShuffleStartTest {
         }
     }
 
+    @Test fun `shuffle toggle keeps current song and full queue`() = kotlinx.coroutines.test.runTest {
+        repeat(10) {
+            val player = LocalDjPlayer(player(), player(), this)
+            try {
+                player.setMediaItems((0 until 130).map { item("t$it") }, 70, 12_000)
+                player.shuffleModeEnabled = true
+                assertEquals(70, player.currentMediaItemIndex)
+                assertEquals(12_000L, player.currentPosition)
+                assertEquals(130, PlayOrder.fromCurrent(player).size)
+            } finally {
+                player.release()
+            }
+        }
+    }
+
     @Test fun `a shuffled queue keeps duplicate occurrences as separate items`() {
         val player = player()
         try {

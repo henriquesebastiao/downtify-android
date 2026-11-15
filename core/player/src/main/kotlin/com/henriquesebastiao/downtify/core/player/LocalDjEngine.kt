@@ -16,6 +16,9 @@ internal class LocalDjEngine(first: Player, second: Player, private val onDomina
         private set
     private val standby get() = decks.first { it !== active }
     private var analyses = emptyMap<String, LocalDjAnalysis>()
+
+    /** Local crossfade length, in milliseconds: the user's setting (1-12 s, 5 s by default). */
+    var transitionMs: Long = LocalDjPlan.DEFAULT_TRANSITION_MS
     private var generation = 0L
     private var armed: Armed? = null
     private var blend: Blend? = null
@@ -149,7 +152,12 @@ internal class LocalDjEngine(first: Player, second: Player, private val onDomina
         val incoming = standby
         val current = active.currentMediaItem ?: return
         val next = active.getMediaItemAt(index)
-        val plan = LocalDjPlan.create(active.duration, analyses[current.mediaId], analyses[next.mediaId])
+        val plan = LocalDjPlan.create(
+            active.duration,
+            analyses[current.mediaId],
+            analyses[next.mediaId],
+            transitionMs,
+        )
         incoming.pause()
         incoming.volume = 0f
         incoming.repeatMode = active.repeatMode

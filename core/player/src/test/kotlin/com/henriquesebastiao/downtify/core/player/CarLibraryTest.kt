@@ -3,8 +3,10 @@ package com.henriquesebastiao.downtify.core.player
 import com.henriquesebastiao.downtify.core.data.library.LibrarySnapshot
 import com.henriquesebastiao.downtify.core.model.Playlist
 import com.henriquesebastiao.downtify.core.model.Track
+import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -112,6 +114,77 @@ class CarLibraryTest {
         assertEquals(10_000, playback.first.size)
         assertEquals(5_432, playback.second)
         assertEquals(tracks, playback.first)
+    }
+
+    @Test fun `ten visible occurrences resolve the full 300 or 1000 item playlist`() {
+        for (count in listOf(300, 1_000)) {
+            val ids = List(count) { if (it % 11 == 0) "a" else "b" }
+            val index = catalog(listOf(Playlist("Long", false, "", ids)))
+            val playlist = index.children(CarLibrary.PLAYLISTS)!!.single()
+            fun rows(parent: String): List<CarLibrary.Entry> = index.children(parent)!!.flatMap {
+                if (it.track == null) rows(it.id) else listOf(it)
+            }
+            val page = rows(playlist.id).subList(120, 130).map { it.id }
+            val playback = requireNotNull(index.playbackPage(page, 7))
+            assertEquals(count, playback.first.size)
+            assertEquals(ids, playback.first.map { it.id })
+            assertEquals(127, playback.second)
+        }
+    }
+
+    @Test fun `plain IDs noncontiguous and mixed collection selections keep their explicit queue`() {
+        val index = catalog(listOf(Playlist("Long", false, "", listOf("a", "b", "a"))), likes = listOf("a", "b"))
+        val playlist = index.children(CarLibrary.PLAYLISTS)!!.single()
+        val rows = index.children(playlist.id)!!
+        assertNull(index.playbackPage(listOf("a", "b"), 0))
+        assertNull(index.playbackPage(listOf(rows[0].id, rows[2].id), 0))
+        assertNull(index.playbackPage(listOf(rows[0].id, index.children(CarLibrary.FAVORITES)!![1].id), 0))
+    }
+
+    @Test fun `suggestions open complete collections and rank qualified playlist listens`() {
+        val index = catalog(
+            listOf(
+                Playlist("New", false, "", listOf("a"), favorite = true),
+                Playlist(
+                    "Played",
+                    false,
+                    "",
+                    List(300) {
+                        "b"
+                    },
+                ),
+            ),
+            likes = listOf("a", "b", "a"),
+        )
+        val choices = index.recommendations(LocalDate.of(2026, 11, 12), mapOf("Played" to 7, "New" to 1))
+        assertEquals(listOf("likes", "most_played", "daily"), choices.map { it.suggestion })
+        assertEquals(3, index.playback(choices[0].id)!!.first.size)
+        assertEquals("Played", choices[1].title)
+        assertEquals(300, index.playback(choices[1].id)!!.first.size)
+        assertEquals("Played", index.context(choices[1].id)?.refId)
+    }
+
+    @Test fun `daily selection is stable all day and renews without a catalog rescan`() {
+        val tracks = List(100) { track("id$it", "Track %03d".format(it), "Artist", "Album") }
+        val index = CarLibrary(LibrarySnapshot(tracks), emptyList(), emptyList(), emptySet())
+        val day = LocalDate.of(2026, 11, 12)
+        val first = index.recommendations(day, emptyMap()).single()
+        val same = index.recommendations(day, emptyMap()).single()
+        val tomorrow = index.recommendations(day.plusDays(1), emptyMap()).single()
+        assertEquals(first, same)
+        val queue = index.playback(first.id)!!.first
+        assertEquals(25, queue.size)
+        assertEquals(25, queue.map { it.id }.distinct().size)
+        assertNotEquals(queue, index.playback(tomorrow.id)!!.first)
+    }
+
+    @Test fun `suggestions do not invent listening history or keep revoked collections`() {
+        val index = catalog(listOf(Playlist("List", false, "", listOf("a"))))
+        val choice = index.recommendations(LocalDate.of(2026, 11, 12), emptyMap()).first()
+        assertEquals("playlist", choice.suggestion)
+        val empty = CarLibrary(LibrarySnapshot.Empty, emptyList(), emptyList(), emptySet())
+        assertTrue(empty.recommendations(LocalDate.of(2026, 11, 12), emptyMap()).isEmpty())
+        assertNull(empty.playback(choice.id))
     }
 
     private fun track(id: String, title: String, artist: String, album: String) = Track(

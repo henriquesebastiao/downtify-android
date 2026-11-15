@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="car_for_you">Για εσάς</string>
+    <string name="car_daily_mix">Επιλογή της ημέρας</string>
+    <string name="car_most_played_playlist">Λίστα με τις περισσότερες ακροάσεις</string>
+    <string name="car_playlist_pick">Η λίστα σας</string>
     <string name="car_library">Βιβλιοθήκη</string>
     <string name="car_playlists">Λίστες αναπαραγωγής</string>
     <string name="car_favorites">Αγαπημένα</string>

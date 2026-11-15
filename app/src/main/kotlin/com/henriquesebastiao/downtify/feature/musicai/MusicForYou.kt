@@ -41,6 +41,10 @@ internal val moodNames = mapOf(
     "fete" to "Fête",
     "melancolie" to "Mélancolie",
     "detente" to "Détente",
+    "rap" to "Rap & Hip-Hop",
+    "rock" to "Rock",
+    "electro" to "Électro",
+    "pop" to "Pop",
 )
 internal val moodColors = mapOf(
     "calme" to Color(0xFF4F46E5),
@@ -49,6 +53,10 @@ internal val moodColors = mapOf(
     "fete" to Color(0xFFA21CAF),
     "melancolie" to Color(0xFF1D4ED8),
     "detente" to Color(0xFF0F766E),
+    "rap" to Color(0xFF854D0E),
+    "rock" to Color(0xFFB91C1C),
+    "electro" to Color(0xFF0369A1),
+    "pop" to Color(0xFFBE185D),
 )
 internal fun mixTitle(cadence: String, mood: String) =
     "${if (cadence == "daily") "Mix du jour" else "Mix de la semaine"} · ${moodNames[mood].orEmpty()}"
@@ -64,6 +72,7 @@ data class MusicForYouActions(
     val save: (String) -> Unit = {},
     val settings: () -> Unit = {},
     val clearSelection: () -> Unit = {},
+    val renew: () -> Unit = {},
 )
 
 fun LazyListScope.musicDjThemeItems(
@@ -204,6 +213,13 @@ private fun MusicForYouHeader(state: MusicAiUiState, caps: MusicAiCapabilitiesDt
         Row {
             TextButton(onClick = actions.settings) { Text("Préférences IA") }
             TextButton(onClick = actions.refresh, enabled = !state.busy) { Text("Actualiser") }
+        }
+        if (caps.playlistRefresh && (caps.enabled("daily") || caps.enabled("weekly"))) {
+            TextButton(onClick = actions.renew, enabled = !state.busy) { Text("Renouveler mes mixes") }
+            Text(
+                "Vos favoris et écoutes guident les mixes si la personnalisation est activée. " +
+                    "Les copies enregistrées restent à vous.",
+            )
         }
         if (state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
         if (state.message.isNotBlank()) Text(state.message)

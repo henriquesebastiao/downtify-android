@@ -570,4 +570,8 @@
     <string name="music_dj_device_beta">Este dispositivo · Beta</string>
     <string name="music_dj_local_description">Mezcla la cola actual en este teléfono con fundidos cortos. El análisis rítmico sigue en preparación. No se descarga ningún modelo automáticamente. Faltan pruebas de batería y sonido.</string>
     <string name="music_dj_server_description">El servidor prepara las transiciones. El teléfono reproduce el audio autenticado.</string>
+    <plurals name="player_queue_item_count">
+        <item quantity="one">%1$d elemento</item>
+        <item quantity="other">%1$d elementos</item>
+    </plurals>
 </resources>

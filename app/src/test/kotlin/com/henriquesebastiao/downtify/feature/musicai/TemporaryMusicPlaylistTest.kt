@@ -5,6 +5,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyTheme
 import com.henriquesebastiao.downtify.core.network.dto.MusicAiTrackDto
@@ -15,7 +16,6 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.flow.MutableStateFlow
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -54,10 +54,6 @@ class TemporaryMusicPlaylistTest {
         verify(exactly = 0) { model.save(any()) }
     }
 
-    @Ignore(
-        "Robolectric dialog focus does not become idle; opening/name editing checked on physical Android 17; " +
-            "confirmation still needs instrumentation",
-    )
     @Test
     fun `temporary selection uses native playlist controls and saves its named copy`() {
         val model = mockk<MusicAiViewModel>(relaxed = true)
@@ -81,13 +77,10 @@ class TemporaryMusicPlaylistTest {
         compose.onNodeWithContentDescription("Play $title").assertExists()
         compose.onNodeWithContentDescription("Shuffle").assertExists()
         compose.onNodeWithText("Download").assertDoesNotExist()
-        // Bound dialog/focus animations explicitly under Robolectric.
-        compose.mainClock.autoAdvance = false
         compose.onNodeWithText("Enregistrer en playlist").performClick()
-        compose.mainClock.advanceTimeBy(500)
+        compose.onNodeWithText("Nom de la playlist").performTextReplacement("Ma sélection calme")
         compose.onNodeWithText("Enregistrer", useUnmergedTree = true).performClick()
-        compose.mainClock.advanceTimeBy(500)
-        verify(exactly = 1) { model.save(title) }
+        verify(exactly = 1) { model.save("Ma sélection calme") }
         verify(exactly = 0) { model.playSelection(any(), any()) }
     }
 }

@@ -26,7 +26,7 @@ internal class DjControlTracker(
     private var polling: Job? = null
     private var ticker: Job? = null
     private var latest: com.henriquesebastiao.downtify.core.network.dto.MusicDjSessionDto? = null
-    private var lastMarker: Double? = null
+    private var lastMarker: Long? = null
     private var generation = 0L
     private var terminal = false
     private val commands = Mutex()
@@ -98,7 +98,8 @@ internal class DjControlTracker(
                 val value = latest
                 if (value != null && owner != null) {
                     val position = DjTimeline.position(player, value.mediaOrigin?.times(1000)?.toLong() ?: 0)
-                    val marker = value.timeline.lastOrNull { it.start * 1000 <= position }?.start
+                    val marker = value.timeline.getOrNull(DjTimeline.markerIndex(value.timeline, position))
+                        ?.start?.let(DjTimeline::boundaryMs)
                     if (marker != lastMarker) {
                         lastMarker = marker
                         updateMetadata(value, owner.baseUrl)
@@ -128,7 +129,7 @@ internal class DjControlTracker(
                 }
             }
             val owner = music.session.value
-            if (retired.mode == "interactive") {
+            if (retired.mode == "interactive" || music.capabilities.value.djAssetConsumers) {
                 scope.launch {
                     commands.withLock {
                         if (owner == music.session.value && current != retired) {
@@ -187,6 +188,8 @@ internal class DjControlTracker(
         if (session.timeline.isEmpty()) return
         val position = DjTimeline.position(player, session.mediaOrigin?.times(1000)?.toLong() ?: 0)
         val updated = DjTimeline.metadata(item, session, position, baseUrl)
-        if (updated.mediaMetadata != item.mediaMetadata) player.replaceMediaItem(player.currentMediaItemIndex, updated)
+        // Media3 ignores extras contents in MediaMetadata.equals. DjTimeline already returns
+        // the original object when its plan, occurrence and visible metadata are unchanged.
+        if (updated !== item) player.replaceMediaItem(player.currentMediaItemIndex, updated)
     }
 }

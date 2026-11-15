@@ -24,7 +24,12 @@ import kotlinx.serialization.Serializable
     @SerialName("home_cards") val homeCards: Boolean = false,
     @SerialName("dj_request_cancel") val djRequestCancel: Boolean = false,
     @SerialName("dj_light_status") val djLightStatus: Boolean = false,
+    @SerialName("dj_navigation") val djNavigation: Boolean = false,
     @SerialName("dj_seed_mix") val djSeedMix: Boolean = false,
+    @SerialName("playlist_refresh") val playlistRefresh: Boolean = false,
+    @SerialName("dj_weekly_sets") val djWeeklySets: Boolean = false,
+    @SerialName("dj_asset_copies") val djAssetCopies: Boolean = false,
+    @SerialName("dj_asset_consumers") val djAssetConsumers: Boolean = false,
 ) {
     fun enabled(feature: String) = version == 1 && features[feature] == true
     fun interactiveAvailable() =
@@ -77,3 +82,7 @@ import kotlinx.serialization.Serializable
     val sequence: Int = 0,
     val generation: Int = 0,
 )
+
+@Serializable data class MusicAiRefreshRequestDto(@SerialName("request_id") val requestId: String)
+
+@Serializable data class MusicAiRefreshResultDto(val accepted: Boolean = false, val revision: Int = 0)

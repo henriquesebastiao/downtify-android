@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
@@ -88,6 +89,7 @@ data class QueueActions(
     /** Play the item at `from` right after the item at `after` (player indices); `queued` = "Next in queue". */
     val onMove: (from: Int, after: Int, queued: Boolean) -> Unit = { _, _, _ -> },
     val onToggleDj: () -> Unit = {},
+    val onSelectMixMode: (PlaybackMixMode) -> Unit = {},
 )
 
 data class QueueDjState(
@@ -136,8 +138,17 @@ fun QueueScreen(
             modifier = modifier.fillMaxSize(),
         ) {
             Column(Modifier.fillMaxSize().safeDrawingPadding()) {
-                TopBar(state.context, actions.onClose)
+                TopBar(state.context, state.queueSize, actions.onClose)
                 if (dj.visible || state.dj != null) {
+                    PlaybackMixSelector(
+                        selected = when {
+                            state.dj != null -> PlaybackMixMode.Dj
+                            dj.local && (dj.active || dj.checking) -> PlaybackMixMode.Transitions
+                            dj.active || dj.checking -> PlaybackMixMode.Dj
+                            else -> PlaybackMixMode.Disabled
+                        },
+                        onSelect = actions.onSelectMixMode,
+                    )
                     TextButton(
                         onClick = actions.onToggleDj,
                         enabled = !dj.checking || dj.active || state.dj != null,
@@ -147,10 +158,11 @@ fun QueueScreen(
                             when {
                                 dj.preparing -> "Annuler la préparation DJ"
                                 dj.waiting -> "Annuler le relais DJ"
+                                dj.local && dj.active -> "Désactiver les transitions"
                                 dj.active || state.dj != null -> "Désactiver le mode DJ"
                                 dj.checking -> "Vérification du DJ…"
                                 !dj.ready -> "Vérifier le DJ"
-                                dj.local -> "Activer le DJ sur cet appareil"
+                                dj.local -> "Activer les transitions"
                                 else -> "Activer le DJ sur cette file"
                             },
                         )
@@ -503,7 +515,7 @@ private fun nextFromLabel(context: PlaybackContext?): String {
 }
 
 @Composable
-private fun TopBar(context: PlaybackContext?, onClose: () -> Unit) {
+private fun TopBar(context: PlaybackContext?, queueSize: Int, onClose: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().height(64.dp).padding(horizontal = Spacing.lg),
         verticalAlignment = Alignment.CenterVertically,
@@ -522,7 +534,12 @@ private fun TopBar(context: PlaybackContext?, onClose: () -> Unit) {
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.semantics { heading() },
             )
-            val title = context?.title.orEmpty()
+            val count = if (queueSize > 0) {
+                pluralStringResource(R.plurals.player_queue_item_count, queueSize, queueSize)
+            } else {
+                ""
+            }
+            val title = listOf(context?.title.orEmpty(), count).filter { it.isNotBlank() }.joinToString(" · ")
             if (title.isNotBlank()) {
                 Text(
                     title,

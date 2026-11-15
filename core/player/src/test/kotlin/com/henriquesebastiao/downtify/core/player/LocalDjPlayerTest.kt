@@ -23,6 +23,7 @@ class LocalDjPlayerTest {
         player.prepare()
         player.play()
         val before = (0 until player.mediaItemCount).map { player.currentTimeline.getWindow(it, Timeline.Window()).uid }
+        player.setTransitionMs(1_200)
         player.setEnabled(true)
         player.pulseForTest()
         first.position(8800)

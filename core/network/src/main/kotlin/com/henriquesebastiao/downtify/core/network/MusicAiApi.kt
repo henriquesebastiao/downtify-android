@@ -56,6 +56,11 @@ interface MusicAiApi : MusicDjApi {
     @GET("api/v1/music-ai/playlists")
     suspend fun playlists(): MusicAiPlaylistsDto
 
+    @POST("api/v1/music-ai/playlists/refresh")
+    suspend fun renewPlaylists(
+        @Body request: com.henriquesebastiao.downtify.core.network.dto.MusicAiRefreshRequestDto,
+    ): com.henriquesebastiao.downtify.core.network.dto.MusicAiRefreshResultDto
+
     @POST("api/v1/music-ai/playlists/save")
     suspend fun save(@Body selection: MusicAiSelectionDto): MusicAiSavedDto
 

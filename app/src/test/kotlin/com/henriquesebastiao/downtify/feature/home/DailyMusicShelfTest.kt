@@ -1,6 +1,7 @@
 package com.henriquesebastiao.downtify.feature.home
 
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -40,5 +41,23 @@ class DailyMusicShelfTest {
         assertEquals("daily" to "energie", selected)
         compose.onNodeWithText("Tout voir").performClick()
         assertEquals(1, all)
+    }
+
+    @Test fun `disabled modules keep their playlist cards inactive`() {
+        var opened = false
+        compose.setContent {
+            DowntifyTheme {
+                DailyMusicShelf(
+                    MusicAiUiState(),
+                    MusicAiCapabilitiesDto(version = 1),
+                    onOpen = { _, _ -> opened = true },
+                    onSeeAll = {},
+                )
+            }
+        }
+        listOf("Détente", "Concentration", "Motivation", "Calme").forEach {
+            compose.onNodeWithText(it).assertIsNotEnabled()
+        }
+        assertEquals(false, opened)
     }
 }

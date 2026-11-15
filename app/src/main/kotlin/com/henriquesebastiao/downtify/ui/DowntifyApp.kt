@@ -171,6 +171,18 @@ private fun MainShell() {
                     snackbar.currentSnackbarData?.dismiss()
                     snackbar.showSnackbar(addedToQueue)
                 }
+
+                is PlayerEvent.DjControlFailed -> {
+                    snackbar.currentSnackbarData?.dismiss()
+                    val result = snackbar.showSnackbar(
+                        event.message,
+                        actionLabel = "Retour classique",
+                        withDismissAction = true,
+                    )
+                    if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
+                        player.returnToClassic(event.id)
+                    }
+                }
             }
         }
     }
@@ -356,6 +368,11 @@ private fun AppNavHost(navController: NavHostController, onOpenMenu: () -> Unit)
                     navController.navigate(com.henriquesebastiao.downtify.ui.navigation.ForYouRoute(cadence, mood))
                 },
                 onOpenDj = { navController.navigate(com.henriquesebastiao.downtify.ui.navigation.MusicDjRoute()) },
+                onOpenWeeklyDj = { theme, copy ->
+                    navController.navigate(
+                        com.henriquesebastiao.downtify.ui.navigation.WeeklyDjPlaylistRoute(theme, copy),
+                    )
+                },
             )
         }
         composable<SearchDestination> {
@@ -401,6 +418,19 @@ private fun AppNavHost(navController: NavHostController, onOpenMenu: () -> Unit)
                 },
                 onArtist = toArtist,
                 onAlbum = toAlbum,
+                onOpenWeeklyDj = { theme, copy ->
+                    navController.navigate(
+                        com.henriquesebastiao.downtify.ui.navigation.WeeklyDjPlaylistRoute(theme, copy),
+                    )
+                },
+            )
+        }
+        composable<com.henriquesebastiao.downtify.ui.navigation.WeeklyDjPlaylistRoute> { entry ->
+            val args = entry.toRoute<com.henriquesebastiao.downtify.ui.navigation.WeeklyDjPlaylistRoute>()
+            com.henriquesebastiao.downtify.feature.musicai.WeeklyDjPlaylistRoute(
+                args.theme,
+                args.copyId,
+                navController::popBackStack,
             )
         }
         composable<com.henriquesebastiao.downtify.ui.navigation.MusicDjRoute> { entry ->
@@ -532,6 +562,7 @@ private fun NowPlayingOverlay(
     val djPhase by queueDj.phase.collectAsStateWithLifecycle()
     val djAvailability by queueDj.availability.collectAsStateWithLifecycle()
     val localDjDevice by queueDj.localDevice.collectAsStateWithLifecycle()
+    val localTransition by queueDj.localTransition.collectAsStateWithLifecycle()
     var lyricsOpen by rememberSaveable { mutableStateOf(false) }
     var queueOpen by rememberSaveable { mutableStateOf(false) }
     val open = expansion.expanded
@@ -608,6 +639,7 @@ private fun NowPlayingOverlay(
             NowPlayingScreen(
                 state = state,
                 sleepActive = sleepDeadline != null,
+                sleepDeadline = sleepDeadline,
                 isLiked = isLiked,
                 serverName = serverName,
                 downloadJob = streamJob,
@@ -615,6 +647,13 @@ private fun NowPlayingOverlay(
                 libraryTrack = streamTrack,
                 actions = controls,
                 coverModifier = coverModifier,
+                localTransition = localTransition,
+                mixLabel = when {
+                    state.dj != null -> "DJ actif"
+                    localDjDevice && djArmed -> "Transitions"
+                    djBusy || djArmed -> "DJ en préparation"
+                    else -> ""
+                },
             )
         },
     )
@@ -634,6 +673,7 @@ private fun NowPlayingOverlay(
                 onClearQueued = player::clearQueued,
                 onMove = player::moveInQueue,
                 onToggleDj = queueDj::toggle,
+                onSelectMixMode = queueDj::selectMode,
             ),
             controls = controls,
             dj = com.henriquesebastiao.downtify.feature.player.QueueDjState(

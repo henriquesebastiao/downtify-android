@@ -144,6 +144,52 @@ class CarBrowserTest {
         assertEquals(5000L, result.startPositionMs)
     }
 
+    @Test fun `suggested root returns collections and selecting a card restores its complete playlist`() {
+        val params = LibraryParams.Builder().setSuggested(true).build()
+        val root = browser.onGetLibraryRoot(session, controller, params).get().value!!
+        val choices = browser.onGetChildren(session, controller, root.mediaId, 0, 10, params)
+            .get(5, TimeUnit.SECONDS).value!!
+        assertEquals(3, choices.size)
+        assertTrue(choices.all { it.mediaMetadata.isPlayable == true && it.mediaMetadata.isBrowsable == false })
+        val selected = browser.onSetMediaItems(session, controller, choices.toMutableList(), 1, 0)
+            .get(5, TimeUnit.SECONDS)
+        assertEquals(listOf("b", "a"), selected.mediaItems.map { it.mediaId })
+        assertEquals(0, selected.startIndex)
+    }
+
+    @Test fun `a ten item car page restores all 300 or 1000 playlist occurrences`() {
+        for (count in listOf(300, 1_000)) {
+            val ids = List(count) { if (it % 11 == 0) "a" else "b" }
+            val repository = mockk<LibraryRepository>()
+            every { repository.library } returns MutableStateFlow(snapshot.value)
+            every { repository.playlists } returns MutableStateFlow(listOf(Playlist("Long", false, "", ids)))
+            every { repository.likedIds } returns MutableStateFlow(emptyList())
+            val offline = mockk<OfflineRepository>()
+            every { offline.state } returns MutableStateFlow<OfflineState?>(null)
+            val sessions = mockk<SessionStore>()
+            every { sessions.current } answers { paired.value }
+            every { sessions.session } returns paired
+            coEvery { sessions.ensureLoaded() } returns Unit
+            val artwork = mockk<SessionArtworkCache>()
+            coEvery { artwork.cached(any(), any()) } returns null
+            coEvery { artwork.prepare(any(), any(), any()) } returns null
+            val paged = CarBrowser(RuntimeEnvironment.getApplication(), repository, offline, sessions, artwork, scope)
+            paged.observe(session)
+            val folder = paged.onGetChildren(session, controller, CarLibrary.PLAYLISTS, 0, 10, null)
+                .get(5, TimeUnit.SECONDS).value!!.single()
+            val range = paged.onGetChildren(session, controller, folder.mediaId, 0, 10, null)
+                .get(5, TimeUnit.SECONDS).value!![1]
+            val ten = paged.onGetChildren(session, controller, range.mediaId, 0, 10, null)
+                .get(5, TimeUnit.SECONDS).value!!
+            assertEquals(10, ten.size)
+            val result = paged.onSetMediaItems(session, controller, ten.toMutableList(), 7, 9000)
+                .get(5, TimeUnit.SECONDS)
+            assertEquals(ids, result.mediaItems.map { it.mediaId })
+            assertEquals(107, result.startIndex)
+            assertEquals(9000L, result.startPositionMs)
+        }
+    }
+
     @Test fun `external URI never overrides the catalog audio source`() {
         val forged = MediaItem.Builder().setMediaId("a").setUri("https://untrusted.test/audio").build()
         val result = browser.onSetMediaItems(session, controller, mutableListOf(forged), 0, C.TIME_UNSET)

@@ -17,6 +17,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.henriquesebastiao.downtify.feature.collection.CollectionScreen
 import com.henriquesebastiao.downtify.feature.trash.LocalMoveToTrash
@@ -77,6 +78,7 @@ internal fun TemporaryMusicPlaylist(
     if (showSave) {
         AlertDialog(
             onDismissRequest = { showSave = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false),
             title = { Text("Enregistrer en playlist") },
             text = {
                 Column {

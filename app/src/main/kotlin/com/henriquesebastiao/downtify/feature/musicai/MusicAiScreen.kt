@@ -40,6 +40,7 @@ private val features = linkedMapOf(
     "weekly" to "Mixes de la semaine",
     "external_beta" to "Découverte externe — bêta",
     "dj_prepared" to "Sets DJ préparés",
+    "dj_weekly" to "Sets DJ hebdomadaires personnalisés",
     "dj_interactive" to "DJ en temps réel",
     "dj_trial" to "DJ non qualifié — essai bêta volontaire",
 )
@@ -51,7 +52,9 @@ fun MusicAiRoute(onBack: () -> Unit, viewModel: MusicAiViewModel = hiltViewModel
     val caps by viewModel.capabilities.collectAsStateWithLifecycle()
     var mode by rememberSaveable { mutableStateOf("playlists") }
     var serverExpanded by rememberSaveable { mutableStateOf(false) }
-    val shown = features.filterKeys { it.startsWith("dj_") == (mode == "dj") }
+    val shown = features.filterKeys {
+        it.startsWith("dj_") == (mode == "dj") && (it != "dj_weekly" || caps.djWeeklySets)
+    }
     LaunchedEffect(Unit) { viewModel.refresh() }
     Scaffold(topBar = {
         TopAppBar(title = {

@@ -7,9 +7,11 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.SimpleBasePlayer.State
+import androidx.media3.common.Timeline
 import androidx.media3.common.util.UnstableApi
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import com.henriquesebastiao.downtify.core.model.DjIds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -32,6 +34,10 @@ class LocalDjPlayer(first: Player, second: Player, private val scope: CoroutineS
     private val dominant = kotlinx.coroutines.flow.MutableStateFlow(first)
     val dominantDecoder = dominant.asStateFlow()
     private val occurrenceIds = MutableList(first.mediaItemCount) { Any() }
+    private var occurrenceRevision = 0L
+    private var stableTimeline: LocalDjTimeline? = null
+    internal var queueGeneration = 0L
+        private set
     private val engine = LocalDjEngine(first, second) {
         setPlayer(it)
         dominant.value = it
@@ -75,10 +81,16 @@ class LocalDjPlayer(first: Player, second: Player, private val scope: CoroutineS
 
     fun updateAnalyses(values: Map<String, LocalDjAnalysis>) = engine.updateAnalyses(values)
 
+    /** Crossfade length chosen by the user; applied to the next armed transition. */
+    fun setTransitionMs(value: Long) {
+        engine.transitionMs = value
+    }
+
     fun resetForOwner() {
         setEnabled(false)
         engine.setPlaying(false)
         clearMediaItems()
+        occurrenceRevision++
         occurrenceIds.clear()
     }
 
@@ -94,19 +106,27 @@ class LocalDjPlayer(first: Player, second: Player, private val scope: CoroutineS
     override fun getState(): State {
         val state = super.getState()
         if (!initialized) return state
-        while (occurrenceIds.size < state.playlist.size) occurrenceIds.add(Any())
-        val stable = state.playlist.mapIndexed { index, row ->
-            val builder = row.buildUpon().setUid(occurrenceIds[index])
-            if (row.mediaItem.localConfiguration?.uri?.let(MediaItems::trackIdOf) !=
-                null
-            ) {
-                builder.setPeriods(emptyList())
-            }
-            builder.build()
+        if (occurrenceIds.size < state.timeline.windowCount) occurrenceRevision++
+        while (occurrenceIds.size < state.timeline.windowCount) occurrenceIds.add(Any())
+        val stable = stableTimeline?.takeIf { it.matches(state.timeline, occurrenceRevision) } ?: run {
+            LocalDjTimeline(state.timeline, occurrenceIds.toList(), occurrenceRevision).also { stableTimeline = it }
         }
-        val normalized = state.buildUpon().setPlaylist(stable).build()
-        return normalized.buildUpon().setPlaylist(
-            LocalDjTimeline(normalized.timeline, state.timeline),
+        val commands = state.availableCommands.buildUpon()
+        val currentItem = if (state.currentMediaItemIndex in 0 until state.timeline.windowCount) {
+            state.timeline.getWindow(state.currentMediaItemIndex, Timeline.Window()).mediaItem
+        } else {
+            null
+        }
+        if (DjIds.referenceOf(currentItem?.mediaId) != null) {
+            commands.addAll(
+                Player.COMMAND_SEEK_TO_NEXT,
+                Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM,
+                Player.COMMAND_SEEK_TO_PREVIOUS,
+                Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM,
+            )
+        }
+        return state.buildUpon().setAvailableCommands(commands.build()).setPlaylist(
+            stable,
             engine.active.currentTracks,
             engine.active.mediaMetadata,
         ).setVolume(engine.volume)
@@ -153,12 +173,21 @@ class LocalDjPlayer(first: Player, second: Player, private val scope: CoroutineS
     }
 
     override fun handleSeek(mediaItemIndex: Int, positionMs: Long, seekCommand: Int): ListenableFuture<*> {
+        // Compat/car controllers may translate Next/Previous to a generic indexed seek.
+        // The classic queue is retained for explicit Exit only, never a DJ navigation target.
         when (seekCommand) {
             Player.COMMAND_SEEK_TO_NEXT, Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM ->
                 nextInsideDj()?.let { return it }
 
             Player.COMMAND_SEEK_TO_PREVIOUS, Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM ->
                 previousInsideDj()?.let { return it }
+        }
+        if (DjIds.referenceOf(currentMediaItem?.mediaId) != null && mediaItemIndex != currentMediaItemIndex) {
+            return when (mediaItemIndex) {
+                nextMediaItemIndex -> nextInsideDj() ?: Futures.immediateVoidFuture()
+                previousMediaItemIndex -> previousInsideDj() ?: Futures.immediateVoidFuture()
+                else -> unavailable("Quittez le DJ pour choisir un titre dans la file classique.")
+            }
         }
         engine.reset()
         return super.handleSeek(mediaItemIndex, positionMs, seekCommand)
@@ -171,7 +200,22 @@ class LocalDjPlayer(first: Player, second: Player, private val scope: CoroutineS
 
     override fun handleSetShuffleModeEnabled(shuffleModeEnabled: Boolean): ListenableFuture<*> {
         engine.reset()
-        return super.handleSetShuffleModeEnabled(shuffleModeEnabled)
+        val result = super.handleSetShuffleModeEnabled(shuffleModeEnabled)
+        if (shuffleModeEnabled) {
+            val player = engine.active
+            val order = PlayOrder.shuffled(player.currentTimeline)
+            val current = order.indexOf(player.currentMediaItemIndex)
+            if (current > 0 && player is androidx.media3.exoplayer.ExoPlayer) {
+                player.setShuffleOrder(
+                    androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder(
+                        (order.drop(current) + order.take(current)).toIntArray(),
+                        0L,
+                    ),
+                )
+                invalidateState()
+            }
+        }
+        return result
     }
 
     override fun handleSetMediaItems(
@@ -179,7 +223,9 @@ class LocalDjPlayer(first: Player, second: Player, private val scope: CoroutineS
         startIndex: Int,
         startPositionMs: Long,
     ): ListenableFuture<*> {
+        queueGeneration++
         engine.reset()
+        occurrenceRevision++
         occurrenceIds.clear()
         repeat(mediaItems.size) { occurrenceIds.add(Any()) }
         return super.handleSetMediaItems(mediaItems, startIndex, startPositionMs)
@@ -187,12 +233,14 @@ class LocalDjPlayer(first: Player, second: Player, private val scope: CoroutineS
 
     override fun handleAddMediaItems(index: Int, mediaItems: List<MediaItem>): ListenableFuture<*> {
         engine.reset()
+        occurrenceRevision++
         occurrenceIds.addAll(index, List(mediaItems.size) { Any() })
         return super.handleAddMediaItems(index, mediaItems)
     }
 
     override fun handleMoveMediaItems(fromIndex: Int, toIndex: Int, newIndex: Int): ListenableFuture<*> {
         engine.reset()
+        occurrenceRevision++
         val moved = occurrenceIds.subList(fromIndex, toIndex).toList()
         occurrenceIds.subList(fromIndex, toIndex).clear()
         occurrenceIds.addAll(newIndex, moved)
@@ -205,13 +253,16 @@ class LocalDjPlayer(first: Player, second: Player, private val scope: CoroutineS
         mediaItems: List<MediaItem>,
     ): ListenableFuture<*> {
         engine.reset()
+        occurrenceRevision++
         occurrenceIds.subList(fromIndex, toIndex).clear()
         occurrenceIds.addAll(fromIndex, List(mediaItems.size) { Any() })
         return super.handleReplaceMediaItems(fromIndex, toIndex, mediaItems)
     }
 
     override fun handleRemoveMediaItems(fromIndex: Int, toIndex: Int): ListenableFuture<*> {
+        if (fromIndex == 0 && toIndex == mediaItemCount && toIndex > 0) queueGeneration++
         engine.reset()
+        occurrenceRevision++
         occurrenceIds.subList(fromIndex, toIndex).clear()
         return super.handleRemoveMediaItems(fromIndex, toIndex)
     }
@@ -220,9 +271,19 @@ class LocalDjPlayer(first: Player, second: Player, private val scope: CoroutineS
 
     /** Asked when a controller presses Next inside an interactive DJ render. */
     private var djNext: (() -> Unit)? = null
+    private var djNavigationError: (String) -> Unit = {}
 
     fun setDjNextHandler(handler: (() -> Unit)?) {
         djNext = handler
+    }
+
+    fun setDjNavigationErrorHandler(handler: (String) -> Unit) {
+        djNavigationError = handler
+    }
+
+    private fun unavailable(message: String): ListenableFuture<*> {
+        djNavigationError(message)
+        return Futures.immediateVoidFuture()
     }
 
     /**
@@ -231,34 +292,81 @@ class LocalDjPlayer(first: Player, second: Player, private val scope: CoroutineS
      * would leave the mix for the classic queue item stored right after it — the reported
      * Android Auto behaviour.
      */
-    private fun nextInsideDj(): ListenableFuture<*>? {
-        val dj = DjMediaItems.of(currentMediaItem ?: return null) ?: return null
-        if (dj.mode == "interactive") {
-            djNext?.invoke() ?: return null
-            return Futures.immediateVoidFuture()
+    internal fun nextInsideDj(): ListenableFuture<*>? {
+        val item = currentMediaItem ?: return null
+        val dj = DjMediaItems.of(item) ?: return null
+        return if (dj.mode == "interactive") {
+            val handler = djNext
+            if (handler == null) {
+                unavailable("La commande DJ est indisponible. Réessayez dans un instant.")
+            } else {
+                handler()
+                Futures.immediateVoidFuture()
+            }
+        } else {
+            nextPrepared(item, dj)
         }
-        if (dj.nextStart == Long.MAX_VALUE || dj.nextStart <= 0) return null
-        scope.launch { seekTo(currentMediaItemIndex, dj.nextStart) }
-        return Futures.immediateVoidFuture()
+    }
+
+    private fun nextPrepared(item: MediaItem, dj: PlayingDj): ListenableFuture<*> {
+        // A missing next marker is authoritative even when an older resume plan remains.
+        if (dj.nextStart == Long.MAX_VALUE || dj.nextStart <= 0) {
+            return unavailable("Aucun titre suivant n’est disponible dans ce mix.")
+        }
+        val positionMs = DjTimeline.position(this, dj.origin)
+        val rows = DjTimeline.resumeRows(item)
+        val index = DjTimeline.markerIndex(rows, positionMs)
+        val next = if (rows.isEmpty()) {
+            dj.nextStart
+        } else {
+            rows.getOrNull(index + 1)
+                ?.takeIf { index >= 0 }?.start?.let(DjTimeline::boundaryMs) ?: Long.MAX_VALUE
+        }
+        val end = rows.getOrNull(index)?.end?.let(DjTimeline::boundaryMs) ?: dj.end
+        if (next == Long.MAX_VALUE || next <= 0) {
+            return unavailable("Aucun titre suivant n’est disponible dans ce mix.")
+        }
+        val windowTarget = maxOf(next, end) - positionMs + currentPosition
+        if (windowTarget < 0) return unavailable("Le titre suivant est sorti de la fenêtre du direct.")
+        return seekInsideDj(windowTarget)
     }
 
     /** Previous inside a DJ render restarts the track, or returns to the previous marker. */
-    private fun previousInsideDj(): ListenableFuture<*>? {
+    internal fun previousInsideDj(): ListenableFuture<*>? {
         val item = currentMediaItem ?: return null
-        if (DjMediaItems.of(item) == null) return null
-        val positionMs = currentPosition
+        val dj = DjMediaItems.of(item) ?: return null
+        val positionMs = DjTimeline.position(this, dj.origin)
         val rows = DjTimeline.resumeRows(item)
-        val seconds = positionMs / 1000.0
-        val row = rows.indexOfFirst { it.start <= seconds && seconds < it.end }
+        val row = DjTimeline.markerIndex(rows, positionMs)
+        fun start(index: Int) = DjTimeline.boundaryMs(
+            maxOf(rows[index].start, rows.getOrNull(index - 1)?.end ?: 0.0),
+        )
         val target = when {
-            rows.isEmpty() -> return null
-            row < 0 -> rows.last().start
-            positionMs - (rows[row].start * 1000).toLong() > RESTART_MS -> rows[row].start
-            row > 0 -> rows[row - 1].start
-            else -> rows[row].start
+            rows.isEmpty() -> return unavailable("Les repères du mix ne sont pas encore disponibles.")
+            row < 0 -> return unavailable("Le repère précédent n’est plus disponible dans ce direct.")
+            positionMs - start(row) > RESTART_MS -> start(row)
+            row > 0 -> start(row - 1)
+            else -> start(row)
         }
-        scope.launch { seekTo(currentMediaItemIndex, (target * 1000).toLong()) }
-        return Futures.immediateVoidFuture()
+        val windowTarget = target - positionMs + currentPosition
+        if (windowTarget < 0) return unavailable("Le titre précédent est sorti de la fenêtre du direct.")
+        return seekInsideDj(windowTarget)
+    }
+
+    private fun seekInsideDj(positionMs: Long): ListenableFuture<*> {
+        engine.reset()
+        val result = super.handleSeek(currentMediaItemIndex, positionMs, Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
+        // This explicit marker path bypasses SimpleBasePlayer's public seek bookkeeping.
+        invalidateState()
+        return result
+    }
+
+    /** Explicit Exit may select a retained classic occurrence; ordinary DJ seeks cannot. */
+    internal fun seekToClassic(index: Int, positionMs: Long): ListenableFuture<*> {
+        engine.reset()
+        val result = super.handleSeek(index, positionMs, Player.COMMAND_SEEK_TO_MEDIA_ITEM)
+        invalidateState()
+        return result
     }
 
     private companion object {

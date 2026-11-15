@@ -80,6 +80,9 @@ import com.henriquesebastiao.downtify.core.model.StreamFormat
 import com.henriquesebastiao.downtify.core.model.StreamQuality
 import com.henriquesebastiao.downtify.core.model.Transcoding
 import com.henriquesebastiao.downtify.core.model.formatBytes
+import com.henriquesebastiao.downtify.feature.player.PlaybackMixMode
+import com.henriquesebastiao.downtify.feature.player.PlaybackMixSelector
+import com.henriquesebastiao.downtify.feature.player.QueueDjViewModel
 import com.henriquesebastiao.downtify.ui.common.GroupTitle
 import com.henriquesebastiao.downtify.ui.common.GroupedList
 import com.henriquesebastiao.downtify.ui.common.GroupedRow
@@ -93,10 +96,26 @@ fun SettingsRoute(
     modifier: Modifier = Modifier,
     viewModel: SettingsViewModel = hiltViewModel(),
     onOpenAi: () -> Unit = {},
+    playback: QueueDjViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val device by playback.localDevice.collectAsStateWithLifecycle()
+    val armed by playback.armed.collectAsStateWithLifecycle()
+    val busy by playback.busy.collectAsStateWithLifecycle()
+    val phase by playback.phase.collectAsStateWithLifecycle()
+    val seconds by playback.transitionSeconds.collectAsStateWithLifecycle()
+    val message by playback.message.collectAsStateWithLifecycle()
     SettingsScreen(
+        playbackMode = when {
+            device && armed -> PlaybackMixMode.Transitions
+            busy || armed || phase == com.henriquesebastiao.downtify.core.player.DjPhase.Active -> PlaybackMixMode.Dj
+            else -> PlaybackMixMode.Disabled
+        },
+        transitionSeconds = seconds,
+        playbackMessage = message,
+        onPlaybackMode = playback::selectMode,
+        onTransitionSeconds = playback::setTransitionSeconds,
         state = state,
         actions = SettingsActions(
             onBack = onBack,
@@ -161,7 +180,16 @@ private enum class SettingsDialog {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: Modifier = Modifier) {
+fun SettingsScreen(
+    state: SettingsUiState,
+    actions: SettingsActions,
+    modifier: Modifier = Modifier,
+    playbackMode: PlaybackMixMode = PlaybackMixMode.Disabled,
+    transitionSeconds: Int = 5,
+    playbackMessage: String = "",
+    onPlaybackMode: (PlaybackMixMode) -> Unit = {},
+    onTransitionSeconds: (Int) -> Unit = {},
+) {
     var dialog by rememberSaveable { mutableStateOf<SettingsDialog?>(null) }
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     Scaffold(
@@ -193,6 +221,30 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
 
             GroupTitle(stringResource(R.string.settings_playback))
             GroupedList(playbackRows(state, actions) { dialog = it })
+            Column(
+                Modifier.fillMaxWidth().padding(horizontal = Spacing.screen, vertical = Spacing.sm),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text("Transitions et DJ", style = MaterialTheme.typography.titleMedium)
+                PlaybackMixSelector(playbackMode, onPlaybackMode)
+                Text("Durée du fondu local : $transitionSeconds s", style = MaterialTheme.typography.bodyMedium)
+                var sliding by androidx.compose.runtime.remember(transitionSeconds) {
+                    mutableStateOf(transitionSeconds.toFloat())
+                }
+                Slider(
+                    value = sliding,
+                    onValueChange = { sliding = it },
+                    onValueChangeFinished = { onTransitionSeconds(sliding.roundToInt()) },
+                    valueRange = 1f..12f,
+                    steps = 10,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(
+                    "Transitions : fondu entre les titres. DJ · Bêta : mixage rythmique sur le serveur.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                if (playbackMessage.isNotBlank()) Text(playbackMessage, style = MaterialTheme.typography.bodySmall)
+            }
             Spacer(Modifier.height(Spacing.lg))
             GroupedList(bufferRows(state, actions) { dialog = it })
 

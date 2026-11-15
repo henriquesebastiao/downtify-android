@@ -25,6 +25,21 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class DjControlTrackerTest {
+    @Test fun `prepared cache lease is released on a compatible server after system selection`() = runTest {
+        setup()
+        capabilities.value = capabilities.value.copy(djAssetConsumers = true)
+        var item = DjMediaItems.from(id, "Prepared", 100000, "prepared")
+        every { player.currentMediaItem } answers { item }
+        val tracker = DjControlTracker(player, music, backgroundScope)
+        tracker.start()
+        runCurrent()
+        item = androidx.media3.common.MediaItem.Builder().setMediaId("normal").build()
+        tracker.onMediaItemTransition(item, Player.MEDIA_ITEM_TRANSITION_REASON_SEEK)
+        runCurrent()
+        coVerify(exactly = 1) { music.djStop(id) }
+        verify(exactly = 0) { player.pause() }
+        tracker.stop()
+    }
     private val id = "a".repeat(32)
     private val music = mockk<MusicAiRepository>()
     private val player = mockk<Player>(relaxed = true)

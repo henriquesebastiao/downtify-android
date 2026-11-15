@@ -36,7 +36,7 @@ fun MusicDjPanel(viewModel: MusicDjViewModel = hiltViewModel()) {
     val lifecycle = LocalLifecycleOwner.current
     var theme by rememberSaveable { mutableStateOf("fete") }
     var count by rememberSaveable { mutableStateOf("12") }
-    var mode by rememberSaveable { mutableStateOf("prepared") }
+    var mode by rememberSaveable { mutableStateOf("interactive") }
     val ready = if (mode == "prepared") caps.dj.preparedReady else caps.interactiveAvailable()
     LaunchedEffect(caps.features) {
         if (!caps.enabled("dj_" + mode)) mode = if (caps.enabled("dj_prepared")) "prepared" else "interactive"
@@ -60,9 +60,19 @@ fun MusicDjPanel(viewModel: MusicDjViewModel = hiltViewModel()) {
             FilterChip(selected = mode == "interactive", onClick = {
                 mode =
                     "interactive"
-            }, label = { Text("Direct interactif") })
+            }, label = { Text("Direct progressif · Bêta") })
         }
         Text("Un mix de vos fichiers locaux, avec transitions calculées sur le serveur. Les originaux sont conservés.")
+        Text(
+            if (mode == "prepared") {
+                "Le fichier complet doit être analysé et rendu avant l’écoute. " +
+                    "La première préparation peut prendre plusieurs minutes."
+            } else {
+                "Le direct démarre avec les deux premiers profils, puis prépare la suite pendant l’écoute. " +
+                    "Une analyse manquante peut retarder le démarrage."
+            },
+            style = MaterialTheme.typography.bodySmall,
+        )
         if (!ready) {
             Text(
                 if (mode == "interactive") {
@@ -105,12 +115,25 @@ fun MusicDjPanel(viewModel: MusicDjViewModel = hiltViewModel()) {
                 Text(
                     when (session.state) {
                         "queued" -> "En attente"
-                        "preparing" -> "Analyse des morceaux"
+
+                        "preparing" -> if (session.phase == "analysis" && session.mode == "prepared") {
+                            val total = session.trackCount ?: session.tracks.size
+                            val current = (session.progress * 2 * total).toInt() + 1
+                            "Analyse · titre ${current.coerceAtMost(total)} / $total"
+                        } else {
+                            "Préparation des premiers titres"
+                        }
+
                         "rendering" -> "Préparation du mix"
+
                         "ready" -> if (session.mode == "interactive") "Terminé" else "Prêt à écouter"
+
                         "playing" -> "Direct en cours"
+
                         "paused" -> "Direct en pause"
+
                         "failed" -> "Le rendu a échoué. Essayez une autre sélection."
+
                         else -> "Rendu arrêté"
                     },
                 )

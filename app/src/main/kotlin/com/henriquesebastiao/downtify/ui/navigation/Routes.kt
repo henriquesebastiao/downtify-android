@@ -20,6 +20,8 @@ import kotlinx.serialization.Serializable
 
 @Serializable data class MusicDjRoute(val seed: String = "")
 
+@Serializable data class WeeklyDjPlaylistRoute(val theme: String, val copyId: String = "")
+
 /** The server's music trash (an admin's pairing, while the server has it on). */
 @Serializable data object TrashRoute
 

@@ -9,6 +9,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaBrowser
 import androidx.media3.session.MediaLibraryService
+import androidx.media3.session.MediaLibraryService.LibraryParams
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import com.henriquesebastiao.downtify.core.player.PlaybackService
@@ -116,6 +117,32 @@ class CarServiceIntegrationTest {
         assertFalse(controller.playWhenReady)
         val root = await(controller.getLibraryRoot(null)).value!!
         assertTrue(await(controller.getChildren(root.mediaId, 0, 100, null)).resultCode < 0)
+    }
+
+    @Test fun `a suggested playlist card loads all 1000 occurrences through the real service while paused`() {
+        service.destroy()
+        val ids = List(1_000) { if (it % 11 == 0) "a" else "b" }
+        fixture.libraryPlaylists.value = listOf(
+            com.henriquesebastiao.downtify.core.model.Playlist("Long", false, "", ids),
+        )
+        startServiceWithoutActivity()
+        val controller = connect()
+        val params = LibraryParams.Builder().setSuggested(true).build()
+        val root = await(controller.getLibraryRoot(params)).value!!
+        val choices = await(controller.getChildren(root.mediaId, 0, 10, params)).value!!
+        assertEquals(3, choices.size)
+        assertEquals("Long", choices[1].mediaMetadata.title.toString())
+        assertFalse(controller.playWhenReady)
+        assertEquals(12_345L, controller.currentPosition)
+        verify(exactly = 0) { fixture.source.createDataSource() }
+
+        controller.setMediaItems(choices, 1, 0)
+        pumpUntil { controller.mediaItemCount == 1_000 }
+        assertEquals(ids, (0 until controller.mediaItemCount).map { controller.getMediaItemAt(it).mediaId })
+        assertEquals(0, controller.currentMediaItemIndex)
+        assertFalse(controller.playWhenReady)
+        assertTrue(controller.shuffleModeEnabled)
+        verify(exactly = 0) { fixture.source.createDataSource() }
     }
 
     @Test fun `connection and root never wait for pending queue restoration`() {

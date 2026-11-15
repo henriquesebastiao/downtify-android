@@ -75,4 +75,25 @@ class DjTimelineTest {
         )
         assertSame(item, DjTimeline.metadata(item, session, 22000, "https://fixture.test"))
     }
+
+    @Test fun `two occurrences of the same track keep distinct navigation markers`() {
+        val repeated = session.copy(
+            timeline = listOf(
+                MusicDjMarkerDto("one", 0.0, 100.0, occurrence = 0),
+                MusicDjMarkerDto("one", 100.0, 200.0, occurrence = 1),
+            ),
+        )
+        val first = DjTimeline.metadata(
+            DjMediaItems.from(id, "Set", 0, "prepared"),
+            repeated,
+            20_000,
+            "https://fixture.test",
+        )
+        val second = DjTimeline.metadata(first, repeated, 120_000, "https://fixture.test")
+        val dj = requireNotNull(DjMediaItems.of(second))
+        assertEquals(100_000L, dj.start)
+        assertEquals(200_000L, dj.end)
+        assertEquals(Long.MAX_VALUE, dj.nextStart)
+        assertEquals(1, DjTimeline.resumePoint(second, 120_000)?.occurrence)
+    }
 }

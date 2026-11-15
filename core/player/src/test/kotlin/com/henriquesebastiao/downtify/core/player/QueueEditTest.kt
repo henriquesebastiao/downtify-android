@@ -80,6 +80,25 @@ class QueueEditTest {
         }
     }
 
+    @Test fun `ready DJ is next in the full shuffled playback order`() = runTest {
+        val player = LocalDjPlayer(deck(), deck(), backgroundScope)
+        try {
+            player.setMediaItems((0 until 130).map { localDjItem("t$it") }, 33, 12_000)
+            player.shuffleModeEnabled = true
+            val previous = playing(player)
+            QueueEdit.insertNext(player, DjMediaItems.from("0123456789abcdef0123456789abcdef", "DJ", 600_000))
+            assertEquals(33, player.currentMediaItemIndex)
+            assertEquals(12_000L, player.currentPosition)
+            val order = playing(player)
+            assertEquals(previous.first(), order.first())
+            assertTrue(order[1].startsWith("dj:"))
+            assertEquals(previous.drop(1), order.drop(2))
+            assertEquals(131, order.size)
+        } finally {
+            player.release()
+        }
+    }
+
     @Test fun `an empty queue takes the added song and prepares it`() {
         val player = deck()
         try {

@@ -135,6 +135,18 @@ class MusicAiViewModel @Inject constructor(
             )
         }
     }
+    fun renewPlaylists() = run {
+        music.renewPlaylists(java.util.UUID.randomUUID().toString())
+        mutable.update {
+            it.copy(
+                playlists = emptyList(),
+                tracks = emptyList(),
+                selectedMood = "",
+                selectionId = "",
+                message = "Renouvellement demandé. Vos nouveaux mixes se préparent ; actualisez dans un instant.",
+            )
+        }
+    }
     fun refreshHome() = run {
         music.refresh()
         if (listOf("daily", "weekly", "personalization").any(capabilities.value::enabled)) {

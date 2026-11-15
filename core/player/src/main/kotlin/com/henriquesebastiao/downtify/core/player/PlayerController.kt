@@ -13,6 +13,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionError
 import androidx.media3.session.SessionToken
 import com.henriquesebastiao.downtify.core.data.di.ApplicationScope
 import com.henriquesebastiao.downtify.core.data.library.LibraryRepository
@@ -66,6 +67,7 @@ class PlayerController @Inject constructor(
     private val sessions: SessionStore,
     private val resolver: StreamResolver,
     private val readAhead: ReadAheadBuffer,
+    private val queueTransfer: LibraryQueueTransfer,
     @ApplicationScope scope: CoroutineScope,
 ) {
     private val main = CoroutineScope(scope.coroutineContext + Dispatchers.Main.immediate)
@@ -113,6 +115,14 @@ class PlayerController @Inject constructor(
         }
     }
 
+    private val sessionListener = object : MediaController.Listener {
+        override fun onError(controller: MediaController, sessionError: SessionError) {
+            val id = sessionError.extras.getString(DjNextControl.EXTRA_DJ_ID) ?: return
+            if (DjIds.referenceOf(controller.currentMediaItem?.mediaId)?.id != id) return
+            mutableEvents.tryEmit(PlayerEvent.DjControlFailed(id, sessionError.message))
+        }
+    }
+
     init {
         main.launch {
             readAhead.state.collect { status ->
@@ -128,7 +138,9 @@ class PlayerController @Inject constructor(
         controller?.removeListener(listener)
         controller?.release()
         val token = SessionToken(context, ComponentName(context, PlaybackService::class.java))
-        val built = withContext(Dispatchers.Main) { MediaController.Builder(context, token).buildAsync().await() }
+        val built = withContext(Dispatchers.Main) {
+            MediaController.Builder(context, token).setListener(sessionListener).buildAsync().await()
+        }
         built.addListener(listener)
         controller = built
         refresh(queueChanged = true)
@@ -149,7 +161,7 @@ class PlayerController @Inject constructor(
     /** Voice intents use the same local search resolver as Android Auto. Never search or download online. */
     suspend fun playLibrarySearch(query: String) {
         if (query.isBlank()) return
-        mutableSelectionVersion.value++
+        newSelection()
         val owner = withContext(Dispatchers.IO) { sessions.current?.playbackOwner } ?: return
         val player = connect()
         if (sessions.current?.playbackOwner != owner) return
@@ -189,22 +201,18 @@ class PlayerController @Inject constructor(
 
     fun play(tracks: List<Track>, startIndex: Int, from: PlaybackContext, shuffle: Boolean = false) {
         if (tracks.isEmpty()) return
-        mutableSelectionVersion.value++
+        newSelection()
+        val owner = sessions.current?.playbackOwner ?: return
+        val token = queueTransfer.submit(owner, tracks, startIndex, from, shuffle)
         main.launch {
             val player = connect()
-            val baseUrl = sessions.current?.baseUrl
-            val start = startIndex.coerceIn(tracks.indices)
-            player.setMediaItems(tracks.map { MediaItems.from(it, baseUrl) }, start, C.TIME_UNSET)
-            player.setPlaybackSpeed(1f)
-            player.shuffleModeEnabled = shuffle
-            if (shuffle) {
-                player.repeatMode = PlayOrder.repeatAfterShuffle(player.repeatMode)
-                if (startIndex == 0) player.shuffleFromHead()
-            }
-            player.playlistMetadata = MediaItems.contextMetadata(from)
-            player.prepare()
-            player.play()
+            if (sessions.current?.playbackOwner != owner) return@launch
+            player.sendCustomCommand(
+                SessionCommand(PlaybackService.ACTION_PLAY_LIBRARY, Bundle.EMPTY),
+                Bundle().apply { putString(PlaybackService.EXTRA_QUEUE_TOKEN, token) },
+            )
             mutableState.update { it.copy(error = null) }
+            val start = startIndex.coerceIn(tracks.indices)
             recents.record(from, tracks[start].takeIf { it.hasCover }?.id ?: tracks.firstOrNull { it.hasCover }?.id)
         }
     }
@@ -217,7 +225,7 @@ class PlayerController @Inject constructor(
      */
     fun playStreams(entries: List<StreamEntry>, startIndex: Int, from: PlaybackContext, shuffle: Boolean = false) {
         if (entries.isEmpty()) return
-        mutableSelectionVersion.value++
+        newSelection()
         main.launch {
             val player = connect()
             val start = startIndex.coerceIn(entries.indices)
@@ -250,7 +258,7 @@ class PlayerController @Inject constructor(
 
     /** Plays a downloaded episode from where the server says the user stopped. */
     fun playEpisode(episode: PodcastEpisode, show: PodcastShow) {
-        mutableSelectionVersion.value++
+        newSelection()
         val baseUrl = sessions.current?.baseUrl ?: return
         val item = MediaItems.episode(episode, show, baseUrl) ?: return
         main.launch {
@@ -300,7 +308,7 @@ class PlayerController @Inject constructor(
             val player = connect()
             if (sessions.current?.playbackOwner != owner) return@launch
             if (expectedSelection != null && mutableSelectionVersion.value != expectedSelection) return@launch
-            mutableSelectionVersion.value++
+            newSelection()
             val extras = djClassicExtras(player, mode)
             val base = initialItem.buildUpon().setMediaMetadata(
                 initialItem.mediaMetadata.buildUpon().setExtras(extras).build(),
@@ -349,22 +357,38 @@ class PlayerController @Inject constructor(
         durationMs: Long,
         sessionPlan: com.henriquesebastiao.downtify.core.network.dto.MusicDjSessionDto? = null,
         preserveQueue: Boolean = true,
-    ) = command {
-        val item = DjMediaItems.from(id, title, durationMs, "interactive")
-        val extras = Bundle().apply {
-            putBoolean("djStartOnLoad", true)
-            putBoolean("djOwnQueue", preserveQueue)
-            putInt("djClassicIndex", it.currentMediaItemIndex + 1)
-            putInt("djQueueAnchor", it.currentMediaItemIndex + 1)
-            putLong("djClassicPosition", 0)
+    ) {
+        val owner = sessions.current?.playbackOwner ?: return
+        val selection = mutableSelectionVersion.value
+        val anchor = state.value.track?.id ?: return
+        command {
+            if (owner != sessions.current?.playbackOwner || selection != mutableSelectionVersion.value ||
+                anchor != it.currentMediaItem?.mediaId
+            ) {
+                return@command
+            }
+            val item = DjMediaItems.from(id, title, durationMs, "interactive")
+            val extras = Bundle().apply {
+                putBoolean("djStartOnLoad", true)
+                putBoolean("djOwnQueue", preserveQueue)
+                putInt("djClassicIndex", it.currentMediaItemIndex + 1)
+                putInt("djQueueAnchor", it.currentMediaItemIndex + 1)
+                putLong("djClassicPosition", 0)
+            }
+            val base = item.buildUpon()
+                .setMediaMetadata(item.mediaMetadata.buildUpon().setExtras(extras).build()).build()
+            val planned = sessionPlan?.let { plan ->
+                DjTimeline.metadata(base, plan, 0, sessions.current?.baseUrl.orEmpty())
+            } ?: base
+            it.sendCustomCommand(
+                SessionCommand(PlaybackService.ACTION_QUEUE_DJ, Bundle.EMPTY),
+                Bundle().apply {
+                    putBundle(PlaybackService.EXTRA_DJ_ITEM, planned.toBundle())
+                    putString(PlaybackService.EXTRA_DJ_OWNER, owner)
+                    putString(PlaybackService.EXTRA_DJ_ANCHOR, anchor)
+                },
+            )
         }
-        val base = item.buildUpon().setMediaMetadata(item.mediaMetadata.buildUpon().setExtras(extras).build()).build()
-        val planned =
-            sessionPlan?.let { plan -> DjTimeline.metadata(base, plan, 0, sessions.current?.baseUrl.orEmpty()) } ?: base
-        it.addMediaItem(
-            (it.currentMediaItemIndex + 1).coerceIn(0, it.mediaItemCount),
-            planned,
-        )
     }
 
     fun exitDj(id: String) = command { player ->
@@ -381,74 +405,11 @@ class PlayerController @Inject constructor(
         }
     }
 
-    private fun restoreClassic(player: Player, current: MediaItem) {
-        val extras = current.mediaMetadata.extras
-        val absolute = DjTimeline.position(player, extras?.getLong("djOrigin") ?: 0)
-        val point = DjTimeline.resumePoint(current, absolute)
-        val (selection, index) = classicSelection(player, current, point)
-        val wantsPlay = player.playWhenReady
-        if (selection.isNotEmpty() && index >= 0) {
-            player.setMediaItems(selection, index, point?.sourceMs ?: extras?.getLong("djClassicPosition") ?: 0)
-            player.setPlaybackSpeed(1f)
-            player.prepare()
-            player.playWhenReady = wantsPlay
-        } else {
-            player.pause()
-            player.clearMediaItems()
-        }
-    }
-
-    private fun classicSelection(
-        player: Player,
-        current: MediaItem,
-        point: DjResumePoint?,
-    ): Pair<List<MediaItem>, Int> {
-        val extras = current.mediaMetadata.extras
-        val classic = (0 until player.mediaItemCount).map(player::getMediaItemAt).filter { row ->
-            DjIds.referenceOf(row.mediaId) ==
-                null
-        }
-        val anchor = extras?.getInt("djQueueAnchor") ?: 0
-        val preferred = anchor + (point?.occurrence ?: 0)
-        val index = if (point != null) {
-            if (classic.getOrNull(preferred)?.mediaId ==
-                point.id
-            ) {
-                preferred
-            } else {
-                classic.indexOfFirst { row -> row.mediaId == point.id }
-            }
-        } else {
-            (extras?.getInt("djClassicIndex") ?: 0).coerceIn(0, (classic.size - 1).coerceAtLeast(0))
-        }
-        val needsRenderQueue = extras?.getBoolean("djOwnQueue") != true ||
-            extras.getBoolean("djQueueOrder") != true || index < 0
-        if (point != null && needsRenderQueue) {
-            return renderedSelection(current, point)
-        }
-        return classic to index
-    }
-
-    private fun renderedSelection(current: MediaItem, point: DjResumePoint): Pair<List<MediaItem>, Int> {
-        val rows = DjTimeline.resumeRows(current)
-        val fallback = DjTimeline.fallbackItems(current, sessions.current?.baseUrl.orEmpty())
-        val items = rows.withIndex().mapNotNull { (ordinal, row) ->
-            val media =
-                library.library.value?.byId?.get(row.id)?.let { track ->
-                    MediaItems.from(track, sessions.current?.baseUrl)
-                }
-                    ?: fallback[row.id]
-            media?.let { ordinal to it }
-        }
-        val occurrence =
-            rows.indexOfFirst { row ->
-                row.occurrence >= 0 && row.occurrence == point.occurrence
-            }.takeIf { ordinal ->
-                ordinal >=
-                    0
-            }
-                ?: point.occurrence
-        return items.map { pair -> pair.second } to items.indexOfFirst { pair -> pair.first == occurrence }
+    private fun restoreClassic(player: MediaController, current: MediaItem) {
+        player.sendCustomCommand(
+            SessionCommand(DjClassicReturn.ACTION, Bundle.EMPTY),
+            DjClassicReturn.arguments(current.mediaId),
+        )
     }
 
     fun resume() = command {
@@ -456,15 +417,9 @@ class PlayerController @Inject constructor(
         it.play()
     }
 
-    fun next() = command {
-        if (state.value.dj?.mode == "interactive") {
-            it.sendCustomCommand(SessionCommand(PlaybackService.ACTION_DJ_NEXT, Bundle.EMPTY), Bundle.EMPTY)
-        } else {
-            it.seekToNext()
-        }
-    }
+    fun next() = command { DjTransport.navigate(it, previous = false) }
 
-    fun previous() = command { if (state.value.dj == null) it.seekToPrevious() }
+    fun previous() = command { DjTransport.navigate(it, previous = true) }
 
     /** Starts a freshly shuffled queue at the first item of the permutation the player built. */
     private fun MediaController.shuffleFromHead() {
@@ -527,6 +482,11 @@ class PlayerController @Inject constructor(
     }
 
     fun dismissError() = mutableState.update { it.copy(error = null) }
+
+    private fun newSelection() {
+        mutableSelectionVersion.value++
+        queueTransfer.cancel()
+    }
 
     private fun command(block: (MediaController) -> Unit) {
         main.launch { block(connect()) }
@@ -592,6 +552,7 @@ class PlayerController @Inject constructor(
                     upNext
                 },
                 currentIndex = player.currentMediaItemIndex,
+                queueSize = player.mediaItemCount,
                 context = MediaItems.contextOf(player.playlistMetadata),
                 quality = item?.mediaId?.let(resolver::qualityOf),
                 fromPhone = item?.mediaId?.let(resolver::isLocal) == true,

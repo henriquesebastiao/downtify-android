@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="car_for_you">For you</string>
+    <string name="car_daily_mix">Daily selection</string>
+    <string name="car_most_played_playlist">Most played playlist</string>
+    <string name="car_playlist_pick">Your playlist</string>
     <string name="car_library">Library</string>
     <string name="car_playlists">Playlists</string>
     <string name="car_favorites">Favorites</string>

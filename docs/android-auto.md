@@ -16,7 +16,36 @@ The overflow menu exposes Shuffle and Repeat next to Like. Their icons and label
 
 Starting a collection with Shuffle explicitly is a fresh listening session: a "repeat one" is turned into "repeat all" so the queue is heard once instead of the same song forever, and a "repeat all" is kept. Shuffle starts on the first item of Media3's permutation, so every entry is heard — picking a random start index dropped everything before it (measured: 17.9 of 40 songs lost per launch, 0 after the fix). Duplicate occurrences stay separate entries, and a saved permutation is restored exactly.
 
-Next and Previous stay inside a prepared DJ render: they jump to the next marker of the plan instead of leaving the mix. Adding to the queue and moving a song inside it work on the session player itself (the DJ facade), shuffled order included.
+Next and Previous stay inside a prepared DJ render. Explicit jumps pass the outgoing overlap tail so the selected track is audible. Interactive Next sends the current mix position: a compatible server either confirms a jump within retained HLS audio or queues the next safe transition. A completed interactive render can still navigate its retained audio. A refusal, incompatible response, missing marker, network failure or busy server keeps the selected mix and reports a non-fatal session error; the app offers an explicit “Retour classique” action. No error silently advances the old queue, and a jump never resumes paused audio. Previous is limited to markers still inside the HLS window. Adding to the queue and moving a song inside it work on the session player itself (the DJ facade), shuffled order included.
+
+The beta9 candidate adds controller/session integration simulations for prepared navigation and interactive refusal, with repeated mode cycles. These use a distinct MediaController connected to MediaSession in Robolectric; they are not a separate Android UID, DHU or physical-car acceptance. No physical device was connected during this candidate's preparation. Existing queue, duplicate-occurrence, shuffle/restoration and pause-generation tests remain enabled.
+
+### Beta8 regression follow-up: visible pages and For you
+
+An external receiver can submit only ten visible browse items when starting a
+playlist. A contiguous page of Downtify occurrence IDs now resolves the complete
+parent queue, including the selected absolute occurrence and duplicates. Plain
+track IDs, noncontiguous selections and mixed collections retain their explicitly
+supplied queue. Browser callback tests cover ten-item pages from 300 and 1,000
+occurrence playlists, in addition to native shuffle and restoration tests.
+
+The suggested root supplies collections rather than the first three songs of the
+current queue: liked songs, a playlist pick ranked by qualified playlist listens,
+and a dated daily selection. Selecting one of several cards restores that card's
+complete collection. The daily selection stays stable during the Paris calendar
+day and renews the next day using the already indexed allowed library; it does
+not start a catalogue scan, AI model, download or radio. The car's metadata-only
+resumption requests can expose the same cards. Actual playback resumption, such
+as a Bluetooth Play command, continues at the stored queue cursor.
+
+Playlist ranking is local to this installation and association. An opening is not
+an écoute: it counts only when the existing qualified-listen threshold is crossed.
+Past playlist counts cannot be reconstructed from the old last-opened cache.
+Until qualified history exists, the playlist card is labelled as a playlist pick,
+not falsely advertised as the most played. Library/like changes and daily rollover
+refresh subscribed suggestion surfaces without rebuilding the index for position
+ticks. A physical beta8→beta9 update and Android Auto dashboard refresh remain
+acceptance checks; browser callback tests do not establish those results.
 
 ## Artwork and controllers
 

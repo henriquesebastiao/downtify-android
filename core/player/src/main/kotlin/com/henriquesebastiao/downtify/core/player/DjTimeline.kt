@@ -12,6 +12,7 @@ import com.henriquesebastiao.downtify.core.network.ServerUrls
 import com.henriquesebastiao.downtify.core.network.dto.MusicAiTrackDto
 import com.henriquesebastiao.downtify.core.network.dto.MusicDjMarkerDto
 import com.henriquesebastiao.downtify.core.network.dto.MusicDjSessionDto
+import kotlin.math.ceil
 import kotlin.math.roundToLong
 import kotlinx.serialization.builtins.ListSerializer
 
@@ -19,6 +20,12 @@ internal data class DjResumePoint(val id: String, val sourceMs: Long, val occurr
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 internal object DjTimeline {
+    /** A millisecond seek must reach the boundary, never land just before a fractional end. */
+    fun boundaryMs(seconds: Double): Long = ceil(seconds * 1000).toLong()
+
+    fun markerIndex(rows: List<MusicDjMarkerDto>, positionMs: Long): Int =
+        rows.indexOfFirst { boundaryMs(it.start) <= positionMs && positionMs < boundaryMs(it.end) }
+
     fun position(player: Player, origin: Long): Long {
         if (origin <= 0 || player.currentTimeline.isEmpty) return player.currentPosition.coerceAtLeast(0)
         val window = player.currentTimeline.getWindow(player.currentMediaItemIndex, Timeline.Window())
@@ -30,8 +37,7 @@ internal object DjTimeline {
     }
 
     fun metadata(item: MediaItem, session: MusicDjSessionDto, positionMs: Long, baseUrl: String): MediaItem {
-        val seconds = positionMs / 1000.0
-        val index = session.timeline.indexOfFirst { it.start <= seconds && seconds < it.end }
+        val index = markerIndex(session.timeline, positionMs)
         val row = session.timeline.getOrNull(index) ?: return item
         val track = session.tracks.firstOrNull { it.id == row.id } ?: return item
         val nextRow = session.timeline.getOrNull(index + 1)
@@ -39,7 +45,7 @@ internal object DjTimeline {
         val plan = NetworkJson.encodeToString(ListSerializer(MusicDjMarkerDto.serializer()), session.timeline)
         val tracks = NetworkJson.encodeToString(ListSerializer(MusicAiTrackDto.serializer()), session.tracks)
         val previous = item.mediaMetadata
-        if (sameMetadata(previous, session, track, plan, tracks)) return item
+        if (sameMetadata(previous, session, track, row, plan, tracks)) return item
         val extras = Bundle(item.mediaMetadata.extras ?: Bundle.EMPTY).apply {
             putString("djResumePlan", plan)
             putString("djResumeTracks", tracks)
@@ -48,9 +54,9 @@ internal object DjTimeline {
             putString("djNextTitle", next?.title)
             putString("djNextArtist", next?.artist)
             putString("djNextId", next?.id)
-            putLong("djStart", (row.start * 1000).toLong())
-            putLong("djEnd", (row.end * 1000).toLong())
-            putLong("djNextStart", nextRow?.start?.times(1000)?.toLong() ?: Long.MAX_VALUE)
+            putLong("djStart", boundaryMs(row.start))
+            putLong("djEnd", boundaryMs(row.end))
+            putLong("djNextStart", nextRow?.start?.let(::boundaryMs) ?: Long.MAX_VALUE)
             putLong("djOrigin", session.mediaOrigin?.times(1000)?.toLong() ?: 0)
         }
         return item.buildUpon().setMediaMetadata(
@@ -65,6 +71,7 @@ internal object DjTimeline {
         previous: androidx.media3.common.MediaMetadata,
         session: MusicDjSessionDto,
         track: MusicAiTrackDto,
+        row: MusicDjMarkerDto,
         plan: String,
         tracks: String,
     ): Boolean {
@@ -73,7 +80,9 @@ internal object DjTimeline {
         val sameTrack = previous.extras?.getString("djTrackId") == track.id &&
             previous.title?.toString() == track.title && previous.artist?.toString() == track.artist
         val sameOrigin = previous.extras?.getLong("djOrigin") == (session.mediaOrigin?.times(1000)?.toLong() ?: 0)
-        return samePlan && sameTrack && sameOrigin
+        val sameOccurrence = previous.extras?.getLong("djStart") == boundaryMs(row.start) &&
+            previous.extras?.getLong("djEnd") == boundaryMs(row.end)
+        return samePlan && sameTrack && sameOrigin && sameOccurrence
     }
 
     fun resumeRows(item: MediaItem): List<MusicDjMarkerDto> = runCatching {
@@ -107,12 +116,12 @@ internal object DjTimeline {
         val rows = resumeRows(item)
         if (rows.isEmpty()) return null
         val seconds = positionMs / 1000.0
-        var index = rows.indexOfFirst { it.start <= seconds && seconds < it.end }
-        if (index < 0) index = if (seconds < rows.first().start) 0 else rows.lastIndex
+        var index = markerIndex(rows, positionMs)
+        if (index < 0) index = if (positionMs < boundaryMs(rows.first().start)) 0 else rows.lastIndex
         val row = rows[index]
         val next = rows.getOrNull(index + 1)
         val selected = if (next != null && row.end > next.start &&
-            seconds >= (next.start + row.end) / 2
+            positionMs >= boundaryMs((next.start + row.end) / 2)
         ) {
             index++
             next

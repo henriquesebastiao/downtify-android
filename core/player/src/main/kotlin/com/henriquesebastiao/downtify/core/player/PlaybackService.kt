@@ -102,6 +102,8 @@ class PlaybackService : MediaLibraryService() {
 
     @Inject lateinit var loudness: LoudnessProfiles
 
+    @Inject lateinit var queueTransfer: LibraryQueueTransfer
+
     @Inject lateinit var readAhead: ReadAheadBuffer
 
     @Inject lateinit var playback: PlaybackRepository
@@ -121,6 +123,8 @@ class PlaybackService : MediaLibraryService() {
     @Inject lateinit var syncCoordinator: SyncCoordinator
 
     @Inject lateinit var localDj: LocalDjSettings
+
+    @Inject lateinit var carHistory: CarRecommendationHistory
     private var localFocus: LocalDjAudioFocus? = null
     private var session: MediaLibrarySession? = null
     private var artworkTracker: SessionArtworkTracker? = null
@@ -132,6 +136,7 @@ class PlaybackService : MediaLibraryService() {
     private var prefetch: StreamPrefetchTracker? = null
     private var warmer: TranscodeWarmer? = null
     private var persistence: PlaybackPersistence? = null
+    private val legacyQueue = LegacyQueuePolicy()
     private val likeCommand = SessionCommand(ACTION_TOGGLE_LIKE, Bundle.EMPTY)
     private val addToQueueCommand = SessionCommand(ACTION_ADD_TO_QUEUE, Bundle.EMPTY)
     private val moveInQueueCommand = SessionCommand(ACTION_MOVE_IN_QUEUE, Bundle.EMPTY)
@@ -139,6 +144,9 @@ class PlaybackService : MediaLibraryService() {
     private val shuffleFromHeadCommand = SessionCommand(ACTION_SHUFFLE_FROM_HEAD, Bundle.EMPTY)
     private val shuffleCommand = SessionCommand(ACTION_TOGGLE_SHUFFLE, Bundle.EMPTY)
     private val repeatCommand = SessionCommand(ACTION_CYCLE_REPEAT, Bundle.EMPTY)
+    private val djNextControl by lazy {
+        DjNextControl(musicAi, scope, { session?.player }) { error -> session?.sendError(error) }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -146,7 +154,7 @@ class PlaybackService : MediaLibraryService() {
         val player = createSessionPlayer()
 
         val callback = SessionCallback()
-        session = MediaLibrarySession.Builder(this, player, callback)
+        session = MediaLibrarySession.Builder(this, DjSessionPlayer(player), callback)
             .setBitmapLoader(
                 CacheBitmapLoader(
                     DataSourceBitmapLoader(DataSourceBitmapLoader.DEFAULT_EXECUTOR_SERVICE.get(), artworkDataSource),
@@ -158,6 +166,7 @@ class PlaybackService : MediaLibraryService() {
         player.setDjNextHandler {
             callback.requestDjNext(DjIds.referenceOf(player.currentMediaItem?.mediaId))
         }
+        player.setDjNavigationErrorHandler(djNextControl::unavailable)
 
         callback.observe(checkNotNull(session))
         scope.launch { sleepTimer.run { player.pause() } }
@@ -171,7 +180,13 @@ class PlaybackService : MediaLibraryService() {
             DefaultMediaNotificationProvider(this).apply { setSmallIcon(R.drawable.ic_notification) },
         )
 
-        listens = ListenTracker(player, reporter, scope).also { it.start() }
+        // Connect the notification controller before any saved or requested queue is installed.
+        addSession(checkNotNull(session))
+
+        listens = ListenTracker(player, reporter, scope) { context ->
+            val owner = sessions.current?.playbackOwner
+            scope.launch(Dispatchers.IO) { carHistory.record(context, owner) }
+        }.also { it.start() }
         aiListens = MusicAiListenTracker(player, musicAi, scope).also { it.start() }
         djControls = DjControlTracker(player, musicAi, scope).also { it.start() }
         activity = ActivityTracker(player, activityReporter, scope).also { it.start() }
@@ -191,13 +206,22 @@ class PlaybackService : MediaLibraryService() {
         stopDisabledDj(player)
         stopWhenSignedOut(player)
         removeDeletedLibraryTracks(player)
-        persistence = PlaybackPersistence(player, playback, sessions, scope).also { it.start() }
+        persistence = PlaybackPersistence(
+            player,
+            playback,
+            sessions,
+            scope,
+            legacyQueue::beforeRestore,
+        ).also { it.start() }
     }
 
     private fun createSessionPlayer(): LocalDjPlayer {
         val player = LocalDjPlayer(decoder(), decoder(), scope)
         localFocus = LocalDjAudioFocus(this, player).also { it.start() }
         scope.launch { player.transition.collect { localDj.publish(it) } }
+        scope.launch {
+            localDj.transitionSeconds.collect { player.setTransitionMs(it * 1000L) }
+        }
         scope.launch {
             combine(localDj.device, localDj.armed, musicAi.capabilities) { device, armed, caps ->
                 if (caps.version > 0 && !caps.enabled("dj_interactive")) localDj.setArmed(false)
@@ -423,7 +447,8 @@ class PlaybackService : MediaLibraryService() {
             .setSlots(CommandButton.SLOT_OVERFLOW)
             .build()
 
-    private inner class SessionCallback : CarBrowser(this@PlaybackService, library, offline, sessions, artwork, scope) {
+    private inner class SessionCallback :
+        CarBrowser(this@PlaybackService, library, offline, sessions, artwork, scope, carHistory) {
         private fun own(controller: MediaSession.ControllerInfo): Boolean =
             ControllerAccess.isApp(controller, packageName, Process.myUid())
 
@@ -434,8 +459,12 @@ class PlaybackService : MediaLibraryService() {
             startIndex: Int,
             startPositionMs: Long,
         ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> = scope.future {
+            legacyQueue.awaitReady()
             persistence?.awaitReady()
-            if (own(controller) && mediaItems.none { it.requestMetadata.searchQuery != null }) {
+            if (own(controller) && mediaItems.none {
+                    it.requestMetadata.searchQuery != null || it.mediaId.startsWith("auto:")
+                }
+            ) {
                 MediaSession.MediaItemsWithStartPosition(
                     onAddMediaItems(mediaSession, controller, mediaItems).await(),
                     startIndex,
@@ -446,11 +475,25 @@ class PlaybackService : MediaLibraryService() {
             }
         }
 
+        override fun onPostConnect(session: MediaSession, controller: MediaSession.ControllerInfo) {
+            legacyQueue.onPostConnect(session, controller)
+            super.onPostConnect(session, controller)
+        }
+
         override fun onPlaybackResumption(
             mediaSession: MediaSession,
             controller: MediaSession.ControllerInfo,
             isForPlayback: Boolean,
         ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> = scope.future {
+            legacyQueue.awaitReady()
+            if (!isForPlayback &&
+                (mediaSession.isAutoCompanionController(controller) || mediaSession.isAutomotiveController(controller))
+            ) {
+                val suggestions = carSuggestedItems()
+                if (suggestions.isNotEmpty()) {
+                    return@future MediaSession.MediaItemsWithStartPosition(suggestions, 0, 0)
+                }
+            }
             persistence?.awaitReady()
             val player = mediaSession.player
             MediaSession.MediaItemsWithStartPosition(
@@ -468,14 +511,18 @@ class PlaybackService : MediaLibraryService() {
                 return MediaSession.ConnectionResult.reject()
             }
             val commands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon()
+            // Trusted car/system surfaces drive the same player, so they get shuffle and repeat.
+            commands.add(likeCommand).add(shuffleFromHeadCommand).add(shuffleCommand).add(repeatCommand)
             if (own(controller)) {
-                commands.add(likeCommand).add(addToQueueCommand).add(moveInQueueCommand).add(djNextCommand)
-                commands.add(shuffleFromHeadCommand).add(shuffleCommand).add(repeatCommand)
-            } else {
-                commands.add(likeCommand)
+                commands.add(addToQueueCommand).add(moveInQueueCommand).add(djNextCommand)
+                    .add(SessionCommand(ACTION_PLAY_LIBRARY, Bundle.EMPTY))
+                    .add(SessionCommand(ACTION_QUEUE_DJ, Bundle.EMPTY))
+                    .add(SessionCommand(DjTransport.ACTION, Bundle.EMPTY))
+                    .add(SessionCommand(DjClassicReturn.ACTION, Bundle.EMPTY))
             }
             return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
-                .setAvailableSessionCommands(commands.build()).build()
+                .setAvailableSessionCommands(commands.build())
+                .setAvailablePlayerCommands(legacyQueue.commands(session, controller)).build()
         }
 
         override fun onCustomCommand(
@@ -484,10 +531,61 @@ class PlaybackService : MediaLibraryService() {
             customCommand: SessionCommand,
             args: Bundle,
         ): ListenableFuture<SessionResult> {
-            if (!own(controller) && customCommand.customAction != ACTION_TOGGLE_LIKE) {
+            val allowed = when (customCommand.customAction) {
+                ACTION_TOGGLE_LIKE, ACTION_SHUFFLE_FROM_HEAD, ACTION_TOGGLE_SHUFFLE, ACTION_CYCLE_REPEAT -> true
+                else -> own(controller)
+            }
+            if (!allowed) {
                 return Futures.immediateFuture(SessionResult(SessionError.ERROR_PERMISSION_DENIED))
             }
-            when (customCommand.customAction) {
+            return when (customCommand.customAction) {
+                ACTION_TOGGLE_LIKE, ACTION_SHUFFLE_FROM_HEAD, ACTION_TOGGLE_SHUFFLE,
+                ACTION_CYCLE_REPEAT, ACTION_MOVE_IN_QUEUE,
+                -> {
+                    applyPlayerCommand(session, customCommand.customAction, args)
+                    Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                }
+
+                DjClassicReturn.ACTION -> DjClassicReturn.handle(
+                    session.player,
+                    args,
+                    sessions.current?.baseUrl.orEmpty(),
+                ) { id ->
+                    library.library.value?.byId?.get(id)?.let { MediaItems.from(it, sessions.current?.baseUrl) }
+                }
+
+                DjTransport.ACTION -> DjTransport.handle(session.player, args)
+
+                ACTION_QUEUE_DJ -> scope.future {
+                    legacyQueue.awaitReady()
+                    queueDj(session, args).await()
+                }
+
+                ACTION_PLAY_LIBRARY -> scope.future {
+                    legacyQueue.awaitReady()
+                    persistence?.awaitReady()
+                    val token = args.getString(EXTRA_QUEUE_TOKEN).orEmpty()
+                    val accepted = queueTransfer.play(token, session.player, sessions.current?.baseUrl) {
+                        sessions.current?.playbackOwner
+                    }
+                    SessionResult(if (accepted) SessionResult.RESULT_SUCCESS else SessionError.ERROR_BAD_VALUE)
+                }
+
+                ACTION_DJ_NEXT -> requestDjNext(
+                    DjIds.referenceOf(session.player.currentMediaItem?.mediaId),
+                )
+
+                ACTION_ADD_TO_QUEUE -> scope.future {
+                    legacyQueue.awaitReady()
+                    requestQueueAdd(session, args).await()
+                }
+
+                else -> super.onCustomCommand(session, controller, customCommand, args)
+            }
+        }
+
+        private fun applyPlayerCommand(session: MediaSession, action: String, args: Bundle) {
+            when (action) {
                 ACTION_TOGGLE_LIKE -> {
                     val id = session.player.currentMediaItem?.mediaId
                     if (id != null && MediaIds.isLibrary(id)) {
@@ -498,9 +596,7 @@ class PlaybackService : MediaLibraryService() {
 
                 ACTION_SHUFFLE_FROM_HEAD -> PlayOrder.startShuffled(session.player)
 
-                ACTION_TOGGLE_SHUFFLE ->
-                    session.player.shuffleModeEnabled =
-                        !session.player.shuffleModeEnabled
+                ACTION_TOGGLE_SHUFFLE -> session.player.shuffleModeEnabled = !session.player.shuffleModeEnabled
 
                 ACTION_CYCLE_REPEAT -> session.player.repeatMode = when (session.player.repeatMode) {
                     Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
@@ -508,41 +604,39 @@ class PlaybackService : MediaLibraryService() {
                     else -> Player.REPEAT_MODE_OFF
                 }
 
-                ACTION_DJ_NEXT -> return requestDjNext(
-                    DjIds.referenceOf(session.player.currentMediaItem?.mediaId),
-                )
-
-                ACTION_ADD_TO_QUEUE -> return requestQueueAdd(session, args)
-
                 ACTION_MOVE_IN_QUEUE -> QueueEdit.move(
                     session.player,
                     from = args.getInt(EXTRA_FROM, C.INDEX_UNSET),
                     after = args.getInt(EXTRA_AFTER, C.INDEX_UNSET),
                     queued = args.getBoolean(EXTRA_QUEUED),
                 )
-
-                else -> return super.onCustomCommand(session, controller, customCommand, args)
             }
+        }
+
+        private fun queueDj(session: MediaSession, args: Bundle): ListenableFuture<SessionResult> {
+            val bundled = args.getBundle(EXTRA_DJ_ITEM)
+                ?: return Futures.immediateFuture(SessionResult(SessionError.ERROR_BAD_VALUE))
+            val item = MediaItem.fromBundle(bundled)
+            val reference = DjIds.referenceOf(item.mediaId)
+            val currentSelection = args.getString(EXTRA_DJ_OWNER) == sessions.current?.playbackOwner &&
+                args.getString(EXTRA_DJ_ANCHOR) == session.player.currentMediaItem?.mediaId
+            val interactive = reference?.mode == "interactive" && musicAi.capabilities.value.enabled("dj_interactive")
+            if (!interactive || !currentSelection || reference == null) {
+                return Futures.immediateFuture(SessionResult(SessionError.ERROR_BAD_VALUE))
+            }
+            val rebuilt = DjMediaItems.from(
+                reference.id,
+                item.mediaMetadata.title?.toString().orEmpty(),
+                item.mediaMetadata.durationMs ?: 0,
+                reference.mode,
+            ).buildUpon().setMediaMetadata(item.mediaMetadata).build()
+            QueueEdit.insertNext(session.player, rebuilt)
             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
         }
 
         internal fun requestDjNext(
             reference: com.henriquesebastiao.downtify.core.model.DjReference?,
-        ): ListenableFuture<SessionResult> {
-            if (reference?.mode !=
-                "interactive"
-            ) {
-                return Futures.immediateFuture(SessionResult(SessionError.ERROR_BAD_VALUE))
-            }
-            return scope.future {
-                try {
-                    musicAi.djCommand(reference.id, "next")
-                    SessionResult(SessionResult.RESULT_SUCCESS)
-                } catch (_: com.henriquesebastiao.downtify.core.data.musicai.MusicAiFailure) {
-                    SessionResult(SessionError.ERROR_IO)
-                }
-            }
-        }
+        ): ListenableFuture<SessionResult> = djNextControl.request(reference)
 
         private fun requestQueueAdd(session: MediaSession, args: Bundle): ListenableFuture<SessionResult> {
             val track = args.getString(EXTRA_TRACK_ID)?.let { library.library.value?.byId?.get(it) }
@@ -559,8 +653,9 @@ class PlaybackService : MediaLibraryService() {
             mediaSession: MediaSession,
             controller: MediaSession.ControllerInfo,
             mediaItems: MutableList<MediaItem>,
-        ): ListenableFuture<MutableList<MediaItem>> {
-            if (!own(controller)) return scope.future { carAddItems(mediaItems).toMutableList() }
+        ): ListenableFuture<MutableList<MediaItem>> = scope.future {
+            legacyQueue.awaitReady()
+            if (!own(controller)) return@future carAddItems(mediaItems).toMutableList()
             val snapshot = library.library.value
             val baseUrl = sessions.current?.baseUrl
             val resolved = mediaItems.mapNotNull { item ->
@@ -594,11 +689,17 @@ class PlaybackService : MediaLibraryService() {
                         it.mediaId.isNotEmpty()
                     }?.let { it.buildUpon().setUri(MediaItems.uriFor(it.mediaId)).build() }
             }
-            return Futures.immediateFuture(resolved.toMutableList())
+            resolved.toMutableList()
         }
     }
 
     companion object {
+        const val ACTION_QUEUE_DJ = "downtify.QUEUE_DJ"
+        const val EXTRA_DJ_ITEM = "djItem"
+        const val EXTRA_DJ_OWNER = "djOwner"
+        const val EXTRA_DJ_ANCHOR = "djAnchor"
+        const val ACTION_PLAY_LIBRARY = "downtify.PLAY_LIBRARY"
+        const val EXTRA_QUEUE_TOKEN = "queueToken"
         const val ACTION_TOGGLE_LIKE = "com.henriquesebastiao.downtify.TOGGLE_LIKE"
         const val ACTION_ADD_TO_QUEUE = "com.henriquesebastiao.downtify.ADD_TO_QUEUE"
         const val ACTION_MOVE_IN_QUEUE = "com.henriquesebastiao.downtify.MOVE_IN_QUEUE"

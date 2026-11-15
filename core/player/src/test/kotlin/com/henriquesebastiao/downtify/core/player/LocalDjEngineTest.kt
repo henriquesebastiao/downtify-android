@@ -19,7 +19,9 @@ class LocalDjEngineTest {
     private val first = LocalDjFakeDeck()
     private val second = LocalDjFakeDeck()
     private var dominant: Player = first
-    private val engine = LocalDjEngine(first, second) { dominant = it }
+
+    // These decks have no analysis, so the transition lasts the requested 1.2 s.
+    private val engine = LocalDjEngine(first, second) { dominant = it }.apply { transitionMs = 1_200 }
 
     private fun begin(ids: List<String> = listOf("a", "b", "c")) {
         first.setMediaItems(ids.map(::localDjItem))

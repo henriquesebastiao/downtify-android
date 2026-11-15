@@ -26,6 +26,8 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 data class QueueDjAvailability(val ready: Boolean = false, val reason: String = "")
 
+enum class PlaybackMixMode { Disabled, Transitions, Dj }
+
 internal fun queueDjAvailability(
     caps: MusicAiCapabilitiesDto,
     device: Boolean,
@@ -59,6 +61,7 @@ class QueueDjViewModel @Inject constructor(
     val capabilities = coordinator.capabilities
     val localDevice = local.device
     val localTransition = local.transition
+    val transitionSeconds = local.transitionSeconds
     val phase = coordinator.phase
     private val feedback = MutableStateFlow("")
     private val mutableChecking = MutableStateFlow(false)
@@ -85,12 +88,35 @@ class QueueDjViewModel @Inject constructor(
         local.chooseDevice(value)
     }
 
+    fun setTransitionSeconds(value: Int) {
+        local.setTransitionSeconds(value)
+    }
+
+    fun selectMode(mode: PlaybackMixMode) {
+        when (mode) {
+            PlaybackMixMode.Disabled -> {
+                cancelCheck("")
+                local.setArmed(false)
+                coordinator.stop()
+                feedback.value = "Transitions et DJ désactivés."
+            }
+
+            PlaybackMixMode.Transitions, PlaybackMixMode.Dj -> {
+                val device = mode == PlaybackMixMode.Transitions
+                val active = if (device) local.armed.value else serverActive()
+                if (local.device.value == device && active) return
+                chooseDevice(device)
+                check(activate = true)
+            }
+        }
+    }
+
     fun toggle() {
         when {
             local.armed.value -> {
                 cancelCheck("")
                 local.setArmed(false)
-                feedback.value = "DJ sur cet appareil désactivé."
+                feedback.value = "Transitions désactivées."
             }
 
             !local.device.value && serverActive() -> {
@@ -167,7 +193,7 @@ class QueueDjViewModel @Inject constructor(
         if (!available.ready) return
         if (token.device) {
             local.setArmed(true)
-            feedback.value = "DJ sur cet appareil activé · fondu à la fin du titre en cours."
+            feedback.value = "Transitions activées · fondu à la fin du titre en cours."
         } else {
             coordinator.toggleQueue()
         }

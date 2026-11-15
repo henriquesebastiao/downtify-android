@@ -16,6 +16,7 @@ import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -163,6 +164,43 @@ class PlaybackPersistenceTest {
             }
             verify(exactly = 0) { source.createDataSource() }
         } finally {
+            persistence.stop()
+            player.release()
+        }
+    }
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @Test
+    fun `saved queue remains untouched until the publication safety gate opens`() = runTest {
+        val owner = Session("https://fixture.test", "server", "Test", "device", "fixture")
+        val sessions = mockk<SessionStore>(relaxed = true)
+        every { sessions.current } returns owner
+        val repository = mockk<PlaybackRepository>(relaxed = true)
+        coEvery { repository.load(owner.playbackOwner) } returns PlaybackSnapshot(
+            (0 until 1501).map { SavedPlaybackItem("track-$it", "Track $it", "Artist") },
+            1499,
+            12345,
+            false,
+            (0 until 1501).toList(),
+            Player.REPEAT_MODE_OFF,
+            1f,
+        )
+        val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val player = ExoPlayer.Builder(RuntimeEnvironment.getApplication()).build()
+        val persistence = PlaybackPersistence(player, repository, sessions, backgroundScope) { gate.await() }
+        try {
+            persistence.start()
+            runCurrent()
+            assertEquals(0, player.mediaItemCount)
+            io.mockk.coVerify(exactly = 0) { repository.load(any()) }
+            gate.complete(Unit)
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { persistence.awaitReady() }
+            assertEquals(1501, player.mediaItemCount)
+            assertEquals(1499, player.currentMediaItemIndex)
+            assertEquals(12345L, player.currentPosition)
+            assertFalse(player.playWhenReady)
+        } finally {
+            gate.cancel()
             persistence.stop()
             player.release()
         }

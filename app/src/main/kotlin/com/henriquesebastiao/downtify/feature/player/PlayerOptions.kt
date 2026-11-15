@@ -10,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.unit.dp
 import com.henriquesebastiao.downtify.core.designsystem.component.CircleButton
 import com.henriquesebastiao.downtify.core.designsystem.component.DowntifyIcons
 import com.henriquesebastiao.downtify.core.model.Track
@@ -22,6 +23,7 @@ fun PlayerOptions(track: Track?, sleepActive: Boolean, setSleepTimer: (Int?) -> 
     val startMix = LocalSongMix.current
     val startDj = com.henriquesebastiao.downtify.ui.common.LocalSongDjMix.current
     var open by remember { mutableStateOf(false) }
+    var timerOpen by remember { mutableStateOf(false) }
     Box {
         CircleButton(DowntifyIcons.MoreVert, "Options de lecture", { open = true })
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
@@ -44,34 +46,49 @@ fun PlayerOptions(track: Track?, sleepActive: Boolean, setSleepTimer: (Int?) -> 
                 })
                 HorizontalDivider()
             }
-            PlaybackSleepTimer.PRESETS.forEach { minutes ->
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            if (minutes ==
-                                60
-                            ) {
-                                "Mettre en pause dans 1 h"
-                            } else {
-                                "Mettre en pause dans $minutes min"
-                            },
-                        )
-                    },
-                    onClick = {
-                        open = false
-                        setSleepTimer(minutes)
-                    },
-                )
-            }
-            if (sleepActive) {
-                DropdownMenuItem(
-                    text = { Text("Annuler la pause programmée") },
-                    onClick = {
-                        open = false
-                        setSleepTimer(null)
-                    },
-                )
-            }
+            DropdownMenuItem(
+                text = { Text(if (sleepActive) "Modifier la minuterie" else "Minuterie d’arrêt") },
+                onClick = {
+                    open = false
+                    timerOpen = true
+                },
+            )
         }
+    }
+
+    if (timerOpen) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { timerOpen = false },
+            title = { Text("Minuterie d’arrêt") },
+            text = {
+                androidx.compose.foundation.layout.FlowRow(
+                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+                ) {
+                    PlaybackSleepTimer.PRESETS.forEach { minutes ->
+                        androidx.compose.material3.FilterChip(
+                            selected = false,
+                            onClick = {
+                                setSleepTimer(minutes)
+                                timerOpen = false
+                            },
+                            label = { Text(if (minutes == 60) "1 h" else "$minutes min") },
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = { timerOpen = false }) { Text("Fermer") }
+            },
+            dismissButton = {
+                if (sleepActive) {
+                    androidx.compose.material3.TextButton(onClick = {
+                        setSleepTimer(null)
+                        timerOpen = false
+                    }) {
+                        Text("Annuler la minuterie")
+                    }
+                }
+            },
+        )
     }
 }

@@ -19,6 +19,13 @@ class LocalDjSettings @Inject constructor(@ApplicationContext context: Context) 
     val armed = enabled.asStateFlow()
     private val progress = MutableStateFlow(LocalDjTransition())
     val transition = progress.asStateFlow()
+    private val seconds = MutableStateFlow(
+        (preferences.getInt("transition_seconds", DEFAULT_TRANSITION_SECONDS))
+            .coerceIn(MIN_TRANSITION_SECONDS, MAX_TRANSITION_SECONDS),
+    )
+
+    /** How long a local crossfade lasts, in seconds: the user's choice, 1 to 12. */
+    val transitionSeconds = seconds.asStateFlow()
 
     fun chooseDevice(value: Boolean) {
         enabled.value = false
@@ -28,7 +35,20 @@ class LocalDjSettings @Inject constructor(@ApplicationContext context: Context) 
     fun setArmed(value: Boolean) {
         enabled.value = value && selected.value
     }
+
+    fun setTransitionSeconds(value: Int) {
+        val bounded = value.coerceIn(MIN_TRANSITION_SECONDS, MAX_TRANSITION_SECONDS)
+        seconds.value = bounded
+        preferences.edit().putInt("transition_seconds", bounded).apply()
+    }
+
     internal fun publish(value: LocalDjTransition) {
         progress.value = value
+    }
+
+    companion object {
+        const val MIN_TRANSITION_SECONDS = 1
+        const val MAX_TRANSITION_SECONDS = 12
+        const val DEFAULT_TRANSITION_SECONDS = 5
     }
 }

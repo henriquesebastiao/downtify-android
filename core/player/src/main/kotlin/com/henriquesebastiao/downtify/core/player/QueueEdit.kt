@@ -24,6 +24,19 @@ internal object QueueEdit {
         val anchor = PlayQueue.anchor(PlayOrder.fromCurrent(player)) {
             MediaItems.isQueued(player.getMediaItemAt(it))
         } ?: return
+        insertAfter(player, item, anchor)
+    }
+
+    /** A ready DJ handover must be next in playback order, including under shuffle. */
+    fun insertNext(player: Player, item: MediaItem) {
+        if (player.mediaItemCount == 0) {
+            add(player, item)
+        } else {
+            insertAfter(player, item, player.currentMediaItemIndex)
+        }
+    }
+
+    private fun insertAfter(player: Player, item: MediaItem, anchor: Int) {
         if (player.shuffleModeEnabled) {
             val shuffled = PlayOrder.shuffled(player.currentTimeline)
             val newIndex = player.mediaItemCount
@@ -56,6 +69,7 @@ internal object QueueEdit {
     private fun applyShuffleOrder(player: Player, order: List<Int>) {
         val array = order.toIntArray()
         when (player) {
+            is DjSessionPlayer -> player.deck.restoreShuffleOrder(array)
             is LocalDjPlayer -> player.restoreShuffleOrder(array)
             is ExoPlayer -> player.setShuffleOrder(DefaultShuffleOrder(array, java.util.Random().nextLong()))
         }

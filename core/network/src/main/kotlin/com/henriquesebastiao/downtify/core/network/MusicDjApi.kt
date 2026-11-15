@@ -8,6 +8,21 @@ import retrofit2.http.POST
 import retrofit2.http.Path
 
 interface MusicDjApi {
+    @GET("api/v1/music-ai/dj/weekly")
+    suspend fun djWeekly(): com.henriquesebastiao.downtify.core.network.dto.MusicDjWeeklyDto
+
+    @POST("api/v1/music-ai/dj/weekly/{theme}")
+    suspend fun djPrepareWeekly(
+        @Path("theme") theme: String,
+        @Body request: com.henriquesebastiao.downtify.core.network.dto.MusicDjPrepareWeeklyDto,
+    ): com.henriquesebastiao.downtify.core.network.dto.MusicDjSessionDto
+
+    @POST("api/v1/music-ai/dj/sessions/{id}/copies")
+    suspend fun djCopy(
+        @Path("id") id: String,
+        @Body request: com.henriquesebastiao.downtify.core.network.dto.MusicDjCopyDto,
+    ): com.henriquesebastiao.downtify.core.network.dto.MusicDjSessionDto
+
     @retrofit2.http.DELETE("api/v1/music-ai/dj/requests/{nonce}")
     suspend fun djCancelRequest(@retrofit2.http.Path("nonce") nonce: String)
 

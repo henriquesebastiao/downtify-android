@@ -89,6 +89,8 @@ data class PlayerState(
     /** What plays after the current item, in the order it will play (shuffled or not). */
     val upNext: List<QueueEntry> = emptyList(),
     val currentIndex: Int = -1,
+    /** Total internal occurrences, including those already played and any DJ render. */
+    val queueSize: Int = 0,
     val context: PlaybackContext? = null,
     /** The quality the current track streams in, once it started. */
     val quality: StreamQuality? = null,
@@ -114,6 +116,7 @@ enum class PlaybackError {
 /** One-off things the UI tells the user about (a snackbar). */
 sealed interface PlayerEvent {
     data class AddedToQueue(val title: String) : PlayerEvent
+    data class DjControlFailed(val id: String, val message: String) : PlayerEvent
 }
 
 /** Just what lists need to mark the playing row — changes far less often than [PlayerState]. */

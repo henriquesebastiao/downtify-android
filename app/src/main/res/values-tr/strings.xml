@@ -556,4 +556,8 @@
     <string name="music_dj_device_beta">Bu cihaz · Beta</string>
     <string name="music_dj_local_description">Geçerli kuyruğu bu telefonda kısa geçişlerle miksleyin. Ritim analizi hazırlanıyor. Model otomatik indirilmez. Pil ve ses kalitesi cihazda test edilmeyi bekliyor.</string>
     <string name="music_dj_server_description">Sunucu geçişleri hazırlar. Telefon kimliği doğrulanmış ses akışını çalar.</string>
+    <plurals name="player_queue_item_count">
+        <item quantity="one">%1$d öğe</item>
+        <item quantity="other">%1$d öğe</item>
+    </plurals>
 </resources>

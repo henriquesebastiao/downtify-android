@@ -174,3 +174,21 @@ and a synthetic 50,000-entry home comparison are documented in the matching
 Actual Pixel startup/latency, Bluetooth/background/network recovery, thermal
 behavior, comparative listening and the sustained one-hour qualification are
 still pending. This remains a draft beta. See [behavior and limits](docs/music-ai.md).
+
+The beta9 candidate (versionCode 18) removes the silent classic-queue fallback on
+DJ Next errors. Next and Previous use the shared session player, keep pause intent
+and report unavailable markers; returning to classic playback is an explicit
+action. Position-aware navigation is sent only when the server advertises
+`dj_navigation`; older servers keep receiving the legacy command. Duplicate
+occurrences retain separate mix markers. See the [controller checks and remaining
+physical acceptance](docs/android-auto.md). This candidate does not establish
+first-sound P95, battery behavior or one-hour real-time musical qualification.
+
+Weekly DJ cards now open a dedicated playlist page in the normal navigation,
+keeping the shared player available. The page shows the cover, duration, state
+and tracks of the selected set. Listening, preparation and saving a named audio
+copy are explicit actions; simply opening a card does none of them. Only that
+set's details are fetched, and obsolete responses are retired when the selection,
+account or feature availability changes. See the [weekly DJ playlist checks](docs/testing/weekly-dj-playlist.md)
+and [copy-dialog regression](docs/testing/weekly-dj-copy-dialog.md). These source
+checks do not qualify an APK, phone performance, Android Auto or rendered audio.

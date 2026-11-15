@@ -16,6 +16,7 @@ import com.henriquesebastiao.downtify.core.player.PlayerState
 import com.henriquesebastiao.downtify.core.player.PlayingDj
 import com.henriquesebastiao.downtify.core.player.QueueEntry
 import com.henriquesebastiao.downtify.core.player.RepeatMode
+import com.henriquesebastiao.downtify.feature.player.PlaybackMixMode
 import com.henriquesebastiao.downtify.feature.player.QueueDjViewModel
 import com.henriquesebastiao.downtify.feature.player.queueDjAvailability
 import io.mockk.coEvery
@@ -43,6 +44,36 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class QueueDjViewModelTest {
+    @Test fun `disabled mode cancels a delayed activation without restarting it`() = check { f ->
+        val response = CompletableDeferred<Unit>()
+        coEvery { f.music.refresh(true) } coAnswers {
+            response.await()
+            ServerResult.Ok(Unit)
+        }
+        f.vm.selectMode(PlaybackMixMode.Transitions)
+        runCurrent()
+        assertTrue(f.vm.checking.value)
+        f.vm.selectMode(PlaybackMixMode.Disabled)
+        response.complete(Unit)
+        runCurrent()
+        assertFalse(f.vm.checking.value)
+        assertFalse(f.localArmed.value)
+        verify(exactly = 0) { f.local.setArmed(true) }
+        verify(exactly = 0) { f.coordinator.toggleQueue() }
+        assertTrue(f.vm.message.value.contains("désactivés"))
+    }
+
+    @Test fun `selecting server DJ disarms transitions and preserves paused playback`() = check { f ->
+        f.localArmed.value = true
+        f.vm.selectMode(PlaybackMixMode.Dj)
+        runCurrent()
+        assertFalse(f.localArmed.value)
+        assertFalse(f.device.value)
+        assertFalse(f.state.value.isPlaying)
+        verify(exactly = 1) { f.coordinator.toggleQueue() }
+        verify(exactly = 0) { f.local.setArmed(true) }
+    }
+
     @Test fun `queue opening refreshes trial availability without starting DJ`() = check { f ->
         f.device.value = false
         f.caps.value = MusicAiCapabilitiesDto()
@@ -309,7 +340,10 @@ class QueueDjViewModelTest {
             every { local.armed } returns localArmed
             every { local.transition } returns MutableStateFlow(LocalDjTransition())
             every { local.setArmed(any()) } answers { localArmed.value = firstArg() }
-            every { local.chooseDevice(any()) } answers { device.value = firstArg() }
+            every { local.chooseDevice(any()) } answers {
+                localArmed.value = false
+                device.value = firstArg()
+            }
             every { player.state } returns state
             every { player.selectionVersion } returns selection
             coEvery { music.refresh(true) } returns ServerResult.Ok(Unit)

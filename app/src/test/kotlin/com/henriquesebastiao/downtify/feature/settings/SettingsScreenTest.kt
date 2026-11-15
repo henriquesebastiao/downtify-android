@@ -32,6 +32,24 @@ class SettingsScreenTest {
         compose.setContent { DowntifyTheme { SettingsScreen(state, actions) } }
     }
 
+    @Test fun transitionsAreConfigurableInPlaybackSettings() {
+        var mode: com.henriquesebastiao.downtify.feature.player.PlaybackMixMode? = null
+        compose.setContent {
+            DowntifyTheme {
+                SettingsScreen(
+                    SettingsUiState(),
+                    SettingsActions(),
+                    transitionSeconds = 8,
+                    onPlaybackMode = { mode = it },
+                )
+            }
+        }
+        compose.onNodeWithText("Transitions et DJ").performScrollTo().assertExists()
+        compose.onNodeWithText("Durée du fondu local : 8 s").performScrollTo().assertExists()
+        compose.onNodeWithText("Transitions").performScrollTo().performClick()
+        assertEquals(com.henriquesebastiao.downtify.feature.player.PlaybackMixMode.Transitions, mode)
+    }
+
     @Test
     fun groupsTheSettings() {
         show()

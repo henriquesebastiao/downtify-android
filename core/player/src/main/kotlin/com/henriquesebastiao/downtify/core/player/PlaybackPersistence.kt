@@ -30,6 +30,7 @@ internal class PlaybackPersistence(
     private val repository: PlaybackRepository,
     private val sessions: SessionStore,
     private val scope: CoroutineScope,
+    private val beforeRestore: suspend () -> Unit = {},
 ) : Player.Listener {
     private val ready = CompletableDeferred<Unit>()
     private var items: List<SavedPlaybackItem> = emptyList()
@@ -49,6 +50,7 @@ internal class PlaybackPersistence(
         player.addListener(edits)
         scope.launch {
             try {
+                beforeRestore()
                 withContext(Dispatchers.IO) { sessions.ensureLoaded() }
                 val paired = sessions.current ?: return@launch
                 owner = paired.playbackOwner
@@ -62,10 +64,10 @@ internal class PlaybackPersistence(
                         state.index,
                         state.positionMs,
                     )
+                    player.shuffleModeEnabled = state.shuffle
                     val restoredOrder = state.shuffleOrder.toIntArray()
                     if (player is ExoPlayer) player.setShuffleOrder(DefaultShuffleOrder(restoredOrder, 0L))
                     if (player is LocalDjPlayer) player.restoreShuffleOrder(restoredOrder)
-                    player.shuffleModeEnabled = state.shuffle
                     player.repeatMode = state.repeatMode
                     player.setPlaybackSpeed(state.speed)
                     player.playlistMetadata = state.context?.let(MediaItems::contextMetadata) ?: MediaMetadata.EMPTY

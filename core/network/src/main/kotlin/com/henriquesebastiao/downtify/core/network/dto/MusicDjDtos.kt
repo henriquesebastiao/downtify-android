@@ -48,7 +48,25 @@ import kotlinx.serialization.Serializable
     val continuous: Boolean = false,
     @SerialName("queue_order") val queueOrder: Boolean = false,
     @SerialName("track_count") val trackCount: Int? = null,
+    val title: String = "",
+    @SerialName("weekly_theme") val weeklyTheme: String = "",
+    @SerialName("weekly_period") val weeklyPeriod: String = "",
+    @SerialName("immutable_copy") val immutableCopy: Boolean = false,
+    @SerialName("cover_ids") val coverIds: List<String> = emptyList(),
 )
+
+@Serializable data class MusicDjWeeklyCardDto(val theme: String, val session: MusicDjSessionDto? = null)
+
+@Serializable data class MusicDjWeeklyDto(
+    val period: String = "",
+    val cards: List<MusicDjWeeklyCardDto> = emptyList(),
+    val featured: List<String> = emptyList(),
+    val copies: List<MusicDjSessionDto> = emptyList(),
+)
+
+@Serializable data class MusicDjPrepareWeeklyDto(@SerialName("request_id") val requestId: String)
+
+@Serializable data class MusicDjCopyDto(@SerialName("request_id") val requestId: String, val name: String)
 
 @Serializable data class MusicDjSessionsDto(val sessions: List<MusicDjSessionDto> = emptyList())
 
@@ -63,4 +81,5 @@ import kotlinx.serialization.Serializable
     @SerialName("effective_after_seconds") val effectiveAfterSeconds: Double = 0.0,
     @SerialName("effective_at") val effectiveAt: Double = 0.0,
     val reason: String = "",
+    @SerialName("seek_to_seconds") val seekToSeconds: Double? = null,
 )

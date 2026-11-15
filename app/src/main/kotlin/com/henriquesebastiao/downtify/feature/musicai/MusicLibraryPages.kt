@@ -39,6 +39,8 @@ private val dailyMoods = listOf(
     "calme" to "Calme",
 )
 
+private val genreMoods = listOf("rock", "rap", "pop", "electro")
+
 @Composable
 fun DailyMusicShelf(
     state: MusicAiUiState,
@@ -51,34 +53,55 @@ fun DailyMusicShelf(
             Text("Pour vous", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
             TextButton(onClick = onSeeAll) { Text("Tout voir") }
         }
-        dailyMoods.chunked(2).forEach { pair ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                pair.forEach { (mood, label) ->
-                    val card = state.playlists.firstOrNull { it.cadence == "daily" && it.mood == mood }
-                    Surface(
-                        onClick = { onOpen("daily", mood) },
-                        shape = MaterialTheme.shapes.large,
-                        modifier = Modifier.weight(1f).height(112.dp),
-                    ) {
-                        MusicMoodArt(
-                            mood,
-                            "daily",
-                            compact = true,
-                            subtitle = if (card != null &&
-                                card.count > 0
-                            ) {
-                                "${card.count} titres · du jour"
-                            } else if (!caps.enabled("daily")) {
-                                "À activer dans IA"
-                            } else {
-                                "En préparation"
-                            },
-                        )
-                    }
+        Text("Selon votre humeur", style = MaterialTheme.typography.titleSmall)
+        HomeMixRows(dailyMoods.map { it.first }, "daily", state, caps, onOpen)
+        Text("Vos genres", style = MaterialTheme.typography.titleSmall)
+        Text(
+            if (caps.enabled("personalization")) {
+                "Vos écoutes affinent vos sélections. Aimez vos titres préférés pour préciser vos goûts."
+            } else {
+                "Activez la personnalisation dans les préférences IA pour adapter les mixes à vos goûts."
+            },
+            style = MaterialTheme.typography.bodySmall,
+        )
+        HomeMixRows(genreMoods, "weekly", state, caps, onOpen)
+        if (state.message.isNotBlank()) Text(state.message, style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+@Composable
+private fun HomeMixRows(
+    moods: List<String>,
+    cadence: String,
+    state: MusicAiUiState,
+    caps: MusicAiCapabilitiesDto,
+    onOpen: (String, String) -> Unit,
+) {
+    moods.chunked(2).forEach { pair ->
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            pair.forEach { mood ->
+                val card = state.playlists.firstOrNull { it.cadence == cadence && it.mood == mood }
+                val ready = caps.enabled(cadence) && card != null && card.count > 0
+                Surface(
+                    onClick = { onOpen(cadence, mood) },
+                    enabled = caps.enabled(cadence),
+                    shape = MaterialTheme.shapes.large,
+                    modifier = Modifier.weight(1f).height(112.dp),
+                ) {
+                    MusicMoodArt(
+                        mood,
+                        cadence,
+                        compact = true,
+                        subtitle = when {
+                            !caps.enabled(cadence) -> "À activer dans IA"
+                            ready && card.state == "previous" -> "${card.count} titres · renouvellement en cours"
+                            ready -> "${card.count} titres · à écouter"
+                            else -> "En préparation"
+                        },
+                    )
                 }
             }
         }
-        if (state.message.isNotBlank()) Text(state.message, style = MaterialTheme.typography.bodySmall)
     }
 }
 
@@ -93,6 +116,7 @@ fun MusicPlaylistsRoute(
     onOpenPlaylist: (String, String) -> Unit = { c, m -> viewModel.mood(c, m) },
     onArtist: (String) -> Unit = {},
     onAlbum: (String) -> Unit = {},
+    onOpenWeeklyDj: (String, String) -> Unit = { _, _ -> },
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val caps by viewModel.capabilities.collectAsStateWithLifecycle()
@@ -116,6 +140,11 @@ fun MusicPlaylistsRoute(
             Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(bottom = 16.dp).plusBottomBars(),
         ) {
+            if (caps.djWeeklySets) {
+                item("weekly-dj-sets") {
+                    WeeklyDjSection(featured = false, onOpenSet = onOpenWeeklyDj)
+                }
+            }
             musicForYouItems(
                 state,
                 caps,
@@ -128,6 +157,7 @@ fun MusicPlaylistsRoute(
                     viewModel::save,
                     onSettings,
                     viewModel::clearSelection,
+                    viewModel::renewPlaylists,
                 ),
             )
         }
@@ -171,34 +201,16 @@ fun MusicStudioRoute(
                         "Les transitions et les titres restent dans votre lecteur habituel.",
                 )
                 TextButton(onClick = onSettings) { Text("Paramètres IA") }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    androidx.compose.material3.FilterChip(
-                        selected = !localDevice,
-                        onClick = {
-                            queue.chooseDevice(false)
-                        },
-                        label = {
-                            Text(
-                                androidx.compose.ui.res.stringResource(
-                                    com.henriquesebastiao.downtify.R.string.music_dj_server,
-                                ),
-                            )
-                        },
-                    )
-                    androidx.compose.material3.FilterChip(
-                        selected = localDevice,
-                        onClick = {
-                            queue.chooseDevice(true)
-                        },
-                        label = {
-                            Text(
-                                androidx.compose.ui.res.stringResource(
-                                    com.henriquesebastiao.downtify.R.string.music_dj_device_beta,
-                                ),
-                            )
-                        },
-                    )
+                val mode = when {
+                    !queueArmed && !queueBusy && !queueChecking &&
+                        queuePhase == com.henriquesebastiao.downtify.core.player.DjPhase.Classic ->
+                        com.henriquesebastiao.downtify.feature.player.PlaybackMixMode.Disabled
+
+                    localDevice -> com.henriquesebastiao.downtify.feature.player.PlaybackMixMode.Transitions
+
+                    else -> com.henriquesebastiao.downtify.feature.player.PlaybackMixMode.Dj
                 }
+                com.henriquesebastiao.downtify.feature.player.PlaybackMixSelector(mode, queue::selectMode)
                 Text(
                     androidx.compose.ui.res.stringResource(
                         if (localDevice) {
@@ -209,6 +221,28 @@ fun MusicStudioRoute(
                     ),
                     style = MaterialTheme.typography.bodySmall,
                 )
+                if (localDevice) {
+                    val seconds by queue.transitionSeconds.collectAsStateWithLifecycle()
+                    Column {
+                        Text(
+                            "Durée du fondu : $seconds s",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        androidx.compose.material3.Slider(
+                            value = seconds.toFloat(),
+                            onValueChange = { queue.setTransitionSeconds(it.toInt()) },
+                            valueRange = 1f..12f,
+                            steps = 10,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Text(
+                            "Un fondu plus long adoucit l'enchaînement, un fondu court reste proche du " +
+                                "titre suivant. Aucun effet si les deux titres ne sont pas dans votre " +
+                                "bibliothèque locale.",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
                 TextButton(
                     onClick = queue::toggle,
                     enabled = !queueChecking || queueArmed || queueBusy,
@@ -221,11 +255,17 @@ fun MusicStudioRoute(
                             queuePhase == com.henriquesebastiao.downtify.core.player.DjPhase.Ready ->
                                 "Annuler le relais DJ"
 
+                            localDevice && queueArmed -> "Désactiver les transitions"
+
                             queueArmed || queueBusy ||
                                 queuePhase == com.henriquesebastiao.downtify.core.player.DjPhase.Active ->
                                 "Désactiver le mode DJ"
 
+                            queueChecking && localDevice -> "Vérification des transitions…"
+
                             queueChecking -> "Vérification du DJ…"
+
+                            queueAvailability.ready && localDevice -> "Activer les transitions"
 
                             queueAvailability.ready -> "Activer le DJ sur la file"
 

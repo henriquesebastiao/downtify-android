@@ -19,7 +19,9 @@ import org.robolectric.annotation.Config
 class LocalDjOutgoingStallTest {
     private val first = LocalDjFakeDeck()
     private val second = LocalDjFakeDeck()
-    private val engine = LocalDjEngine(first, second) {}
+
+    // These decks have no analysis, so the transition lasts the requested 1.2 s.
+    private val engine = LocalDjEngine(first, second) {}.apply { transitionMs = 1_200 }
 
     private fun begin() {
         first.setMediaItems(listOf(localDjItem("a"), localDjItem("b"), localDjItem("c")))

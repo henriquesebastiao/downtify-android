@@ -556,4 +556,8 @@
     <string name="music_dj_device_beta">Αυτή η συσκευή · Beta</string>
     <string name="music_dj_local_description">Μίξη της τρέχουσας ουράς στο τηλέφωνο με σύντομες μεταβάσεις. Η ανάλυση ρυθμού ετοιμάζεται. Δεν γίνεται αυτόματη λήψη μοντέλου. Εκκρεμούν δοκιμές μπαταρίας και ήχου.</string>
     <string name="music_dj_server_description">Ο διακομιστής ετοιμάζει τις μεταβάσεις. Το τηλέφωνο αναπαράγει την πιστοποιημένη ροή ήχου.</string>
+    <plurals name="player_queue_item_count">
+        <item quantity="one">%1$d στοιχείο</item>
+        <item quantity="other">%1$d στοιχεία</item>
+    </plurals>
 </resources>

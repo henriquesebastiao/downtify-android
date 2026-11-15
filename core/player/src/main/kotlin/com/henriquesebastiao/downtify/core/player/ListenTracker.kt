@@ -7,6 +7,7 @@ import com.henriquesebastiao.downtify.core.data.listens.ListenReporter
 import com.henriquesebastiao.downtify.core.model.DjIds
 import com.henriquesebastiao.downtify.core.model.EpisodeIds
 import com.henriquesebastiao.downtify.core.model.ListenCounter
+import com.henriquesebastiao.downtify.core.model.PlaybackContext
 import com.henriquesebastiao.downtify.core.model.StreamIds
 import java.time.Instant
 import java.util.UUID
@@ -24,6 +25,7 @@ internal class ListenTracker(
     private val player: Player,
     private val reporter: ListenReporter,
     private val scope: CoroutineScope,
+    private val onCounted: (PlaybackContext?) -> Unit = {},
 ) : Player.Listener {
     private val counter = ListenCounter()
     private var trackId: String? = null
@@ -69,6 +71,7 @@ internal class ListenTracker(
             ?: return
         when (counter.onPosition(player.currentPosition / MS, duration / MS)) {
             ListenCounter.Progress.Counted -> {
+                onCounted(MediaItems.contextOf(player.playlistMetadata))
                 val report = Triple(id, playId, startedAt)
                 scope.launch { reporter.report(report.first, report.second, report.third) }
             }

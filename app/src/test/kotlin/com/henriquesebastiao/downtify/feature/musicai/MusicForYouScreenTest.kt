@@ -76,4 +76,31 @@ class MusicForYouScreenTest {
         compose.onNodeWithText("Tout écouter").assertDoesNotExist()
         compose.onNodeWithText("À écouter maintenant").assertDoesNotExist()
     }
+
+    @Test fun renewalIsExplicitAndRequiresAnEnabledServerCapability() {
+        var current by mutableStateOf(caps)
+        var busy by mutableStateOf(false)
+        var requests = 0
+        compose.setContent {
+            DowntifyTheme {
+                LazyColumn {
+                    musicForYouItems(
+                        MusicAiUiState(busy = busy),
+                        current,
+                        MusicForYouActions(renew = { requests++ }),
+                    )
+                }
+            }
+        }
+        compose.onNodeWithText("Renouveler mes mixes").assertDoesNotExist()
+        compose.runOnIdle { current = caps.copy(playlistRefresh = true) }
+        assertEquals(0, requests)
+        compose.onNodeWithText("Renouveler mes mixes").performClick()
+        assertEquals(1, requests)
+        compose.runOnIdle { busy = true }
+        compose.onNodeWithText("Renouveler mes mixes").performClick()
+        assertEquals(1, requests)
+        compose.runOnIdle { current = current.copy(features = emptyMap()) }
+        compose.onNodeWithText("Renouveler mes mixes").assertDoesNotExist()
+    }
 }
