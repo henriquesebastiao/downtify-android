@@ -1,5 +1,7 @@
 package com.henriquesebastiao.downtify.feature.settings
 
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
@@ -55,7 +57,8 @@ class SettingsScreenTest {
     fun groupsTheSettings() {
         show()
         listOf("Playback", "Downloads", "Appearance", "About", "Server").forEach {
-            compose.onNodeWithText(it).performScrollTo().assertExists()
+            compose.onNode(hasText(it) and SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+                .performScrollTo().assertExists()
         }
     }
 

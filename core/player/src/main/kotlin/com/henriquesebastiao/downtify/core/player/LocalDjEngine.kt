@@ -108,12 +108,7 @@ internal class LocalDjEngine(first: Player, second: Player, private val onDomina
         // Updating future evidence cannot interrupt an audible overlap or its speed release.
         if (blend != null || mode == LocalDjMode.Transitions) return
         val pending = armed
-        if (pending != null && verifiedPlans.any {
-                it.outgoingIndex == pending.outgoingIndex && it.incomingIndex == pending.index &&
-                    it.plan == pending.plan && analyses[it.outgoingId]?.revision == it.outgoingRevision &&
-                    analyses[it.incomingId]?.revision == it.incomingRevision
-            }
-        ) {
+        if (pending != null && verifiedPlans.any { matchesPending(it, pending) }) {
             return
         }
         generation++
@@ -123,6 +118,14 @@ internal class LocalDjEngine(first: Player, second: Player, private val onDomina
         standby.clearMediaItems()
         publishWaiting()
     }
+
+    private fun revisionsMatch(value: LocalDjVerifiedPlan): Boolean =
+        analyses[value.outgoingId]?.revision == value.outgoingRevision &&
+            analyses[value.incomingId]?.revision == value.incomingRevision
+
+    private fun matchesPending(value: LocalDjVerifiedPlan, pending: Armed): Boolean =
+        value.outgoingIndex == pending.outgoingIndex && value.incomingIndex == pending.index &&
+            value.plan == pending.plan && revisionsMatch(value)
 
     fun reset() {
         generation++
@@ -222,18 +225,8 @@ internal class LocalDjEngine(first: Player, second: Player, private val onDomina
                 publishWaiting(LocalDjFallback.UnsupportedPlayback)
                 return
             }
-            val found = verifiedPlans.firstOrNull {
-                it.outgoingIndex == active.currentMediaItemIndex && it.incomingIndex == index &&
-                    it.outgoingId == current.mediaId && it.incomingId == next.mediaId &&
-                    analyses[it.outgoingId]?.revision == it.outgoingRevision &&
-                    analyses[it.incomingId]?.revision == it.incomingRevision &&
-                    analyses[it.outgoingId]?.confidence?.let { value -> value.isFinite() && value >= .75f } == true &&
-                    analyses[it.incomingId]?.confidence?.let { value -> value.isFinite() && value >= .75f } == true
-            }?.plan?.takeIf {
-                it.analysed && it.startMs >= 0 && it.cueMs >= 0 && it.durationMs in 1L..transitionMs &&
-                    it.speed.isFinite() && it.speed in .96f..1.04f &&
-                    it.startMs + it.durationMs <= active.duration + 50
-            }
+            val found = verifiedPlans.firstOrNull { matchesTracks(it, index, current, next) }
+                ?.plan?.takeIf(::playablePlan)
             if (found == null) {
                 publishWaiting(LocalDjFallback.MissingAnalysis)
                 return
@@ -256,6 +249,22 @@ internal class LocalDjEngine(first: Player, second: Player, private val onDomina
             analysed = plan.analysed,
             fallback = plan.fallback,
         )
+    }
+
+    private fun reliableAnalysis(id: String): Boolean =
+        analyses[id]?.confidence?.let { it.isFinite() && it >= .75f } == true
+
+    private fun matchesTracks(value: LocalDjVerifiedPlan, index: Int, current: MediaItem, next: MediaItem): Boolean {
+        val matchingOccurrence = value.outgoingIndex == active.currentMediaItemIndex && value.incomingIndex == index &&
+            value.outgoingId == current.mediaId && value.incomingId == next.mediaId
+        return matchingOccurrence && revisionsMatch(value) &&
+            reliableAnalysis(value.outgoingId) && reliableAnalysis(value.incomingId)
+    }
+
+    private fun playablePlan(value: LocalDjPlan): Boolean {
+        val validTiming = value.startMs >= 0 && value.cueMs >= 0 && value.durationMs in 1L..transitionMs &&
+            value.startMs + value.durationMs <= active.duration + 50
+        return value.analysed && validTiming && value.speed.isFinite() && value.speed in .96f..1.04f
     }
 
     private fun start(value: Armed) {
