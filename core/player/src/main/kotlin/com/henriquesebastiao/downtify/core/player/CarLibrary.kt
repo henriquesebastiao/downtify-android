@@ -33,6 +33,7 @@ internal class CarLibrary(
     private val positions = mutableMapOf<String, Pair<String, Int>>()
     private val playlistsById = mutableMapOf<String, Playlist>()
     private val suggestionSources = mutableMapOf<String, String>()
+    private val shuffleSources = mutableMapOf<String, String>()
     private val orderedTracks: List<Track>
     private val searchable: List<Pair<Entry, String>>
 
@@ -80,6 +81,7 @@ internal class CarLibrary(
                 coverTrackId = null,
             )
             entries[shuffleId] = shuffleEntry
+            shuffleSources[shuffleId] = positions.getValue(rows.first { it.track != null }.id).first
             listOf(shuffleEntry)
         } else {
             emptyList()
@@ -137,9 +139,7 @@ internal class CarLibrary(
             }
             return tracks.takeIf { it.isNotEmpty() }?.let { it to 0 }
         }
-        if (id.startsWith(SHUFFLE_PREFIX)) {
-            val encodedParent = id.removePrefix(SHUFFLE_PREFIX)
-            val parent = decode(encodedParent)
+        shuffleSources[id]?.let { parent ->
             val tracks = children[parent].orEmpty().mapNotNull(Entry::track)
             return if (tracks.isNotEmpty()) tracks.shuffled() to 0 else null
         }
@@ -154,10 +154,11 @@ internal class CarLibrary(
     /** A receiver can submit just its visible page; occurrence IDs retain the full source. */
     fun playbackPage(ids: List<String>, selectedIndex: Int): Pair<List<Track>, Int>? {
         if (selectedIndex !in ids.indices) return null
-        val source = ids.map { positions[it] ?: return null }
-        val (parent, offset) = source.first()
+        val (parent, selectedOffset) = positions[ids[selectedIndex]] ?: return null
+        val source = ids.mapNotNull { positions[it] ?: if (shuffleSources[it] == parent) null else return null }
+        val offset = source.first().second
         if (source.withIndex().any { (index, position) -> position != (parent to offset + index) }) return null
-        return children[parent].orEmpty().mapNotNull(Entry::track) to (offset + selectedIndex)
+        return children[parent].orEmpty().mapNotNull(Entry::track) to selectedOffset
     }
 
     fun recommendations(day: LocalDate, plays: Map<String, Long>): List<Entry> = buildList {
@@ -225,9 +226,10 @@ internal class CarLibrary(
     }
 
     fun isSuggestion(id: String) = id == SUGGESTED_LIKES || id in suggestionSources || dailyDate(id) != null
+    fun isShuffle(id: String) = id in shuffleSources
 
     fun context(id: String): PlaybackContext? {
-        val source = positions[id]?.first ?: suggestionSources[id] ?: id
+        val source = positions[id]?.first ?: shuffleSources[id] ?: suggestionSources[id] ?: id
         playlistsById[source]?.let { return PlaybackContext(PlaybackContextType.Playlist, it.name, it.title) }
         return when {
             source == FAVORITES || id == SUGGESTED_LIKES -> PlaybackContext(PlaybackContextType.Liked, "", "")
@@ -275,7 +277,6 @@ internal class CarLibrary(
         private fun folder(type: String, key: String): String = "auto:$type:${encode(key)}"
         private fun encode(value: String): String = Base64.getUrlEncoder().withoutPadding()
             .encodeToString(value.toByteArray(Charsets.UTF_8))
-        private fun decode(value: String): String = String(Base64.getUrlDecoder().decode(value), Charsets.UTF_8)
         private fun normalized(value: String): String = Normalizer.normalize(value, Normalizer.Form.NFD)
             .replace(MARKS, "").lowercase(Locale.ROOT).trim()
     }

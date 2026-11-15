@@ -20,6 +20,7 @@ import com.henriquesebastiao.downtify.core.network.session.SessionStore
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
@@ -190,33 +191,53 @@ class CarBrowserTest {
     @Test fun `a ten item car page restores all 300 or 1000 playlist occurrences`() {
         for (count in listOf(300, 1_000)) {
             val ids = List(count) { if (it % 11 == 0) "a" else "b" }
-            val repository = mockk<LibraryRepository>()
-            every { repository.library } returns MutableStateFlow(snapshot.value)
-            every { repository.playlists } returns MutableStateFlow(listOf(Playlist("Long", false, "", ids)))
-            every { repository.likedIds } returns MutableStateFlow(emptyList())
-            val offline = mockk<OfflineRepository>()
-            every { offline.state } returns MutableStateFlow<OfflineState?>(null)
-            val sessions = mockk<SessionStore>()
-            every { sessions.current } answers { paired.value }
-            every { sessions.session } returns paired
-            coEvery { sessions.ensureLoaded() } returns Unit
-            val artwork = mockk<SessionArtworkCache>()
-            coEvery { artwork.cached(any(), any()) } returns null
-            coEvery { artwork.prepare(any(), any(), any()) } returns null
-            val paged = CarBrowser(RuntimeEnvironment.getApplication(), repository, offline, sessions, artwork, scope)
-            paged.observe(session)
-            val folder = paged.onGetChildren(session, controller, CarLibrary.PLAYLISTS, 0, 10, null)
-                .get(5, TimeUnit.SECONDS).value!!.single()
-            val range = paged.onGetChildren(session, controller, folder.mediaId, 0, 10, null)
-                .get(5, TimeUnit.SECONDS).value!![1]
-            val ten = paged.onGetChildren(session, controller, range.mediaId, 0, 10, null)
-                .get(5, TimeUnit.SECONDS).value!!
+            val paged = largePlaylistBrowser(ids)
+            val range = secondPlaylistRange(paged)
+            val ten = paged.onGetChildren(session, controller, range.mediaId, 0, 11, null)
+                .get(5, TimeUnit.SECONDS).value!!.filterNot { it.mediaId.startsWith(CarLibrary.SHUFFLE_PREFIX) }
             assertEquals(10, ten.size)
             val result = paged.onSetMediaItems(session, controller, ten.toMutableList(), 7, 9000)
                 .get(5, TimeUnit.SECONDS)
             assertEquals(ids, result.mediaItems.map { it.mediaId })
             assertEquals(107, result.startIndex)
             assertEquals(9000L, result.startPositionMs)
+        }
+    }
+
+    @Test fun `a raw ten item car page excludes the shuffle action from the selected offset`() {
+        for (count in listOf(300, 1_000)) {
+            val ids = List(count) { if (it % 11 == 0) "a" else "b" }
+            val paged = largePlaylistBrowser(ids)
+            val range = secondPlaylistRange(paged)
+            val raw = paged.onGetChildren(session, controller, range.mediaId, 0, 10, null)
+                .get(5, TimeUnit.SECONDS).value!!
+            assertEquals(10, raw.size)
+            assertTrue(raw.first().mediaId.startsWith(CarLibrary.SHUFFLE_PREFIX))
+            val result = paged.onSetMediaItems(session, controller, raw.toMutableList(), 7, 9000)
+                .get(5, TimeUnit.SECONDS)
+            assertEquals(ids, result.mediaItems.map { it.mediaId })
+            assertEquals(106, result.startIndex)
+            assertEquals(9000L, result.startPositionMs)
+        }
+    }
+
+    @Test fun `selecting shuffle in a raw car range restores the full repeated playlist and context`() {
+        for (count in listOf(300, 1_000)) {
+            val ids = List(count) { if (it % 11 == 0) "a" else "b" }
+            val paged = largePlaylistBrowser(ids)
+            val range = secondPlaylistRange(paged)
+            val raw = paged.onGetChildren(session, controller, range.mediaId, 0, 10, null)
+                .get(5, TimeUnit.SECONDS).value!!
+            assertTrue(raw.first().mediaId.startsWith(CarLibrary.SHUFFLE_PREFIX))
+            val result = paged.onSetMediaItems(session, controller, raw.toMutableList(), 0, 0)
+                .get(5, TimeUnit.SECONDS)
+            val resolved = result.mediaItems.map { it.mediaId }
+            assertEquals(count, resolved.size)
+            assertEquals(ids.groupingBy { it }.eachCount(), resolved.groupingBy { it }.eachCount())
+            assertTrue(resolved.none { it.startsWith(CarLibrary.SHUFFLE_PREFIX) })
+            assertEquals(0, result.startIndex)
+            assertEquals(0L, result.startPositionMs)
+            verify { session.player.playlistMetadata = match { MediaItems.contextOf(it)?.refId == "Long" } }
         }
     }
 
@@ -333,6 +354,23 @@ class CarBrowserTest {
         val result = browser.onGetSearchResult(session, controller, "Artist", 0, 20, null).get(5, TimeUnit.SECONDS)
         assertEquals(2, result.value!!.count { it.mediaMetadata.isPlayable == true })
         result.value!!.forEach { assertNull(it.mediaMetadata.artworkUri) }
+    }
+
+    private fun largePlaylistBrowser(ids: List<String>): CarBrowser {
+        val repository = mockk<LibraryRepository>()
+        every { repository.library } returns MutableStateFlow(snapshot.value)
+        every { repository.playlists } returns MutableStateFlow(listOf(Playlist("Long", false, "", ids)))
+        every { repository.likedIds } returns MutableStateFlow(emptyList())
+        return CarBrowser(RuntimeEnvironment.getApplication(), repository, offline, sessions, artwork, scope).also {
+            it.observe(session)
+        }
+    }
+
+    private fun secondPlaylistRange(paged: CarBrowser): MediaItem {
+        val folder = paged.onGetChildren(session, controller, CarLibrary.PLAYLISTS, 0, 10, null)
+            .get(5, TimeUnit.SECONDS).value!!.single()
+        return paged.onGetChildren(session, controller, folder.mediaId, 0, 10, null)
+            .get(5, TimeUnit.SECONDS).value!!.filter { it.mediaMetadata.isBrowsable == true }[1]
     }
 
     private fun track(id: String) = Track(

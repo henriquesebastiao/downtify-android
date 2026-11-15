@@ -70,6 +70,7 @@ class CarLibraryTest {
         assertEquals(first, index.track("a"))
         assertNull(index.track("https://untrusted.test/song"))
         assertNull(index.playback("auto:track:bogus:bogus"))
+        assertNull(index.playback(CarLibrary.SHUFFLE_PREFIX + "bogus"))
         assertNull(index.playback("gone"))
     }
 
@@ -122,7 +123,9 @@ class CarLibraryTest {
             val ids = List(count) { if (it % 11 == 0) "a" else "b" }
             val index = catalog(listOf(Playlist("Long", false, "", ids)))
             val playlist = index.children(CarLibrary.PLAYLISTS)!!.single()
-            fun rows(parent: String): List<CarLibrary.Entry> = index.children(parent)!!.flatMap {
+            fun rows(parent: String): List<CarLibrary.Entry> = index.children(parent)!!.filterNot {
+                index.isShuffle(it.id)
+            }.flatMap {
                 if (it.track == null) rows(it.id) else listOf(it)
             }
             val page = rows(playlist.id).subList(120, 130).map { it.id }
@@ -133,13 +136,53 @@ class CarLibraryTest {
         }
     }
 
+    @Test fun `raw car pages omit controls from the selected occurrence offset`() {
+        for (count in listOf(300, 1_000)) {
+            val ids = List(count) { if (it % 11 == 0) "a" else "b" }
+            val index = catalog(listOf(Playlist("Long", false, "", ids)))
+            val playlist = index.children(CarLibrary.PLAYLISTS)!!.single()
+            val range = index.children(playlist.id)!!.filterNot { index.isShuffle(it.id) }[1]
+            val raw = CarLibrary.page(index.children(range.id)!!, 0, 10)
+            assertEquals(10, raw.size)
+            assertTrue(index.isShuffle(raw.first().id))
+            val playback = requireNotNull(index.playbackPage(raw.map { it.id }, 7))
+            assertEquals(ids, playback.first.map { it.id })
+            assertEquals(106, playback.second)
+        }
+    }
+
+    @Test fun `shuffle actions on a collection or range preserve all repeated occurrences and context`() {
+        for (count in listOf(300, 1_000)) {
+            val ids = List(count) { if (it % 11 == 0) "a" else "b" }
+            val index = catalog(listOf(Playlist("Long", false, "", ids)))
+            val playlist = index.children(CarLibrary.PLAYLISTS)!!.single()
+            val collection = index.children(playlist.id)!!
+            val range = collection.filterNot { index.isShuffle(it.id) }[1]
+            val actions = listOf(collection.first(), index.children(range.id)!!.first())
+            for (action in actions) {
+                assertTrue(index.isShuffle(action.id))
+                val playback = requireNotNull(index.playback(action.id))
+                assertEquals(count, playback.first.size)
+                assertEquals(
+                    ids.groupingBy { it }.eachCount(),
+                    playback.first.map { it.id }.groupingBy { it }.eachCount(),
+                )
+                assertEquals(0, playback.second)
+                assertEquals("Long", index.context(action.id)?.refId)
+            }
+        }
+    }
+
     @Test fun `plain IDs noncontiguous and mixed collection selections keep their explicit queue`() {
         val index = catalog(listOf(Playlist("Long", false, "", listOf("a", "b", "a"))), likes = listOf("a", "b"))
         val playlist = index.children(CarLibrary.PLAYLISTS)!!.single()
-        val rows = index.children(playlist.id)!!
+        val rows = index.children(playlist.id)!!.filter { it.track != null }
         assertNull(index.playbackPage(listOf("a", "b"), 0))
         assertNull(index.playbackPage(listOf(rows[0].id, rows[2].id), 0))
-        assertNull(index.playbackPage(listOf(rows[0].id, index.children(CarLibrary.FAVORITES)!![1].id), 0))
+        val favorite = index.children(CarLibrary.FAVORITES)!!.first { it.track != null }
+        assertNull(index.playbackPage(listOf(rows[0].id, favorite.id), 0))
+        val foreignControl = index.children(CarLibrary.FAVORITES)!!.first { index.isShuffle(it.id) }
+        assertNull(index.playbackPage(listOf(foreignControl.id, rows[0].id), 1))
     }
 
     @Test fun `suggestions open complete collections and rank qualified playlist listens`() {

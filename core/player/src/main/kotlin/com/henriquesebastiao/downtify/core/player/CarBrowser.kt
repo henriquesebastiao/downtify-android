@@ -368,7 +368,7 @@ internal open class CarBrowser(
         val selectedIndex = if (startIndex == C.INDEX_UNSET) 0 else startIndex
         require(selectedIndex in mediaItems.indices)
         val selectedId = mediaItems[selectedIndex].mediaId
-        val page = if (catalog.isSuggestion(selectedId)) {
+        val page = if (catalog.isSuggestion(selectedId) || catalog.isShuffle(selectedId)) {
             catalog.playback(selectedId)
         } else {
             catalog.playbackPage(mediaItems.map { it.mediaId }, selectedIndex)

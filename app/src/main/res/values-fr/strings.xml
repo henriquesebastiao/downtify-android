@@ -576,6 +576,7 @@
     <string name="music_dj_server_description">Le serveur prépare les transitions. Le téléphone lit le flux audio authentifié.</string>
     <plurals name="player_queue_item_count">
         <item quantity="one">%1$d élément</item>
+        <item quantity="many">%1$d éléments</item>
         <item quantity="other">%1$d éléments</item>
     </plurals>
     <string name="connect_client_certificate">Certificat client</string>
