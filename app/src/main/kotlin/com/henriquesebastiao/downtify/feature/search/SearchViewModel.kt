@@ -17,6 +17,10 @@ import com.henriquesebastiao.downtify.core.model.Playlist
 import com.henriquesebastiao.downtify.core.model.RemoteAlbum
 import com.henriquesebastiao.downtify.core.model.RemoteSong
 import com.henriquesebastiao.downtify.core.model.ResolvedLink
+import com.henriquesebastiao.downtify.core.model.ResultFilterOptions
+import com.henriquesebastiao.downtify.core.model.ResultFiltering
+import com.henriquesebastiao.downtify.core.model.ResultFilters
+import com.henriquesebastiao.downtify.core.model.ResultSort
 import com.henriquesebastiao.downtify.core.model.ServerJob
 import com.henriquesebastiao.downtify.core.model.StreamVideo
 import com.henriquesebastiao.downtify.core.model.TextSearch
@@ -66,7 +70,18 @@ sealed interface ServerResults {
 
     /** [status]: 400 an unsupported link, 404 nothing there, 502 the upstream failed. */
     data class Failed(val status: Int?) : ServerResults
-    data class Found(val songs: List<RemoteSong>, val albums: List<RemoteAlbum>) : ServerResults
+
+    /**
+     * What the server found. [page] is the page it returned, in its own order, which is what the
+     * filter chips offer; [songs] are the rows the search shows, [page] narrowed and ordered by
+     * those chips.
+     */
+    data class Found(
+        val songs: List<RemoteSong>,
+        val albums: List<RemoteAlbum>,
+        val page: List<RemoteSong> = songs,
+    ) : ServerResults
+
     data class Link(val link: ResolvedLink) : ServerResults
 }
 
@@ -90,6 +105,10 @@ data class SearchUiState(
     val library: LibrarySnapshot? = null,
     /** Liked library track ids. */
     val likedIds: Set<String> = emptySet(),
+    /** What narrows and orders the server's page. */
+    val filters: ResultFilters = ResultFilters(),
+    /** The artists, albums and years that page offers its chips. */
+    val filterOptions: ResultFilterOptions = ResultFilterOptions(),
 )
 
 /** One-off messages for the snackbar. */
@@ -117,16 +136,47 @@ class SearchViewModel @Inject constructor(
 ) : ViewModel() {
     private val query = savedState.getStateFlow(KEY_QUERY, "")
     private val filter = savedState.getStateFlow(KEY_FILTER, SearchFilter.All.name)
+    private val artistFilter = savedState.getStateFlow(KEY_ARTIST, "")
+    private val albumFilter = savedState.getStateFlow(KEY_ALBUM, "")
+    private val yearFilter = savedState.getStateFlow(KEY_YEAR, "")
+    private val sortFilter = savedState.getStateFlow(KEY_SORT, ResultSort.Relevance.name)
     private val retries = MutableStateFlow(0)
     private val messageChannel = Channel<SearchMessage>(Channel.BUFFERED)
 
     val messages: Flow<SearchMessage> = messageChannel.receiveAsFlow()
+
+    /** The chips: what narrows the server's page and in what order, kept across recreation. */
+    private val filters: Flow<ResultFilters> = combine(
+        artistFilter,
+        albumFilter,
+        yearFilter,
+        sortFilter,
+    ) { artist, album, year, sort ->
+        ResultFilters(
+            artist = artist.takeIf { it.isNotBlank() },
+            album = album.takeIf { it.isNotBlank() },
+            year = year.takeIf { it.isNotBlank() },
+            sort = ResultSort.entries.firstOrNull { it.name == sort } ?: ResultSort.Relevance,
+        )
+    }
 
     private val server: Flow<ServerResults> = combine(
         query.debounce(SERVER_DEBOUNCE_MS).map { it.trim() }.distinctUntilChanged(),
         retries,
     ) { q, _ -> q }
         .flatMapLatest { q -> serverResults(q) }
+
+    /** The server's page with the chips applied: the rows and album cards the search shows. */
+    private val narrowedServer: Flow<ServerResults> = combine(server, filters) { results, selected ->
+        (results as? ServerResults.Found)
+            ?.let {
+                it.copy(
+                    songs = ResultFiltering.apply(it.page, selected),
+                    albums = ResultFiltering.albums(it.albums, selected),
+                )
+            }
+            ?: results
+    }
 
     private val local = combine(
         query.debounce(DEBOUNCE_MS),
@@ -159,7 +209,7 @@ class SearchViewModel @Inject constructor(
         RemoteState(jobs, albums, playing.streamVideoId, lookup, playing.trackId, playing.isPlaying, liked)
     }
 
-    val uiState: StateFlow<SearchUiState> = combine(local, server, remote) { l, s, r ->
+    val uiState: StateFlow<SearchUiState> = combine(local, narrowedServer, remote, filters) { l, s, r, f ->
         l.copy(
             server = s,
             jobs = r.jobs,
@@ -169,6 +219,9 @@ class SearchViewModel @Inject constructor(
             currentTrackId = r.trackId,
             isPlaying = r.isPlaying,
             likedIds = r.likedIds,
+            filters = f,
+            // Offered from the page as the server returned it, so a chip can be changed, not just cleared.
+            filterOptions = ResultFiltering.options((s as? ServerResults.Found)?.page.orEmpty()),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), SearchUiState())
 
@@ -186,11 +239,25 @@ class SearchViewModel @Inject constructor(
     val queryText: StateFlow<String> = query
 
     fun onQueryChange(value: String) {
+        val previous = savedState.get<String>(KEY_QUERY).orEmpty()
         savedState[KEY_QUERY] = value
+        // The chips were picked from the page the old words returned: a new search shows all it found.
+        if (value.trim() != previous.trim()) {
+            savedState[KEY_ARTIST] = ""
+            savedState[KEY_ALBUM] = ""
+            savedState[KEY_YEAR] = ""
+        }
     }
 
     fun onFilterChange(value: SearchFilter) {
         savedState[KEY_FILTER] = value.name
+    }
+
+    fun onFiltersChange(value: ResultFilters) {
+        savedState[KEY_ARTIST] = value.artist.orEmpty()
+        savedState[KEY_ALBUM] = value.album.orEmpty()
+        savedState[KEY_YEAR] = value.year.orEmpty()
+        savedState[KEY_SORT] = value.sort.name
     }
 
     fun retry() {
@@ -314,6 +381,10 @@ class SearchViewModel @Inject constructor(
     private companion object {
         const val KEY_QUERY = "query"
         const val KEY_FILTER = "filter"
+        const val KEY_ARTIST = "filterArtist"
+        const val KEY_ALBUM = "filterAlbum"
+        const val KEY_YEAR = "filterYear"
+        const val KEY_SORT = "filterSort"
         const val DEBOUNCE_MS = 150L
 
         /** The server's search goes out to YouTube Music: wait for a pause in the typing. */
