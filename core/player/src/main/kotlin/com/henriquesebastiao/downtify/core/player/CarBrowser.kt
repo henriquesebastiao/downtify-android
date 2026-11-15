@@ -26,6 +26,7 @@ import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
@@ -53,6 +54,7 @@ internal open class CarBrowser(
     private val artwork: SessionArtworkCache,
     private val scope: CoroutineScope,
     private val history: CarRecommendationHistory? = null,
+    private val playbackDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : MediaLibrarySession.Callback {
     private val indexed = MutableStateFlow<Pair<String?, CarLibrary?>>(null to null)
     private val warmups = mutableMapOf<String, Job>()
@@ -394,9 +396,10 @@ internal open class CarBrowser(
         val base = sessions.current?.baseUrl ?: throw IllegalArgumentException(context.getString(R.string.car_pair))
         mediaSession.player.playlistMetadata = catalog.context(selectedId)?.let(MediaItems::contextMetadata)
             ?: MediaMetadata.EMPTY
-        val items = withContext(Dispatchers.Default) {
+        val items = withContext(playbackDispatcher) {
             playback.first.map { MediaItems.from(it, base) }
         }
+        require(sessions.current?.artworkOwner == expectedOwner) { context.getString(R.string.car_pair) }
         MediaSession.MediaItemsWithStartPosition(
             items,
             playback.second,

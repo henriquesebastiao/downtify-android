@@ -121,6 +121,13 @@ Android Auto stability: see [the diagnostic and receiver acceptance checklist](d
 
 ## Experimental local music AI and DJ beta
 
+The optional `beta` build keeps the `.debug` application identity, enables R8 and
+resource shrinking, and is not debuggable. Packagers can set
+`musicAiBetaVersionCode` and `musicAiBetaVersionName` as Gradle properties to
+number their beta APK independently of the stable release. The version code must
+increase to update an installed build, and its signing certificate must match.
+These properties only affect beta APK outputs; stable release numbering is kept.
+
 **All server AI modules and the additional unqualified-DJ trial default off
 for new installations/accounts.** Existing explicit preferences are preserved.
 

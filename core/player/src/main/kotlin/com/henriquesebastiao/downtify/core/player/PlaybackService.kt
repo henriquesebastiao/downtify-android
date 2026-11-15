@@ -664,8 +664,10 @@ class PlaybackService : MediaLibraryService() {
             mediaItems: MutableList<MediaItem>,
         ): ListenableFuture<MutableList<MediaItem>> = scope.future {
             legacyQueue.awaitReady()
-            if (!own(controller)) return@future withContext(Dispatchers.Default) {
-                carAddItems(mediaItems).toMutableList()
+            if (!own(controller)) {
+                return@future withContext(Dispatchers.Default) {
+                    carAddItems(mediaItems).toMutableList()
+                }
             }
             val snapshot = library.library.value
             val baseUrl = sessions.current?.baseUrl

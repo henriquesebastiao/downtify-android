@@ -20,8 +20,11 @@ import com.henriquesebastiao.downtify.core.network.session.SessionStore
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.CoroutineContext
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -51,19 +54,23 @@ class CarBrowserTest {
         MutableStateFlow<Session?>(Session("https://fixture.test", "server", "Test", "device", "fixture"))
     private val snapshot = MutableStateFlow<LibrarySnapshot?>(null)
     private lateinit var browser: CarBrowser
+    private lateinit var repository: LibraryRepository
+    private lateinit var offline: OfflineRepository
+    private lateinit var sessions: SessionStore
+    private lateinit var artwork: SessionArtworkCache
 
     @Before fun setUp() {
-        val repository = mockk<LibraryRepository>()
+        repository = mockk<LibraryRepository>()
         every { repository.library } returns snapshot
         every { repository.playlists } returns MutableStateFlow(listOf(Playlist("Test", false, "", listOf("b", "a"))))
         every { repository.likedIds } returns MutableStateFlow(listOf("a"))
-        val offline = mockk<OfflineRepository>()
+        offline = mockk<OfflineRepository>()
         every { offline.state } returns MutableStateFlow<OfflineState?>(null)
-        val sessions = mockk<SessionStore>()
+        sessions = mockk<SessionStore>()
         every { sessions.current } answers { paired.value }
         every { sessions.session } returns paired
         coEvery { sessions.ensureLoaded() } returns Unit
-        val artwork = mockk<SessionArtworkCache>()
+        artwork = mockk<SessionArtworkCache>()
         coEvery { artwork.cached(any(), any()) } returns null
         coEvery { artwork.prepare(any(), any(), any()) } returns null
         browser = CarBrowser(RuntimeEnvironment.getApplication(), repository, offline, sessions, artwork, scope)
@@ -197,6 +204,31 @@ class CarBrowserTest {
             .get(5, TimeUnit.SECONDS)
         assertEquals(MediaItems.uriFor("a"), result.mediaItems.single().localConfiguration!!.uri)
         assertNotEquals(forged.localConfiguration!!.uri, result.mediaItems.single().localConfiguration!!.uri)
+    }
+
+    @Test fun `revocation while constructing a car queue rejects the previous account result`() {
+        val tasks = ArrayBlockingQueue<Runnable>(1)
+        val paused = object : CoroutineDispatcher() {
+            override fun dispatch(context: CoroutineContext, block: Runnable) {
+                check(tasks.offer(block))
+            }
+        }
+        val gated = CarBrowser(
+            RuntimeEnvironment.getApplication(), repository, offline, sessions, artwork, scope,
+            playbackDispatcher = paused,
+        )
+        gated.observe(session)
+        val result = gated.onSetMediaItems(
+            session, controller, mutableListOf(MediaItem.Builder().setMediaId("a").build()), 0, 0,
+        )
+        val work = requireNotNull(tasks.poll(5, TimeUnit.SECONDS)) { "Queue construction did not start" }
+        assertFalse(result.isDone)
+        paired.value = null
+        work.run()
+        val error = org.junit.Assert.assertThrows(ExecutionException::class.java) {
+            result.get(5, TimeUnit.SECONDS)
+        }
+        assertTrue(error.cause is IllegalArgumentException)
     }
 
     @Test(expected = ExecutionException::class)

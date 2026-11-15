@@ -65,6 +65,21 @@ android {
     }
 }
 
+androidComponents {
+    onVariants(selector().withBuildType("beta")) { variant ->
+        val betaCode = providers.gradleProperty("musicAiBetaVersionCode").orNull?.let { value ->
+            requireNotNull(value.toIntOrNull()?.takeIf { it > 0 }) { "musicAiBetaVersionCode must be a positive integer" }
+        }
+        val betaName = providers.gradleProperty("musicAiBetaVersionName").orNull?.also { value ->
+            require(value.isNotBlank()) { "musicAiBetaVersionName must not be blank" }
+        }
+        variant.outputs.forEach { output ->
+            betaCode?.let { output.versionCode.set(it) }
+            betaName?.let { output.versionName.set(it) }
+        }
+    }
+}
+
 dependencies {
     implementation(projects.core.designsystem)
     implementation(projects.core.data)
