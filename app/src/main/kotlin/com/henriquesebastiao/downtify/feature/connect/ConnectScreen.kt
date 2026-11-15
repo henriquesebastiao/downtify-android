@@ -10,6 +10,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -104,6 +105,7 @@ import com.henriquesebastiao.downtify.core.model.PairingPayload
 import com.henriquesebastiao.downtify.core.model.ServerAddress
 import com.henriquesebastiao.downtify.core.model.ServerInfo
 import com.henriquesebastiao.downtify.core.network.discovery.DiscoveredServer
+import com.henriquesebastiao.downtify.ui.common.chooseClientCertificate
 
 @Composable
 fun ConnectRoute(
@@ -175,6 +177,15 @@ fun ConnectRoute(
                 cameraPermission.launch(Manifest.permission.CAMERA)
             }
         },
+        onSelectClientCertificate = {
+            chooseClientCertificate(
+                context = context,
+                currentAlias = state.clientCertificate,
+                addressOrUrl = state.address,
+                onSelected = viewModel::onClientCertificateChange,
+            )
+        },
+        onClearClientCertificate = { viewModel.onClientCertificateChange(null) },
         modifier = modifier,
     )
 }
@@ -204,6 +215,8 @@ fun ConnectScreen(
     modifier: Modifier = Modifier,
     permissionDenied: Boolean = false,
     localNetworkDenied: Boolean = false,
+    onSelectClientCertificate: () -> Unit = {},
+    onClearClientCertificate: () -> Unit = {},
 ) {
     val step = state.step
     val effects = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
@@ -227,13 +240,15 @@ fun ConnectScreen(
                     when (val step = shown) {
                         ConnectStep.Address ->
                             AddressStep(
-                                state,
-                                onAddressChange,
-                                onPickDiscovered,
-                                onConnect,
-                                onScan,
-                                permissionDenied,
-                                localNetworkDenied,
+                                state = state,
+                                onAddressChange = onAddressChange,
+                                onPickDiscovered = onPickDiscovered,
+                                onConnect = onConnect,
+                                onScan = onScan,
+                                permissionDenied = permissionDenied,
+                                localNetworkDenied = localNetworkDenied,
+                                onSelectClientCertificate = onSelectClientCertificate,
+                                onClearClientCertificate = onClearClientCertificate,
                             )
 
                         is ConnectStep.SignIn ->
@@ -299,6 +314,8 @@ private fun AddressStep(
     onScan: () -> Unit,
     permissionDenied: Boolean,
     localNetworkDenied: Boolean,
+    onSelectClientCertificate: () -> Unit,
+    onClearClientCertificate: () -> Unit,
 ) {
     val typing = WindowInsets.isImeVisible
     StepColumn {
@@ -324,15 +341,25 @@ private fun AddressStep(
                 satellites = listOf(DowntifyIcons.Wifi, DowntifyIcons.QrCode, DowntifyIcons.Server),
                 caption = stringResource(R.string.connect_none_found).takeUnless { typing },
                 modifier = Modifier.weight(1f),
-            ) { DowntifyLogo(size = 64.dp) }
+            ) { DowntifyLogo(size = 48.dp) }
         }
-        Column(Modifier.padding(horizontal = Spacing.xl), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        Column(Modifier.padding(horizontal = Spacing.xl), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             OutlinedTextField(
                 value = state.address,
                 onValueChange = onAddressChange,
                 label = { Text(stringResource(R.string.connect_address_label)) },
                 placeholder = { Text("http://192.168.1.20:8000", style = DowntifyType.dataInput) },
                 leadingIcon = { Icon(painterResource(DowntifyIcons.Server), contentDescription = null) },
+                trailingIcon = {
+                    if (state.address.isNotEmpty()) {
+                        IconButton(onClick = { onAddressChange("") }) {
+                            Icon(
+                                painterResource(DowntifyIcons.Close),
+                                contentDescription = null,
+                            )
+                        }
+                    }
+                },
                 supportingText = {
                     Text(errorText(state.error) ?: stringResource(R.string.connect_address_hint))
                 },
@@ -346,6 +373,11 @@ private fun AddressStep(
                 ),
                 keyboardActions = KeyboardActions(onGo = { if (state.canConnect) onConnect() }),
                 modifier = Modifier.fillMaxWidth(),
+            )
+            ClientCertificateOption(
+                certificateAlias = state.clientCertificate,
+                onSelect = onSelectClientCertificate,
+                onClear = onClearClientCertificate,
             )
             if (state.cleartextWarning) {
                 Notice(stringResource(R.string.connect_cleartext_warning), DowntifyIcons.Warning)
@@ -545,7 +577,7 @@ private fun PairStep(
                 modifier = Modifier.size(64.dp),
             )
         }
-        Column(Modifier.padding(horizontal = Spacing.xl), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        Column(Modifier.padding(horizontal = Spacing.xl), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             OutlinedTextField(
                 value = state.code,
                 onValueChange = onCodeChange,
@@ -600,8 +632,8 @@ private fun StepColumn(content: @Composable ColumnScope.() -> Unit) = BoxWithCon
             .verticalScroll(scroll, enabled = scroll.maxValue > 0)
             // At least the screen's height, so the weighted picture has the leftover room to take.
             .heightIn(min = maxHeight)
-            .padding(bottom = Spacing.lg),
-        verticalArrangement = Arrangement.spacedBy(Spacing.lg),
+            .padding(bottom = Spacing.sm),
+        verticalArrangement = Arrangement.spacedBy(Spacing.md),
         content = content,
     )
 }
@@ -867,4 +899,75 @@ private val UppercaseTransformation = VisualTransformation { text ->
     // Identity offsets need the same length; a few letters (ß → SS) grow when uppercased.
     val upper = text.text.uppercase().takeIf { it.length == text.text.length } ?: text.text
     TransformedText(AnnotatedString(upper), OffsetMapping.Identity)
+}
+
+@Composable
+private fun ClientCertificateOption(
+    certificateAlias: String?,
+    onSelect: () -> Unit,
+    onClear: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val isSelected = certificateAlias != null
+    Surface(
+        onClick = onSelect,
+        shape = MaterialTheme.shapes.medium,
+        color = if (isSelected) scheme.secondaryContainer.copy(alpha = 0.4f) else scheme.surfaceContainerLow,
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (isSelected) scheme.primary.copy(alpha = 0.6f) else scheme.outlineVariant.copy(alpha = 0.5f),
+        ),
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+        ) {
+            Icon(
+                painter = painterResource(if (isSelected) DowntifyIcons.LockOpen else DowntifyIcons.Terms),
+                contentDescription = null,
+                tint = if (isSelected) scheme.primary else scheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Text(
+                    text = stringResource(R.string.connect_client_certificate),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = scheme.onSurfaceVariant,
+                )
+                Text(
+                    text = certificateAlias ?: stringResource(R.string.settings_client_certificate_none),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (isSelected) scheme.onSecondaryContainer else scheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            if (isSelected) {
+                IconButton(
+                    onClick = onClear,
+                    modifier = Modifier.size(32.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(DowntifyIcons.Close),
+                        contentDescription = stringResource(R.string.connect_client_certificate_clear),
+                        tint = scheme.onSecondaryContainer,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            } else {
+                Icon(
+                    painter = painterResource(DowntifyIcons.ChevronRight),
+                    contentDescription = null,
+                    tint = scheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
+    }
 }

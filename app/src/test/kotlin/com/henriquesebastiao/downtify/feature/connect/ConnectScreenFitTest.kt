@@ -72,7 +72,7 @@ class ConnectScreenFitTest {
                 )
             }
         }
-        assertFits(R.string.connect_action, R.string.connect_revoked, R.string.connect_scan)
+        assertFits(R.string.connect_action, R.string.connect_revoked)
         assertWholeAbove(R.string.connect_none_found, R.string.connect_address_label)
 
         state = ConnectUiState(

@@ -300,6 +300,10 @@
     <string name="settings_offline_limit">Offline tárhelykorlát</string>
     <string name="settings_offline_limit_summary">%1$s · %2$s felhasználva</string>
     <string name="settings_offline_limit_none">Nincs korlát</string>
+    <string name="settings_offline_directory">Letöltési mappa</string>
+    <string name="settings_offline_directory_reset">Alapértelmezett letöltési mappa használata</string>
+    <string name="settings_offline_directory_moving">Offline zene áthelyezése…</string>
+    <string name="settings_offline_directory_error">Nem sikerült áthelyezni az offline zenét. Ellenőrizze a mappa elérését, és próbálja újra.</string>
 
     <!-- Settings -->
     <string name="settings_title">Beállítások</string>
@@ -560,4 +564,12 @@
         <item quantity="one">%1$d elem</item>
         <item quantity="other">%1$d elem</item>
     </plurals>
+    <string name="connect_client_certificate">Ügyféltanúsítvány</string>
+    <string name="connect_client_certificate_selected">Ügyféltanúsítvány: %1$s</string>
+    <string name="connect_client_certificate_clear">Ügyféltanúsítvány eltávolítása</string>
+    <string name="settings_client_certificate">Ügyféltanúsítvány</string>
+    <string name="settings_client_certificate_none">Nincs · kölcsönös TLS-t használó fordított proxykhoz</string>
+    <string name="settings_client_certificate_active">A(z) „%1$s” bemutatása az Android hitelesítőadat-tárából, amikor a szerver ügyféltanúsítványt kér.</string>
+    <string name="settings_client_certificate_change">Módosítás</string>
+    <string name="settings_client_certificate_remove">Eltávolítás</string>
 </resources>

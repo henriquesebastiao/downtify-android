@@ -41,6 +41,8 @@ data class UserSettings(
     val downloadWifiOnly: Boolean = true,
     /** Most bytes offline copies may take; [OfflinePlanner.UNLIMITED] for no limit. */
     val offlineLimitBytes: Long = DEFAULT_OFFLINE_LIMIT,
+    /** Persisted SAF tree for offline media, or null for Android/media/<package>. */
+    val offlineDirectoryUri: String? = null,
     val readAhead: ReadAheadPolicy = ReadAheadPolicy(),
 ) {
     companion object {

@@ -30,10 +30,10 @@ import com.henriquesebastiao.downtify.core.network.ServerUrls
 import com.henriquesebastiao.downtify.core.network.di.StreamingClient
 import com.henriquesebastiao.downtify.core.network.session.SessionStore
 import dagger.hilt.android.qualifiers.ApplicationContext
-import java.io.File
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -49,20 +49,21 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 
 /** A kept collection, resolved against the library, with how much of it is on the phone. */
 data class KeptCollection(
     val collection: OfflineCollection,
-    /** Album title or playlist name; blank for Liked songs (the UI names it). */
     val title: String,
     val coverTrackId: String?,
     val tracks: List<Track>,
     val progress: OfflineProgress,
 )
 
-/** Everything offline, recomputed whenever the library, the kept collections, the files or the limit change. */
+/** Everything offline, recomputed whenever the library, collections, files or limit change. */
 data class OfflineState(
     val collections: List<KeptCollection>,
     val files: Map<String, OfflineFile>,
@@ -83,17 +84,16 @@ data class OfflineState(
     }
 }
 
-/** The track downloading right now. */
 data class DownloadProgress(val trackId: String, val bytes: Long, val total: Long)
 
-/** What the background download job is doing. */
 enum class DownloadActivity { Idle, Downloading, WaitingForNetwork }
 
-/**
- * Offline copies: which collections the user keeps, what that means in files
- * (an [OfflinePlan]), and keeping the phone in step — deleting what's no
- * longer wanted at once, and handing downloads to [OfflineSyncWorker].
- */
+sealed interface OfflineLocationChange {
+    data object Idle : OfflineLocationChange
+    data object Moving : OfflineLocationChange
+    data class Failed(val cause: Throwable) : OfflineLocationChange
+}
+
 @Singleton
 class OfflineRepository @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -108,11 +108,8 @@ class OfflineRepository @Inject constructor(
 ) {
     private val downloader = TrackDownloader(client)
     private val dao = db.offline()
+    private val locationMutex = Mutex()
 
-    /**
-     * Null until every source was read once — the Room flows (not the repository's
-     * `stateIn` defaults), so an empty first value never looks like "delete everything".
-     */
     val state: StateFlow<OfflineState?> = combine(
         library.library.filterNotNull(),
         db.playlists().observeAll(),
@@ -135,8 +132,9 @@ class OfflineRepository @Inject constructor(
 
     private val mutableProgress = MutableStateFlow<DownloadProgress?>(null)
     val progress: StateFlow<DownloadProgress?> = mutableProgress.asStateFlow()
+    private val mutableLocationChange = MutableStateFlow<OfflineLocationChange>(OfflineLocationChange.Idle)
+    val locationChange: StateFlow<OfflineLocationChange> = mutableLocationChange.asStateFlow()
 
-    // Lazy: this repository is built while the Application is injected, before WorkManager may start.
     val activity: Flow<DownloadActivity> by lazy { activityFlow() }
 
     private fun activityFlow(): Flow<DownloadActivity> = WorkManager.getInstance(context)
@@ -153,18 +151,32 @@ class OfflineRepository @Inject constructor(
     private var scheduledIds: Set<String> = emptySet()
     private var scheduledWifiOnly: Boolean? = null
 
-    /** Starts keeping the phone in step. Called once, from the Application. */
+    @Suppress("TooGenericExceptionCaught")
     fun start() {
         scope.launch {
+            val directory = settings.settings.first().offlineDirectoryUri
+            val initialized = try {
+                withContext(Dispatchers.IO) {
+                    storage.moveTo(directory)
+                    migrateLegacy()
+                }
+                true
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                mutableLocationChange.value = OfflineLocationChange.Failed(error)
+                Log.w(TAG, "Could not initialize the selected offline folder", error)
+                false
+            }
+            if (!initialized) return@launch
             dropInvalidFiles()
-            state.filterNotNull().collect { reconcile(it) }
+            state.filterNotNull().collect { reconcileSafely(it) }
         }
     }
 
-    /** The offline copy of [trackId], when there's a complete one. Safe from any thread. */
-    fun localFile(trackId: String): File? {
+    fun localAudio(trackId: String): OfflineAudio? {
         val file = state.value?.files?.get(trackId) ?: return null
-        return storage.file(file.fileName).takeIf { storage.usable(file.fileName, file.bytes) }
+        return storage.audio(file.fileName).takeIf { storage.usable(file.fileName, file.bytes) }
     }
 
     suspend fun setKept(type: PlaybackContextType, refId: String, keep: Boolean) {
@@ -177,41 +189,80 @@ class OfflineRepository @Inject constructor(
         }
     }
 
-    /** Stops downloading and keeps nothing offline. */
     suspend fun removeAll() {
         dao.deleteAllCollections()
     }
 
-    /** Frees space the storage card counts: partial downloads plus the complete copies. */
-    fun freeBytes(): Long = storage.freeBytes()
+    @Suppress("TooGenericExceptionCaught")
+    suspend fun setDirectory(treeUri: String?): Boolean = locationMutex.withLock {
+        mutableLocationChange.value = OfflineLocationChange.Moving
+        val previous = settings.settings.first().offlineDirectoryUri
+        var grantTaken = false
+        return@withLock try {
+            withContext(Dispatchers.IO) {
+                if (treeUri != null && treeUri != previous) {
+                    context.contentResolver.takePersistableUriPermission(
+                        android.net.Uri.parse(treeUri),
+                        android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                            android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+                    )
+                    grantTaken = true
+                }
+                WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME).result.get()
+                storage.moveTo(treeUri)
+            }
+            settings.setOfflineDirectory(treeUri)
+            if (previous != null && previous != treeUri) releaseDirectoryPermission(previous)
+            scheduledIds = emptySet()
+            scheduledWifiOnly = null
+            state.value?.let { schedule(it.plan.toDownload.mapTo(mutableSetOf()) { track -> track.id }, it.wifiOnly) }
+            mutableLocationChange.value = OfflineLocationChange.Idle
+            true
+        } catch (error: CancellationException) {
+            mutableLocationChange.value = OfflineLocationChange.Idle
+            throw error
+        } catch (error: Exception) {
+            if (grantTaken && treeUri != null) releaseDirectoryPermission(treeUri)
+            Log.w(TAG, "Could not move offline media", error)
+            mutableLocationChange.value = OfflineLocationChange.Failed(error)
+            false
+        }
+    }
 
+    fun locationLabel(): String = storage.locationLabel()
+
+    private fun releaseDirectoryPermission(treeUri: String) {
+        runCatching {
+            context.contentResolver.releasePersistableUriPermission(
+                android.net.Uri.parse(treeUri),
+                android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                    android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+            )
+        }
+    }
+
+    fun freeBytes(): Long = storage.freeBytes()
     fun partialBytes(): Long = storage.partialBytes()
 
-    /**
-     * One step of [OfflineSyncWorker]: download the next missing track. [handled]
-     * are the ids this run already dealt with — the plan may not show a finished
-     * file yet (Room's flow re-emits a moment later).
-     */
     internal suspend fun downloadNext(handled: Set<String>): Step {
         val plan = state.filterNotNull().first().plan
         val track = plan.toDownload.firstOrNull { it.id !in handled } ?: return Step.Done
         val session = sessions.current ?: return Step.Done
         if (storage.freeBytes() < track.size + FREE_SPACE_MARGIN) return Step.OutOfSpace
-        val part = storage.partFile(track.id)
+        val part = storage.part(track.id)
         val url = ServerUrls.stream(session.baseUrl, track.id, StreamQuality.Original)
         mutableProgress.value = DownloadProgress(track.id, part.length(), track.size)
         val result = try {
             downloader.download(url, part) { bytes ->
-                mutableProgress.value =
-                    DownloadProgress(track.id, bytes, track.size)
+                mutableProgress.value = DownloadProgress(track.id, bytes, track.size)
             }
         } finally {
             mutableProgress.value = null
         }
         return when (result) {
             is TrackDownloader.Result.Complete -> {
-                commit(track, part, result.bytes)?.let { file ->
-                    loudness.bindDownloaded(track.id, file, result.etag, result.bytes)
+                commit(track, part, result.bytes)?.let { audio ->
+                    loudness.bindDownloaded(track.id, audio, result.etag, result.bytes)
                 }
                 Step.Handled(track.id)
             }
@@ -229,25 +280,47 @@ class OfflineRepository @Inject constructor(
     }
 
     internal sealed interface Step {
-        /** Downloaded, or gone from the server: don't try it again this run. */
         data class Handled(val trackId: String) : Step
         data object Done : Step
         data object Retry : Step
         data object OutOfSpace : Step
     }
 
-    private suspend fun commit(track: Track, part: File, bytes: Long): File? {
-        // Removed while it downloaded: don't keep it.
+    private suspend fun commit(track: Track, part: OfflineTarget, bytes: Long): OfflineAudio? {
         if (track.id !in state.filterNotNull().first().plan.keep) {
             part.delete()
             return null
         }
-        val name = storage.fileName(track)
-        val file = storage.commit(part, name)
-        if (file != null) {
-            dao.upsertFile(OfflineFileEntity(track.id, name, bytes, System.currentTimeMillis()))
+        val audio = storage.commit(part, track)
+        if (audio != null) {
+            dao.upsertFile(OfflineFileEntity(track.id, audio.path, bytes, System.currentTimeMillis()))
         }
-        return file
+        return audio
+    }
+
+    private suspend fun migrateLegacy() {
+        val tracks = library.library.filterNotNull().first().byId
+        dao.files().forEach { entity ->
+            val legacy = storage.legacyFile(entity.fileName)
+            val track = tracks[entity.trackId]
+            if (legacy.isFile && track != null) {
+                storage.importLegacy(legacy, track)?.let { audio ->
+                    dao.upsertFile(entity.copy(fileName = audio.path))
+                }
+            }
+        }
+    }
+
+    internal suspend fun reconcileSafely(state: OfflineState) {
+        try {
+            reconcile(state)
+        } catch (error: java.io.IOException) {
+            Log.w(TAG, "Offline storage is unavailable", error)
+            mutableLocationChange.value = OfflineLocationChange.Failed(error)
+        } catch (error: SecurityException) {
+            Log.w(TAG, "Offline storage permission was revoked", error)
+            mutableLocationChange.value = OfflineLocationChange.Failed(error)
+        }
     }
 
     private suspend fun reconcile(state: OfflineState) {
@@ -257,21 +330,39 @@ class OfflineRepository @Inject constructor(
                 plan.toDelete.forEach { id -> state.files[id]?.let { storage.delete(it.fileName) } }
             }
             dao.deleteFiles(plan.toDelete.toList())
-            return // The files flow emits again without them.
+            syncPlaylists(state)
+            return
         }
         withContext(Dispatchers.IO) {
             val keep = state.files.values.mapTo(mutableSetOf()) { it.fileName }
-            plan.toDownload.mapTo(keep) { it.id + OfflineStorage.PART }
+            plan.toDownload.mapTo(keep) { OfflinePaths.part(it.id) }
+            keep += storage.playlistPaths()
             storage.sweep(keep)
         }
+        syncPlaylists(state)
         schedule(plan.toDownload.mapTo(mutableSetOf()) { it.id }, state.wifiOnly)
     }
 
-    /**
-     * Enqueues the download job when there's something new to fetch, or the
-     * network rule changed. A running job picks up later additions by itself;
-     * appending covers the moment it's about to finish.
-     */
+    private suspend fun syncPlaylists(state: OfflineState) = withContext(Dispatchers.IO) {
+        val playlists = state.collections.mapNotNull { kept ->
+            val title = when (kept.collection.type) {
+                PlaybackContextType.Playlist -> kept.title
+                PlaybackContextType.Liked -> LIKED_PLAYLIST_TITLE
+                else -> null
+            } ?: return@mapNotNull null
+            val tracks = kept.tracks.mapNotNull { track ->
+                val file = state.files[track.id]
+                if (track.id in state.plan.keep && file != null && storage.usable(file.fileName, file.bytes)) {
+                    track to file.fileName
+                } else {
+                    null
+                }
+            }
+            OfflinePlaylist(title, kept.collection.key, tracks)
+        }
+        storage.syncPlaylists(playlists)
+    }
+
     private fun schedule(ids: Set<String>, wifiOnly: Boolean) {
         if (ids.isEmpty()) {
             scheduledIds = emptySet()
@@ -295,7 +386,6 @@ class OfflineRepository @Inject constructor(
         WorkManager.getInstance(context).enqueueUniqueWork(WORK_NAME, policy, request)
     }
 
-    /** Invalid copies must not look downloaded forever: the kept collection schedules their repair. */
     private suspend fun dropInvalidFiles() {
         val missing = withContext(Dispatchers.IO) {
             dao.files().filterNot { storage.usable(it.fileName, it.bytes) }
@@ -307,9 +397,8 @@ class OfflineRepository @Inject constructor(
         internal const val WORK_NAME = "offline-downloads"
         private const val TAG = "Offline"
         private const val BACKOFF_SECONDS = 30L
-
-        /** Leave this much free on the phone. */
         private const val FREE_SPACE_MARGIN = 200_000_000L
+        private const val LIKED_PLAYLIST_TITLE = "Liked Songs"
 
         @Suppress("LongParameterList")
         internal fun buildState(

@@ -309,6 +309,10 @@
     <string name="settings_offline_limit">Limite de stockage hors ligne</string>
     <string name="settings_offline_limit_summary">%1$s · %2$s utilisés</string>
     <string name="settings_offline_limit_none">Aucune limite</string>
+    <string name="settings_offline_directory">Dossier de téléchargement</string>
+    <string name="settings_offline_directory_reset">Utiliser le dossier de téléchargement par défaut</string>
+    <string name="settings_offline_directory_moving">Déplacement de la musique hors ligne…</string>
+    <string name="settings_offline_directory_error">Impossible de déplacer la musique hors ligne. Vérifiez l’accès au dossier et réessayez.</string>
 
     <!-- Settings -->
     <string name="settings_title">Paramètres</string>
@@ -574,4 +578,12 @@
         <item quantity="one">%1$d élément</item>
         <item quantity="other">%1$d éléments</item>
     </plurals>
+    <string name="connect_client_certificate">Certificat client</string>
+    <string name="connect_client_certificate_selected">Certificat client : %1$s</string>
+    <string name="connect_client_certificate_clear">Retirer le certificat client</string>
+    <string name="settings_client_certificate">Certificat client</string>
+    <string name="settings_client_certificate_none">Aucun · pour les proxys inverses utilisant le TLS mutuel</string>
+    <string name="settings_client_certificate_active">Présentation de «\u00A0%1$s\u00A0» depuis le stockage des identifiants d’Android lorsque le serveur demande un certificat client.</string>
+    <string name="settings_client_certificate_change">Changer</string>
+    <string name="settings_client_certificate_remove">Retirer</string>
 </resources>

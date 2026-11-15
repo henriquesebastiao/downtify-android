@@ -3,13 +3,17 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "cron"
+      cronjob: "0 1 1 * *"
+      timezone: "America/Sao_Paulo"
     assignees:
       - "henriquesebastiao"
 
   - package-ecosystem: "gradle"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "cron"
+      cronjob: "0 1 1 * *"
+      timezone: "America/Sao_Paulo"
     assignees:
       - "henriquesebastiao"

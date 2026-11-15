@@ -116,4 +116,11 @@ class HomeScreenTest {
         compose.onNodeWithText("Another server answers at this address · sign in again in Settings").assertExists()
         compose.onNodeWithText("Streaming from nas.local").assertDoesNotExist()
     }
+
+    @Test
+    fun directSongsRecentTileDisplaysSongsTitle() {
+        val songsRecent = RecentContext(PlaybackContextType.Songs, "", "", null, 0)
+        show(state.copy(jumpBackIn = listOf(songsRecent)))
+        compose.onNodeWithText("Songs").assertExists()
+    }
 }

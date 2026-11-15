@@ -115,6 +115,25 @@ class PlayerComponentsTest {
         assertEquals(0.5f, seekedTo!!, 0.01f)
     }
 
+    @Test
+    fun theTransportButtonsRetainContentDescriptionAndClickabilityWhenBuffering() {
+        var toggled = false
+        compose.setContent {
+            DowntifyTheme {
+                PlaybackControls(
+                    playing = true,
+                    buffering = true,
+                    onTogglePlay = { toggled = true },
+                    onPrevious = {},
+                    onNext = {},
+                    labels = labels,
+                )
+            }
+        }
+        compose.onNodeWithContentDescription("Pause").assertExists().performClick()
+        assertTrue(toggled)
+    }
+
     // Buttons merge their icon's label into themselves: the labelled node is the button.
     private fun SemanticsNodeInteraction.button() = fetchSemanticsNode().boundsInRoot
 }

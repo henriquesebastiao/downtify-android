@@ -1,6 +1,8 @@
 package com.henriquesebastiao.downtify.core.data.loudness
 
 import android.content.Context
+import android.net.Uri
+import com.henriquesebastiao.downtify.core.data.offline.OfflineAudio
 import com.henriquesebastiao.downtify.core.data.settings.SettingsRepository
 import com.henriquesebastiao.downtify.core.data.settings.UserSettings
 import com.henriquesebastiao.downtify.core.network.ApiFactory
@@ -115,5 +117,28 @@ class LoudnessProfilesTest {
         // Mid-track reopen or offline: no request.
         profiles.prepareStreamBlocking("third", ask = false)
         coVerify(exactly = 0) { api.loudness("third") }
+    }
+
+    @Test
+    fun contentUriLoudnessUsesResolverBytesAndChangedMetadataInvalidatesIt() = runTest {
+        val uri = Uri.parse("content://music/offline/track.flac")
+        val bytes = "original audio".toByteArray()
+        val resolver = mockk<android.content.ContentResolver> {
+            every { openInputStream(uri) } answers { java.io.ByteArrayInputStream(bytes) }
+        }
+        val context = mockk<Context> {
+            every { filesDir } returns temporary.newFolder()
+            every { contentResolver } returns resolver
+        }
+        val audio = OfflineAudio(uri, "Music/track.flac", bytes.size.toLong(), 1)
+        coEvery { api.loudness("track") } returns ready(5.0, size = audio.bytes)
+        val profiles = LoudnessProfiles(context, sessions, apis, settings, backgroundScope).also { runCurrent() }
+
+        profiles.bindDownloaded("track", audio, "etag-one", audio.bytes)
+        profiles.prepareLocalBlocking("track", audio)
+        assertEquals(5.0, profiles.gainDb("track"), 0.001)
+
+        profiles.prepareLocalBlocking("track", audio.copy(lastModified = 2))
+        assertEquals(0.0, profiles.gainDb("track"), 0.0)
     }
 }

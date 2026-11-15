@@ -39,6 +39,7 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
             librarySortDescending = prefs[LIBRARY_SORT_DESCENDING] ?: sort.descendingByDefault,
             downloadWifiOnly = prefs[DOWNLOAD_WIFI_ONLY] ?: defaults.downloadWifiOnly,
             offlineLimitBytes = prefs[OFFLINE_LIMIT] ?: defaults.offlineLimitBytes,
+            offlineDirectoryUri = prefs[OFFLINE_DIRECTORY_URI],
             readAhead = ReadAheadPolicy(
                 prefs[READ_AHEAD] ?: defaults.readAhead.tracks,
                 prefs[STREAM_CACHE_MB] ?: defaults.readAhead.cacheMb,
@@ -107,6 +108,12 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
         store.edit { it[OFFLINE_LIMIT] = bytes }
     }
 
+    suspend fun setOfflineDirectory(uri: String?) {
+        store.edit { prefs ->
+            if (uri == null) prefs.remove(OFFLINE_DIRECTORY_URI) else prefs[OFFLINE_DIRECTORY_URI] = uri
+        }
+    }
+
     suspend fun setReadAhead(tracks: Int) {
         store.edit { it[READ_AHEAD] = tracks.coerceIn(0, 3) }
     }
@@ -146,6 +153,7 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
         val CLIENT_ID = stringPreferencesKey("client_id")
         val DOWNLOAD_WIFI_ONLY = booleanPreferencesKey("download_wifi_only")
         val OFFLINE_LIMIT = longPreferencesKey("offline_limit_bytes")
+        val OFFLINE_DIRECTORY_URI = stringPreferencesKey("offline_directory_uri")
         val READ_AHEAD = intPreferencesKey("read_ahead_tracks")
         val STREAM_CACHE_MB = intPreferencesKey("stream_cache_mb")
         val READ_AHEAD_MOBILE = booleanPreferencesKey("read_ahead_mobile")

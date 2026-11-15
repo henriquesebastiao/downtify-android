@@ -23,11 +23,14 @@ class SessionStore @Inject constructor(@ApplicationContext context: Context) {
     private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
     private val cipher = TokenCipher(context)
     private val state = MutableStateFlow<Session?>(null)
+    private val clientCert = MutableStateFlow<String?>(null)
     private val reason = MutableStateFlow<SignOutReason?>(null)
     private val lock = Any()
 
     @Volatile
     private var loaded = false
+
+    internal var onClientCertificateChanged: (() -> Unit)? = null
 
     /** The paired session, or null. */
     val session: StateFlow<Session?>
@@ -36,19 +39,46 @@ class SessionStore @Inject constructor(@ApplicationContext context: Context) {
             return state.asStateFlow()
         }
 
+    /** Alias of the client certificate in Android's KeyChain for mTLS, or null. */
+    val clientCertificate: StateFlow<String?>
+        get() {
+            ensureLoaded()
+            return clientCert.asStateFlow()
+        }
+
     /** Why the last session ended, for the connect screen; null after a fresh start. */
     val signOutReason: StateFlow<SignOutReason?> = reason.asStateFlow()
 
     val current: Session? get() = session.value
+    val currentClientCertificate: String? get() = clientCertificate.value
 
     fun ensureLoaded() {
         if (loaded) return
         synchronized(lock) {
             if (!loaded) {
+                clientCert.value = prefs.getString(KEY_CLIENT_CERT, null)?.takeIf { it.isNotBlank() }
                 state.value = read()
                 loaded = true
             }
         }
+    }
+
+    /** Sets or clears the KeyChain alias presented when a server asks for a client certificate (mTLS). */
+    fun setClientCertificate(alias: String?) {
+        val shouldEvict = synchronized(lock) {
+            ensureLoaded()
+            val normalized = alias?.trim()?.takeIf { it.isNotEmpty() }
+            if (clientCert.value != normalized) {
+                prefs.edit {
+                    if (normalized == null) remove(KEY_CLIENT_CERT) else putString(KEY_CLIENT_CERT, normalized)
+                }
+                clientCert.value = normalized
+                true
+            } else {
+                normalized != null
+            }
+        }
+        if (shouldEvict) onClientCertificateChanged?.invoke()
     }
 
     fun save(session: Session) = synchronized(lock) {
@@ -73,7 +103,8 @@ class SessionStore @Inject constructor(@ApplicationContext context: Context) {
 
     /** Forgets the token. The server still lists the device until it's unpaired there. */
     fun clear(why: SignOutReason) = synchronized(lock) {
-        prefs.edit { clear() }
+        ensureLoaded()
+        clearSessionPrefs()
         loaded = true
         reason.value = why
         state.value = null
@@ -90,6 +121,14 @@ class SessionStore @Inject constructor(@ApplicationContext context: Context) {
         }
     }
 
+    private fun clearSessionPrefs() {
+        val cert = clientCert.value
+        prefs.edit {
+            clear()
+            if (cert != null) putString(KEY_CLIENT_CERT, cert)
+        }
+    }
+
     private fun read(): Session? {
         val baseUrl = prefs.getString(KEY_BASE_URL, null) ?: return null
         val encrypted = prefs.getString(KEY_TOKEN, null) ?: return null
@@ -98,7 +137,7 @@ class SessionStore @Inject constructor(@ApplicationContext context: Context) {
         } catch (e: GeneralSecurityException) {
             // A lost or rotated Keystore key (e.g. restored onto another phone): pair again.
             Log.w(TAG, "Could not decrypt the device token; pairing again", e)
-            prefs.edit { clear() }
+            clearSessionPrefs()
             return null
         }
         return Session(
@@ -120,5 +159,6 @@ class SessionStore @Inject constructor(@ApplicationContext context: Context) {
         const val KEY_DEVICE_ID = "device_id"
         const val KEY_TOKEN = "token"
         const val KEY_USERNAME = "username"
+        const val KEY_CLIENT_CERT = "client_cert_alias"
     }
 }

@@ -118,7 +118,7 @@ data class OfflineCollectionEntity(
     }
 }
 
-/** A complete offline copy in the app's `offline/` folder. Partial downloads aren't listed. */
+/** A complete offline copy and its relative path in the selected media folder. */
 @Entity(tableName = "offline_files")
 data class OfflineFileEntity(
     @PrimaryKey val trackId: String,

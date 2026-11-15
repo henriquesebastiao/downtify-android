@@ -300,6 +300,10 @@
     <string name="settings_offline_limit">Лимит на офлайн хранилището</string>
     <string name="settings_offline_limit_summary">%1$s · %2$s използвани</string>
     <string name="settings_offline_limit_none">Без лимит</string>
+    <string name="settings_offline_directory">Папка за изтегляния</string>
+    <string name="settings_offline_directory_reset">Използване на папката по подразбиране</string>
+    <string name="settings_offline_directory_moving">Преместване на офлайн музиката…</string>
+    <string name="settings_offline_directory_error">Неуспешно преместване на офлайн музиката. Проверете достъпа до папката и опитайте отново.</string>
 
     <!-- Settings -->
     <string name="settings_title">Настройки</string>
@@ -560,4 +564,12 @@
         <item quantity="one">%1$d елемент</item>
         <item quantity="other">%1$d елемента</item>
     </plurals>
+    <string name="connect_client_certificate">Клиентски сертификат</string>
+    <string name="connect_client_certificate_selected">Клиентски сертификат: %1$s</string>
+    <string name="connect_client_certificate_clear">Премахни клиентския сертификат</string>
+    <string name="settings_client_certificate">Клиентски сертификат</string>
+    <string name="settings_client_certificate_none">Няма · за обратни проксита с взаимен TLS</string>
+    <string name="settings_client_certificate_active">Представя „%1$s“ от хранилището за идентификационни данни на Android, когато сървърът поиска клиентски сертификат.</string>
+    <string name="settings_client_certificate_change">Промени</string>
+    <string name="settings_client_certificate_remove">Премахни</string>
 </resources>
