@@ -126,21 +126,21 @@ fun TvHomeScreen(
                 else -> {
                     if (state.jumpBackIn.isNotEmpty()) {
                         item(key = "jump") {
-                            Section(stringResource(R.string.home_jump_back_in)) {
+                            TvSection(stringResource(R.string.home_jump_back_in)) {
                                 JumpBackIn(state.jumpBackIn.take(JUMP_BACK_IN_TILES), playlists, onOpenRecent)
                             }
                         }
                     }
                     if (favorites.isNotEmpty()) {
                         item(key = "favorites") {
-                            Section(stringResource(R.string.favorite_playlists)) {
+                            TvSection(stringResource(R.string.favorite_playlists)) {
                                 FavoriteRow(favorites, playlists, onOpenRecent)
                             }
                         }
                     }
                     if (state.recentlyAdded.isNotEmpty()) {
                         item(key = "recent") {
-                            Section(stringResource(R.string.home_recently_added)) {
+                            TvSection(stringResource(R.string.home_recently_added)) {
                                 AlbumRow(state.recentlyAdded, onOpenAlbum)
                             }
                         }
@@ -152,7 +152,7 @@ fun TvHomeScreen(
 }
 
 @Composable
-private fun Section(title: String, content: @Composable () -> Unit) {
+internal fun TvSection(title: String, content: @Composable () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         Text(
             title,
@@ -252,7 +252,7 @@ private fun FavoriteRow(
     playlists: Map<String, Playlist>,
     onOpen: (RecentContext) -> Unit,
 ) {
-    CoverRow {
+    TvCoverRow {
         items(entries, key = { it.refId }) { entry ->
             TvCoverCard(
                 title = recentTitle(entry),
@@ -268,7 +268,7 @@ private fun FavoriteRow(
 
 @Composable
 private fun AlbumRow(albums: List<Album>, onOpenAlbum: (String) -> Unit) {
-    CoverRow {
+    TvCoverRow {
         items(albums, key = { it.id }) { album ->
             TvCoverCard(
                 title = album.title,
@@ -281,10 +281,10 @@ private fun AlbumRow(albums: List<Album>, onOpenAlbum: (String) -> Unit) {
     }
 }
 
-/** A row of covers that scrolls the focused one to its start, where the row's first sits. */
+/** A TV row of covers that scrolls the focused one to its start, where the row's first sits. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun CoverRow(content: LazyListScope.() -> Unit) {
+internal fun TvCoverRow(content: LazyListScope.() -> Unit) {
     val start = TvMargin - TvRingSpace
     CompositionLocalProvider(LocalBringIntoViewSpec provides rememberTvGridBringIntoViewSpec(start)) {
         LazyRow(

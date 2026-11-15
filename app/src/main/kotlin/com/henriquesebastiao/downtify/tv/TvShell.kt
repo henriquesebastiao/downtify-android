@@ -55,7 +55,6 @@ import com.henriquesebastiao.downtify.feature.player.NowPlayingActions
 import com.henriquesebastiao.downtify.feature.player.PlayerViewModel
 import com.henriquesebastiao.downtify.feature.podcasts.ShowRoute
 import com.henriquesebastiao.downtify.feature.search.SearchNavigation
-import com.henriquesebastiao.downtify.feature.search.SearchRoute
 import com.henriquesebastiao.downtify.feature.settings.SettingsRoute
 import com.henriquesebastiao.downtify.feature.similar.SimilarRoute as SimilarScreenRoute
 import com.henriquesebastiao.downtify.feature.trash.MoveToTrashHost
@@ -206,8 +205,8 @@ private fun TvNavHost(navController: NavHostController) {
         composable<HomeDestination> {
             TvHomeRoute(onOpenRecent = { navController.navigate(routeFor(it)) }, onOpenAlbum = toAlbum)
         }
-        composable<SearchDestination> { SearchRoute(search) }
-        composable<SearchQueryRoute> { SearchRoute(search) }
+        composable<SearchDestination> { TvSearchRoute(search) }
+        composable<SearchQueryRoute> { TvSearchRoute(search) }
         composable<SimilarRoute> { SimilarScreenRoute(onBack = navController::popBackStack) }
         composable<ShowDestination> { ShowRoute(onBack = navController::popBackStack) }
         composable<LibraryDestination> {
