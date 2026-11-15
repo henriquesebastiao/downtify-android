@@ -7,8 +7,8 @@ import com.henriquesebastiao.downtify.core.data.musicai.MusicAiRepository
 import com.henriquesebastiao.downtify.core.network.dto.MusicAiCapabilitiesDto
 import com.henriquesebastiao.downtify.core.network.session.Session
 import com.henriquesebastiao.downtify.core.player.DjPlaybackCoordinator
-import com.henriquesebastiao.downtify.core.player.LocalDjSettings
 import com.henriquesebastiao.downtify.core.player.LocalDjMode
+import com.henriquesebastiao.downtify.core.player.LocalDjSettings
 import com.henriquesebastiao.downtify.core.player.PlayerController
 import com.henriquesebastiao.downtify.core.player.PlayerState
 import com.henriquesebastiao.downtify.core.player.RepeatMode
@@ -78,10 +78,21 @@ class QueueDjViewModel @Inject constructor(
     private val effectiveDevice = combine(local.device, local.mode) { device, mode ->
         mode == LocalDjMode.Transitions || device
     }
-    val availability = combine(capabilities, effectiveDevice, player.state, music.session) { caps, device, state, owner ->
+    val availability = combine(capabilities, effectiveDevice, player.state, music.session) {
+            caps,
+            device,
+            state,
+            owner,
+        ->
         queueDjAvailability(caps, device, state, owner != null)
     }.stateIn(viewModelScope, SharingStarted.Eagerly, currentAvailability())
-    val mixMode = combine(local.mode, local.armed, coordinator.busy, coordinator.armed, player.state) { mode, localArmed, busy, serverArmed, state ->
+    val mixMode = combine(local.mode, local.armed, coordinator.busy, coordinator.armed, player.state) {
+            mode,
+            localArmed,
+            busy,
+            serverArmed,
+            state,
+        ->
         when {
             busy || serverArmed || state.dj != null -> PlaybackMixMode.Dj
             localArmed -> if (mode == LocalDjMode.Transitions) PlaybackMixMode.Transitions else PlaybackMixMode.Dj
@@ -146,7 +157,9 @@ class QueueDjViewModel @Inject constructor(
                 local.setArmed(false)
                 feedback.value = if (local.mode.value == LocalDjMode.Transitions) {
                     "Transitions désactivées."
-                } else "DJ sur cet appareil désactivé."
+                } else {
+                    "DJ sur cet appareil désactivé."
+                }
             }
 
             serverActive() -> {
@@ -178,7 +191,14 @@ class QueueDjViewModel @Inject constructor(
     }
 
     private fun check(activate: Boolean) {
-        val token = Check(++generation, music.session.value, player.selectionVersion.value, local.device.value, local.mode.value)
+        val token =
+            Check(
+                ++generation,
+                music.session.value,
+                player.selectionVersion.value,
+                local.device.value,
+                local.mode.value,
+            )
         mutableChecking.value = true
         feedback.value = "Vérification de la disponibilité du DJ…"
         operation = viewModelScope.launch {
@@ -226,7 +246,9 @@ class QueueDjViewModel @Inject constructor(
             local.setArmed(true)
             feedback.value = if (token.mode == LocalDjMode.Transitions) {
                 "Transitions activées · fondu à la fin du titre en cours."
-            } else ""
+            } else {
+                ""
+            }
         } else {
             coordinator.toggleQueue()
         }
@@ -262,6 +284,10 @@ class QueueDjViewModel @Inject constructor(
     }
 
     private data class Check(
-        val generation: Long, val owner: Session?, val selection: Long, val device: Boolean, val mode: LocalDjMode,
+        val generation: Long,
+        val owner: Session?,
+        val selection: Long,
+        val device: Boolean,
+        val mode: LocalDjMode,
     )
 }

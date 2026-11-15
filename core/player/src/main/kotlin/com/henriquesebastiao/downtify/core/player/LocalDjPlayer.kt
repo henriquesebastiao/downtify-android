@@ -85,10 +85,21 @@ class LocalDjPlayer(first: Player, second: Player, private val scope: CoroutineS
 
     internal fun evidenceWindow(): LocalDjWindow {
         val active = engine.active
-        val indices = localDjWindowIndices(active.mediaItemCount, active.currentMediaItemIndex, active.repeatMode == Player.REPEAT_MODE_ALL)
-        return LocalDjWindow(queueGeneration, occurrenceRevision, indices,
-            indices.map { active.getMediaItemAt(it).mediaId }, active.shuffleModeEnabled,
-            active.repeatMode == Player.REPEAT_MODE_ONE, engine.playbackParameters.speed, engine.playbackParameters.pitch)
+        val indices = localDjWindowIndices(
+            active.mediaItemCount,
+            active.currentMediaItemIndex,
+            active.repeatMode == Player.REPEAT_MODE_ALL,
+        )
+        return LocalDjWindow(
+            queueGeneration,
+            occurrenceRevision,
+            indices,
+            indices.map { active.getMediaItemAt(it).mediaId },
+            active.shuffleModeEnabled,
+            active.repeatMode == Player.REPEAT_MODE_ONE,
+            engine.playbackParameters.speed,
+            engine.playbackParameters.pitch,
+        )
     }
 
     internal fun retainEvidence(window: LocalDjWindow, sources: Set<String>) = engine.retainEvidence(window, sources)

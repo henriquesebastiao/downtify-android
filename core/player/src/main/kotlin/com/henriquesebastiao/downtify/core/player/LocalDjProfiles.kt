@@ -1,6 +1,5 @@
 package com.henriquesebastiao.downtify.core.player
 
-import kotlin.coroutines.coroutineContext
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import com.henriquesebastiao.downtify.core.data.library.LibraryRepository
@@ -12,6 +11,7 @@ import com.henriquesebastiao.downtify.core.model.DjLocalResult
 import com.henriquesebastiao.downtify.core.model.DjLocalTrackStatus
 import com.henriquesebastiao.downtify.core.model.Track
 import com.henriquesebastiao.downtify.core.network.session.Session
+import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ensureActive
@@ -57,13 +57,30 @@ internal class LocalDjProfiles(
         player.addListener(listener)
         scope.launch {
             try {
-                val activation = combine(settings.device, settings.mode, settings.armed,
-                    settings.transitionSeconds, settings.preparationRevision) { device, mode, armed, seconds, refresh ->
+                val activation = combine(
+                    settings.device,
+                    settings.mode,
+                    settings.armed,
+                    settings.transitionSeconds,
+                    settings.preparationRevision,
+                ) { device, mode, armed, seconds, refresh ->
                     Activation(device && mode == LocalDjMode.Dj && armed, seconds * 1000L, refresh)
                 }
-                combine(activation, windows, music.session, library.library, music.capabilities) { active, window, session, snapshot, caps ->
-                    Request(active, window, session, window.ids.map { snapshot?.byId?.get(it) },
-                        caps.enabled("dj_interactive"), caps.dj.localPlansVersion)
+                combine(activation, windows, music.session, library.library, music.capabilities) {
+                        active,
+                        window,
+                        session,
+                        snapshot,
+                        caps,
+                    ->
+                    Request(
+                        active,
+                        window,
+                        session,
+                        window.ids.map { snapshot?.byId?.get(it) },
+                        caps.enabled("dj_interactive"),
+                        caps.dj.localPlansVersion,
+                    )
                 }.distinctUntilChanged().collectLatest { request ->
                     process(request)
                 }
@@ -122,6 +139,7 @@ internal class LocalDjProfiles(
             is DjLocalResult.Unavailable -> settings.publishReadiness(
                 LocalDjReadiness(ready = player.currentPlanReady(window), problem = result.problem),
             )
+
             is DjLocalResult.Available -> {
                 val body = result.value
                 val analyses = body.tracks.mapNotNull { row ->
@@ -130,20 +148,43 @@ internal class LocalDjProfiles(
                 val plans = body.plans.filter { it.ready }.map { plan ->
                     val first = body.tracks[plan.fromIndex]
                     val second = body.tracks[plan.toIndex]
-                    LocalDjVerifiedPlan(window.indices[plan.fromIndex], window.indices[plan.toIndex], first.id, second.id,
-                        checkNotNull(first.analysis).revision, checkNotNull(second.analysis).revision,
-                        LocalDjPlan(plan.outgoingStartMs, plan.incomingCueMs, plan.durationMs, plan.speed, LocalDjFallback.None))
+                    LocalDjVerifiedPlan(
+                        window.indices[plan.fromIndex],
+                        window.indices[plan.toIndex],
+                        first.id,
+                        second.id,
+                        checkNotNull(first.analysis).revision,
+                        checkNotNull(second.analysis).revision,
+                        LocalDjPlan(
+                            plan.outgoingStartMs,
+                            plan.incomingCueMs,
+                            plan.durationMs,
+                            plan.speed,
+                            LocalDjFallback.None,
+                        ),
+                    )
                 }
                 if (player.updateEvidence(window, analyses, plans)) {
                     val ready = player.currentPlanReady(window)
                     val problem = when {
                         ready -> null
-                        body.tracks.take(2).any { it.status == DjLocalTrackStatus.Stale } -> DjLocalProblem.StaleAnalysis
-                        body.tracks.take(2).any { it.status == DjLocalTrackStatus.Missing } -> DjLocalProblem.MissingAnalysis
+
+                        body.tracks.take(2).any {
+                            it.status == DjLocalTrackStatus.Stale
+                        } -> DjLocalProblem.StaleAnalysis
+
+                        body.tracks.take(2).any {
+                            it.status == DjLocalTrackStatus.Missing
+                        } -> DjLocalProblem.MissingAnalysis
+
                         else -> DjLocalProblem.UnreliableAnalysis
                     }
-                    settings.publishReadiness(LocalDjReadiness(ready = ready,
-                        problem = problem))
+                    settings.publishReadiness(
+                        LocalDjReadiness(
+                            ready = ready,
+                            problem = problem,
+                        ),
+                    )
                 }
             }
         }
@@ -154,6 +195,7 @@ internal class LocalDjProfiles(
         settings.device.value && settings.armed.value && settings.mode.value == LocalDjMode.Dj &&
         settings.transitionSeconds.value * 1000L == request.activation.milliseconds &&
         settings.preparationRevision.value == request.activation.refresh &&
-        music.capabilities.value.enabled("dj_interactive") && music.capabilities.value.dj.localPlansVersion == request.protocol &&
+        music.capabilities.value.enabled("dj_interactive") &&
+        music.capabilities.value.dj.localPlansVersion == request.protocol &&
         request.window.ids.map { library.library.value?.byId?.get(it) } == request.sources
 }

@@ -15,16 +15,16 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.res.stringResource
 import com.henriquesebastiao.downtify.R
-import com.henriquesebastiao.downtify.core.model.DjLocalProblem
-import com.henriquesebastiao.downtify.core.player.LocalDjReadiness
 import com.henriquesebastiao.downtify.core.designsystem.component.Artwork
+import com.henriquesebastiao.downtify.core.model.DjLocalProblem
 import com.henriquesebastiao.downtify.core.network.ServerUrls
 import com.henriquesebastiao.downtify.core.player.LocalDjPhase
+import com.henriquesebastiao.downtify.core.player.LocalDjReadiness
 import com.henriquesebastiao.downtify.core.player.LocalDjTransition
 import com.henriquesebastiao.downtify.core.player.PlayerState
 import com.henriquesebastiao.downtify.ui.common.LocalCoverUrls
@@ -47,8 +47,12 @@ internal fun PlaybackMixSelector(selected: PlaybackMixMode, onSelect: (PlaybackM
 internal fun RhythmicDjEngine(device: Boolean, onDevice: (Boolean) -> Unit) {
     Text(stringResource(R.string.music_dj_engine_label), style = MaterialTheme.typography.bodyMedium)
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        FilterChip(selected = !device, onClick = { onDevice(false) }, label = { Text(stringResource(R.string.music_dj_server)) })
-        FilterChip(selected = device, onClick = { onDevice(true) }, label = { Text(stringResource(R.string.music_dj_device_beta)) })
+        FilterChip(selected = !device, onClick = {
+            onDevice(false)
+        }, label = { Text(stringResource(R.string.music_dj_server)) })
+        FilterChip(selected = device, onClick = {
+            onDevice(true)
+        }, label = { Text(stringResource(R.string.music_dj_device_beta)) })
     }
 }
 
@@ -56,16 +60,25 @@ internal fun RhythmicDjEngine(device: Boolean, onDevice: (Boolean) -> Unit) {
 internal fun LocalDjFeedback(readiness: LocalDjReadiness, onRetry: () -> Unit, onServer: () -> Unit) {
     val label = when {
         readiness.preparing -> R.string.music_dj_profiles_preparing
+
         readiness.ready && readiness.problem == null -> R.string.music_dj_profiles_ready
+
         else -> when (readiness.problem) {
             DjLocalProblem.Unsupported -> R.string.music_dj_profiles_unsupported
+
             DjLocalProblem.Disabled -> R.string.music_dj_profiles_disabled
+
             DjLocalProblem.Network -> R.string.music_dj_profiles_network
+
             DjLocalProblem.InvalidResponse -> R.string.music_dj_profiles_invalid
+
             DjLocalProblem.UnsupportedPlayback -> R.string.music_dj_profiles_speed
+
             DjLocalProblem.UnsupportedQueue -> R.string.music_dj_profiles_queue
+
             DjLocalProblem.MissingAnalysis, DjLocalProblem.StaleAnalysis, DjLocalProblem.UnreliableAnalysis ->
                 R.string.music_dj_profiles_missing
+
             null -> null
         }
     }

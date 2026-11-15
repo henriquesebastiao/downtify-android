@@ -5,7 +5,9 @@ import kotlinx.serialization.Serializable
 
 @Serializable data class MusicDjLocalRequestDto(
     val ids: List<String>,
-    @SerialName("transition_ms") val transitionMs: Long = 5_000,
+    @SerialName(
+        "transition_ms",
+    ) val transitionMs: Long = 5_000,
 )
 
 @Serializable data class MusicDjLocalTrackDto(

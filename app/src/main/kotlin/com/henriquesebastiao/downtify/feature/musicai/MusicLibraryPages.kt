@@ -29,6 +29,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.henriquesebastiao.downtify.core.designsystem.component.Artwork
 import com.henriquesebastiao.downtify.core.designsystem.component.DowntifyIcons
 import com.henriquesebastiao.downtify.core.network.dto.MusicAiCapabilitiesDto
+import com.henriquesebastiao.downtify.core.player.LocalDjMode
+import com.henriquesebastiao.downtify.feature.player.PlaybackMixMode
 import com.henriquesebastiao.downtify.ui.common.LocalCoverUrls
 import com.henriquesebastiao.downtify.ui.common.plusBottomBars
 
@@ -206,8 +208,12 @@ fun MusicStudioRoute(
                 TextButton(onClick = onSettings) { Text("Paramètres IA") }
                 com.henriquesebastiao.downtify.feature.player.PlaybackMixSelector(mode, queue::selectMode)
                 com.henriquesebastiao.downtify.feature.player.RhythmicDjEngine(localDevice, queue::chooseDevice)
-                if (localDevice && mode == com.henriquesebastiao.downtify.feature.player.PlaybackMixMode.Dj) {
-                    com.henriquesebastiao.downtify.feature.player.LocalDjFeedback(localReadiness, queue::retryLocalPlans, queue::useServerFallback)
+                if (localDevice && mode == PlaybackMixMode.Dj) {
+                    com.henriquesebastiao.downtify.feature.player.LocalDjFeedback(
+                        localReadiness,
+                        queue::retryLocalPlans,
+                        queue::useServerFallback,
+                    )
                 }
                 Text(
                     androidx.compose.ui.res.stringResource(
@@ -219,7 +225,7 @@ fun MusicStudioRoute(
                     ),
                     style = MaterialTheme.typography.bodySmall,
                 )
-                if (localMode == com.henriquesebastiao.downtify.core.player.LocalDjMode.Transitions || localDevice) {
+                if (localMode == LocalDjMode.Transitions || localDevice) {
                     val seconds by queue.transitionSeconds.collectAsStateWithLifecycle()
                     Column {
                         Text(
@@ -253,17 +259,18 @@ fun MusicStudioRoute(
                             queuePhase == com.henriquesebastiao.downtify.core.player.DjPhase.Ready ->
                                 "Annuler le relais DJ"
 
-                            mode == com.henriquesebastiao.downtify.feature.player.PlaybackMixMode.Transitions && queueArmed -> "Désactiver les transitions"
+                            mode == PlaybackMixMode.Transitions && queueArmed -> "Désactiver les transitions"
 
                             queueArmed || queueBusy ||
                                 queuePhase == com.henriquesebastiao.downtify.core.player.DjPhase.Active ->
                                 "Désactiver le mode DJ"
 
-                            queueChecking && localMode == com.henriquesebastiao.downtify.core.player.LocalDjMode.Transitions -> "Vérification des transitions…"
+                            queueChecking && localMode == LocalDjMode.Transitions -> "Vérification des transitions…"
 
                             queueChecking -> "Vérification du DJ…"
 
-                            queueAvailability.ready && localMode == com.henriquesebastiao.downtify.core.player.LocalDjMode.Transitions -> "Activer les transitions"
+                            queueAvailability.ready && localMode == LocalDjMode.Transitions ->
+                                "Activer les transitions"
 
                             queueAvailability.ready -> "Activer le DJ sur la file"
 

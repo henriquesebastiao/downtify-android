@@ -32,15 +32,33 @@ class LocalDjEngineTest {
     }
 
     private fun evidence(revision: String = "r1") {
-        engine.updateAnalyses(listOf("a", "b", "c").associateWith {
-            LocalDjAnalysis(120f, listOf(0, 2_000, 4_000, 6_000, 8_000), .9f, revision)
-        })
-        engine.updatePlans(listOf(
-            LocalDjVerifiedPlan(0, 1, "a", "b", revision, revision,
-                LocalDjPlan(8_800, 800, 1_200, 1.02f, LocalDjFallback.None)),
-            LocalDjVerifiedPlan(1, 2, "b", "c", revision, revision,
-                LocalDjPlan(8_800, 0, 1_200, 1f, LocalDjFallback.None)),
-        ))
+        engine.updateAnalyses(
+            listOf("a", "b", "c").associateWith {
+                LocalDjAnalysis(120f, listOf(0, 2_000, 4_000, 6_000, 8_000), .9f, revision)
+            },
+        )
+        engine.updatePlans(
+            listOf(
+                LocalDjVerifiedPlan(
+                    0,
+                    1,
+                    "a",
+                    "b",
+                    revision,
+                    revision,
+                    LocalDjPlan(8_800, 800, 1_200, 1.02f, LocalDjFallback.None),
+                ),
+                LocalDjVerifiedPlan(
+                    1,
+                    2,
+                    "b",
+                    "c",
+                    revision,
+                    revision,
+                    LocalDjPlan(8_800, 0, 1_200, 1f, LocalDjFallback.None),
+                ),
+            ),
+        )
     }
 
     @Test fun `rhythmic mode without verified plans never silently arms a fade`() {

@@ -2,8 +2,8 @@ package com.henriquesebastiao.downtify.core.player
 
 import com.henriquesebastiao.downtify.core.model.DjLocalProblem
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LocalDjWindowTest {

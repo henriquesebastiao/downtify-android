@@ -30,16 +30,22 @@ import org.junit.Test
 class DjLocalPlansRepositoryTest {
     private val owner = Session("https://fixture.test", "server", "Test", "device", "fixture")
     private val session = MutableStateFlow<Session?>(owner)
-    private val capabilities = MutableStateFlow(MusicAiCapabilitiesDto(
-        version = 1, features = mapOf("dj_interactive" to true), dj = MusicAiStatusDto(localPlansVersion = 1),
-    ))
+    private val capabilities = MutableStateFlow(
+        MusicAiCapabilitiesDto(
+            version = 1,
+            features = mapOf("dj_interactive" to true),
+            dj = MusicAiStatusDto(localPlansVersion = 1),
+        ),
+    )
     private val music = mockk<MusicAiRepository> {
         every { this@mockk.session } returns this@DjLocalPlansRepositoryTest.session
         every { this@mockk.capabilities } returns this@DjLocalPlansRepositoryTest.capabilities
     }
     private val request = DjLocalRequest(listOf("a", "b"), 5_000, 1)
     private val body = MusicDjLocalPlansDto(
-        version = 1, revision = "window", analysisModel = "pinned",
+        version = 1,
+        revision = "window",
+        analysisModel = "pinned",
         tracks = listOf("a", "b").mapIndexed { i, id -> MusicDjLocalTrackDto(i, id, status = "missing") },
         plans = listOf(MusicDjLocalPlanDto(0, 1, "unavailable", reason = "missing_analysis")),
     )
@@ -53,7 +59,9 @@ class DjLocalPlansRepositoryTest {
             capabilities.value = capabilities.value.copy(features = emptyMap())
             assertEquals(DjLocalResult.Unavailable(DjLocalProblem.Disabled), repository.load(request))
             coVerify(exactly = 0) { music.localPlans(any(), any(), any()) }
-        } finally { scope.cancel() }
+        } finally {
+            scope.cancel()
+        }
     }
 
     @Test fun `late response from retired owner cannot be cached or applied`() = runBlocking {
@@ -77,7 +85,9 @@ class DjLocalPlansRepositoryTest {
                 assertTrue(repository.load(request) is DjLocalResult.Available)
                 coVerify(exactly = 1) { music.localPlans(any(), any(), owner) }
                 coVerify(exactly = 1) { music.localPlans(any(), any(), checkNotNull(session.value)) }
-            } finally { scope.cancel() }
+            } finally {
+                scope.cancel()
+            }
         }
     }
 }

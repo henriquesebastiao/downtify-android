@@ -11,7 +11,11 @@ data class LocalDjAnalysis(val bpm: Float, val downbeatsMs: List<Long>, val conf
 
 enum class LocalDjMode { Transitions, Dj }
 
-data class LocalDjReadiness(val preparing: Boolean = false, val ready: Boolean = false, val problem: DjLocalProblem? = null)
+data class LocalDjReadiness(
+    val preparing: Boolean = false,
+    val ready: Boolean = false,
+    val problem: DjLocalProblem? = null,
+)
 
 /** The plan is fenced to occurrences and to both cached source revisions. */
 internal data class LocalDjVerifiedPlan(
@@ -26,7 +30,15 @@ internal data class LocalDjVerifiedPlan(
 
 enum class LocalDjPhase { Disabled, Waiting, Prepared, Mixing }
 
-enum class LocalDjFallback { None, MissingAnalysis, TempoMismatch, NotBuffered, UnsupportedQueue, DecoderFailure, UnsupportedPlayback }
+enum class LocalDjFallback {
+    None,
+    MissingAnalysis,
+    TempoMismatch,
+    NotBuffered,
+    UnsupportedQueue,
+    DecoderFailure,
+    UnsupportedPlayback,
+}
 
 data class LocalDjTransition(
     val phase: LocalDjPhase = LocalDjPhase.Disabled,

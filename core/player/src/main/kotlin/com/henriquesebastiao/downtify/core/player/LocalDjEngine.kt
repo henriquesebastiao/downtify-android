@@ -89,10 +89,12 @@ internal class LocalDjEngine(first: Player, second: Player, private val onDomina
 
     fun retainEvidence(window: LocalDjWindow, sources: Set<String>) {
         updateAnalyses(analyses.filterKeys { it in sources })
-        updatePlans(verifiedPlans.filter {
-            it.outgoingId in sources && it.incomingId in sources &&
-                it.outgoingIndex in window.indices && it.incomingIndex in window.indices
-        })
+        updatePlans(
+            verifiedPlans.filter {
+                it.outgoingId in sources && it.incomingId in sources &&
+                    it.outgoingIndex in window.indices && it.incomingIndex in window.indices
+            },
+        )
     }
 
     fun currentPlanReady(window: LocalDjWindow): Boolean = verifiedPlans.any {
@@ -111,7 +113,9 @@ internal class LocalDjEngine(first: Player, second: Player, private val onDomina
                     it.plan == pending.plan && analyses[it.outgoingId]?.revision == it.outgoingRevision &&
                     analyses[it.incomingId]?.revision == it.incomingRevision
             }
-        ) return
+        ) {
+            return
+        }
         generation++
         armed = null
         standby.pause()

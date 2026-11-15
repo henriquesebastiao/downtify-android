@@ -213,7 +213,8 @@ fun SettingsScreen(
     onPlaybackMode: (PlaybackMixMode) -> Unit = {},
     onTransitionSeconds: (Int) -> Unit = {},
     playbackDevice: Boolean = false,
-    localReadiness: com.henriquesebastiao.downtify.core.player.LocalDjReadiness = com.henriquesebastiao.downtify.core.player.LocalDjReadiness(),
+    localReadiness: com.henriquesebastiao.downtify.core.player.LocalDjReadiness =
+        com.henriquesebastiao.downtify.core.player.LocalDjReadiness(),
     onPlaybackDevice: (Boolean) -> Unit = {},
     onLocalRetry: () -> Unit = {},
     onServerFallback: () -> Unit = {},
@@ -257,7 +258,11 @@ fun SettingsScreen(
                 PlaybackMixSelector(playbackMode, onPlaybackMode)
                 com.henriquesebastiao.downtify.feature.player.RhythmicDjEngine(playbackDevice, onPlaybackDevice)
                 if (playbackDevice && playbackMode == PlaybackMixMode.Dj) {
-                    com.henriquesebastiao.downtify.feature.player.LocalDjFeedback(localReadiness, onLocalRetry, onServerFallback)
+                    com.henriquesebastiao.downtify.feature.player.LocalDjFeedback(
+                        localReadiness,
+                        onLocalRetry,
+                        onServerFallback,
+                    )
                 }
                 Text("Durée du fondu local : $transitionSeconds s", style = MaterialTheme.typography.bodyMedium)
                 var sliding by androidx.compose.runtime.remember(transitionSeconds) {

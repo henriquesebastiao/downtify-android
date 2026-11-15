@@ -37,7 +37,11 @@ internal fun localPlansBody(body: MusicDjLocalPlansDto, request: DjLocalRequest)
         DjLocalTrack(index, row.id, status, analysis)
     }
     // Duplicate occurrences must describe the same source, not conflicting cached evidence.
-    require(tracks.groupBy { it.id }.values.all { values -> values.map { it.analysis to it.status }.distinct().size == 1 })
+    require(
+        tracks.groupBy {
+            it.id
+        }.values.all { values -> values.map { it.analysis to it.status }.distinct().size == 1 },
+    )
     require(body.plans.size == request.ids.size - 1)
     val plans = body.plans.mapIndexed { index, plan ->
         require(plan.fromIndex == index && plan.toIndex == index + 1 && plan.reason.length <= 128)
@@ -55,8 +59,16 @@ internal fun localPlansBody(body: MusicDjLocalPlansDto, request: DjLocalRequest)
         } else {
             require(!plan.aligned)
         }
-        DjLocalPlan(index, index + 1, ready, plan.outgoingStartMs, plan.incomingCueMs,
-            plan.durationMs, plan.speed, plan.reason)
+        DjLocalPlan(
+            index,
+            index + 1,
+            ready,
+            plan.outgoingStartMs,
+            plan.incomingCueMs,
+            plan.durationMs,
+            plan.speed,
+            plan.reason,
+        )
     }
     return DjLocalPlans(body.revision, body.analysisModel, tracks, plans)
 }

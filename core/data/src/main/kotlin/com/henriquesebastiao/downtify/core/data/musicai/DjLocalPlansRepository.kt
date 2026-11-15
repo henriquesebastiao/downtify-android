@@ -66,12 +66,14 @@ class DjLocalPlansRepository @Inject constructor(
         } catch (_: IllegalArgumentException) {
             DjLocalResult.Unavailable(DjLocalProblem.InvalidResponse)
         } catch (error: MusicAiFailure) {
-            DjLocalResult.Unavailable(when (error.kind) {
-                MusicAiFailureKind.Unsupported -> DjLocalProblem.Unsupported
-                MusicAiFailureKind.Disabled -> DjLocalProblem.Disabled
-                MusicAiFailureKind.InvalidResponse -> DjLocalProblem.InvalidResponse
-                else -> DjLocalProblem.Network
-            })
+            DjLocalResult.Unavailable(
+                when (error.kind) {
+                    MusicAiFailureKind.Unsupported -> DjLocalProblem.Unsupported
+                    MusicAiFailureKind.Disabled -> DjLocalProblem.Disabled
+                    MusicAiFailureKind.InvalidResponse -> DjLocalProblem.InvalidResponse
+                    else -> DjLocalProblem.Network
+                },
+            )
         }
         coroutineContext.ensureActive()
         if (music.session.value != owner || !mutex.withLock { cache.complete(ticket, result) }) {

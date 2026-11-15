@@ -12,7 +12,9 @@ import org.junit.Test
 class DjLocalPlansMappingTest {
     private val request = DjLocalRequest(listOf("a", "b"), 1_000, 1)
     private val body = MusicDjLocalPlansDto(
-        version = 1, revision = "window", analysisModel = "pinned",
+        version = 1,
+        revision = "window",
+        analysisModel = "pinned",
         tracks = listOf("a", "b").mapIndexed { index, id ->
             MusicDjLocalTrackDto(index, id, "source-$id", "ready", "source_verified", 300f, .9f, listOf(0, 800, 1_600))
         },
@@ -44,19 +46,33 @@ class DjLocalPlansMappingTest {
         val duplicates = request.copy(ids = listOf("a", "a"))
         val rows = body.tracks.mapIndexed { index, _ -> body.tracks.first().copy(index = index) }
         assertTrue(localPlansBody(body.copy(tracks = rows), duplicates).plans.single().ready)
-        assertTrue(runCatching {
-            localPlansBody(body.copy(tracks = rows.mapIndexed { i, row -> row.copy(revision = "r$i") }), duplicates)
-        }.isFailure)
+        assertTrue(
+            runCatching {
+                localPlansBody(body.copy(tracks = rows.mapIndexed { i, row -> row.copy(revision = "r$i") }), duplicates)
+            }.isFailure,
+        )
     }
 
     @Test fun `missing evidence remains unavailable instead of becoming a fade`() {
         val unavailable = body.copy(
-            tracks = body.tracks.map { it.copy(status = "stale", validity = "source_changed", bpm = null, confidence = null, downbeatsMs = emptyList()) },
+            tracks = body.tracks.map {
+                it.copy(
+                    status = "stale",
+                    validity = "source_changed",
+                    bpm = null,
+                    confidence = null,
+                    downbeatsMs = emptyList(),
+                )
+            },
             plans = listOf(MusicDjLocalPlanDto(0, 1, "unavailable", reason = "source_changed")),
         )
         assertFalse(localPlansBody(unavailable, request).plans.single().ready)
         rejects(unavailable.copy(plans = body.plans))
     }
 
-    private fun rejects(value: MusicDjLocalPlansDto) = assertTrue(runCatching { localPlansBody(value, request) }.isFailure)
+    private fun rejects(value: MusicDjLocalPlansDto) = assertTrue(
+        runCatching {
+            localPlansBody(value, request)
+        }.isFailure,
+    )
 }

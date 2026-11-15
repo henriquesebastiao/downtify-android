@@ -73,8 +73,8 @@ import com.henriquesebastiao.downtify.core.model.PlaybackContext
 import com.henriquesebastiao.downtify.core.model.PlaybackContextType
 import com.henriquesebastiao.downtify.core.model.StreamIds
 import com.henriquesebastiao.downtify.core.network.ServerUrls
-import com.henriquesebastiao.downtify.core.player.PlayerState
 import com.henriquesebastiao.downtify.core.player.LocalDjReadiness
+import com.henriquesebastiao.downtify.core.player.PlayerState
 import com.henriquesebastiao.downtify.core.player.QueueEntry
 import com.henriquesebastiao.downtify.ui.common.LocalCoverUrls
 import com.henriquesebastiao.downtify.ui.common.PreviewData

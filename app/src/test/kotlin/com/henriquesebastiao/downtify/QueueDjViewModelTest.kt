@@ -9,9 +9,9 @@ import com.henriquesebastiao.downtify.core.network.dto.MusicAiStatusDto
 import com.henriquesebastiao.downtify.core.network.session.Session
 import com.henriquesebastiao.downtify.core.player.DjPhase
 import com.henriquesebastiao.downtify.core.player.DjPlaybackCoordinator
-import com.henriquesebastiao.downtify.core.player.LocalDjSettings
 import com.henriquesebastiao.downtify.core.player.LocalDjMode
 import com.henriquesebastiao.downtify.core.player.LocalDjReadiness
+import com.henriquesebastiao.downtify.core.player.LocalDjSettings
 import com.henriquesebastiao.downtify.core.player.LocalDjTransition
 import com.henriquesebastiao.downtify.core.player.PlayerController
 import com.henriquesebastiao.downtify.core.player.PlayerState
