@@ -22,15 +22,23 @@ import com.henriquesebastiao.downtify.core.data.offline.OfflineRepository
 import com.henriquesebastiao.downtify.core.model.Playlist
 import com.henriquesebastiao.downtify.core.network.ServerUrls
 import com.henriquesebastiao.downtify.core.network.session.SessionStore
+import java.time.Duration
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.guava.future
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -45,6 +53,8 @@ internal open class CarBrowser(
     private val sessions: SessionStore,
     private val artwork: SessionArtworkCache,
     private val scope: CoroutineScope,
+    private val history: CarRecommendationHistory? = null,
+    private val playbackDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : MediaLibrarySession.Callback {
     private val indexed = MutableStateFlow<Pair<String?, CarLibrary?>>(null to null)
     private val warmups = mutableMapOf<String, Job>()
@@ -87,13 +97,33 @@ internal open class CarBrowser(
                 indexed.value = association to next
                 subscriptions.forEach { (browser, parents) ->
                     parents.forEach { parent ->
-                        if (previousOwner != association || previous == null ||
-                            previous.children(parent) != next?.children(parent)
-                        ) {
+                        val invalidated = previousOwner != association || previous == null
+                        val changed = previous?.children(parent) != next?.children(parent)
+                        if (parent == SUGGESTIONS || invalidated || changed) {
                             session.notifyChildrenChanged(browser, parent, childCount(parent), null)
                         }
                     }
                 }
+            }
+        }
+        scope.launch {
+            history?.revision?.drop(1)?.collect { notifySuggestions(session) }
+        }
+        scope.launch {
+            while (isActive) {
+                val tomorrow = LocalDate.now(PARIS).plusDays(1).atStartOfDay(PARIS).toInstant()
+                delay(Duration.between(Instant.now(), tomorrow).toMillis().coerceAtLeast(1))
+                notifySuggestions(session)
+            }
+        }
+    }
+
+    private fun notifySuggestions(session: MediaLibrarySession) {
+        subscriptions.forEach { (browser, parents) ->
+            if (SUGGESTIONS in
+                parents
+            ) {
+                session.notifyChildrenChanged(browser, SUGGESTIONS, childCount(SUGGESTIONS), null)
             }
         }
     }
@@ -102,7 +132,9 @@ internal open class CarBrowser(
         index.takeIf { owner != null && owner == sessions.current?.artworkOwner }
     }
 
-    private fun childCount(parent: String): Int = if (parent == CarLibrary.ROOT || parent == COLLECTIONS) {
+    private fun childCount(parent: String): Int = if (parent == SUGGESTIONS) {
+        current()?.recommendations(LocalDate.now(PARIS), emptyMap())?.size ?: 0
+    } else if (parent == CarLibrary.ROOT || parent == COLLECTIONS) {
         4
     } else if (parent == LIBRARY) {
         3
@@ -163,8 +195,13 @@ internal open class CarBrowser(
         val extras = Bundle(params?.extras ?: Bundle.EMPTY).apply {
             putBoolean("android.media.browse.SEARCH_SUPPORTED", true)
         }
+        val suggested = params?.isSuggested == true
+        if (suggested) extras.putBoolean("android.service.media.extra.SUGGESTED", true)
         return Futures.immediateFuture(
-            LibraryResult.ofItem(root(), LibraryParams.Builder().setExtras(extras).build()),
+            LibraryResult.ofItem(
+                if (suggested) folder(SUGGESTIONS, context.getString(R.string.car_for_you)) else root(),
+                LibraryParams.Builder().setExtras(extras).setSuggested(suggested).build(),
+            ),
         )
     }
 
@@ -198,7 +235,11 @@ internal open class CarBrowser(
             return@future LibraryResult.ofItemList(CarLibrary.page(roots(), page, pageSize), params)
         }
         val catalog = awaitIndex() ?: return@future LibraryResult.ofError(loadingError())
-        val entries = catalog.children(parentId) ?: return@future LibraryResult.ofError(SessionError.ERROR_BAD_VALUE)
+        val entries = if (parentId == SUGGESTIONS) {
+            recommendationEntries(catalog)
+        } else {
+            catalog.children(parentId) ?: return@future LibraryResult.ofError(SessionError.ERROR_BAD_VALUE)
+        }
         val selected = CarLibrary.page(entries, page, pageSize)
         val expectedOwner = sessions.current?.artworkOwner
         val items = withContext(Dispatchers.Default) { selected.map { item(it) } }
@@ -216,6 +257,9 @@ internal open class CarBrowser(
         withContext(Dispatchers.IO) { sessions.ensureLoaded() }
         if (sessions.current == null) return@future LibraryResult.ofError(authenticationError())
         if (mediaId == CarLibrary.ROOT) return@future LibraryResult.ofItem(root(), null)
+        if (mediaId == SUGGESTIONS) {
+            return@future LibraryResult.ofItem(folder(SUGGESTIONS, context.getString(R.string.car_for_you)), null)
+        }
         if (mediaId ==
             LIBRARY
         ) {
@@ -244,7 +288,7 @@ internal open class CarBrowser(
     ): ListenableFuture<LibraryResult<Void>> = scope.future {
         withContext(Dispatchers.IO) { sessions.ensureLoaded() }
         if (sessions.current == null) return@future LibraryResult.ofError(authenticationError())
-        val isStaticRoot = parentId in (CarLibrary.ROOTS + listOf(CarLibrary.ROOT, COLLECTIONS, LIBRARY))
+        val isStaticRoot = parentId in (CarLibrary.ROOTS + listOf(CarLibrary.ROOT, COLLECTIONS, LIBRARY, SUGGESTIONS))
         if (!isStaticRoot) {
             val catalog = awaitIndex()
             if (catalog?.children(parentId) == null) {
@@ -321,18 +365,27 @@ internal open class CarBrowser(
         withContext(Dispatchers.IO) { sessions.ensureLoaded() }
         val catalog = awaitIndex() ?: throw IllegalArgumentException(context.getString(R.string.car_loading))
         val expectedOwner = sessions.current?.artworkOwner
-        if (mediaItems.size > 1) {
-            val selectedIndex = if (startIndex == C.INDEX_UNSET) 0 else startIndex
-            require(selectedIndex in mediaItems.indices)
+        val selectedIndex = if (startIndex == C.INDEX_UNSET) 0 else startIndex
+        require(selectedIndex in mediaItems.indices)
+        val selectedId = mediaItems[selectedIndex].mediaId
+        val page = if (catalog.isCollectionAction(selectedId)) {
+            catalog.playback(selectedId)
+        } else {
+            catalog.playbackPage(mediaItems.map { it.mediaId }, selectedIndex)
+        }
+        if (mediaItems.size > 1 && page == null) {
+            val resolved = carAddItems(mediaItems)
+            require(sessions.current?.artworkOwner == expectedOwner) { context.getString(R.string.car_pair) }
+            mediaSession.player.playlistMetadata = MediaMetadata.EMPTY
             return@future MediaSession.MediaItemsWithStartPosition(
-                carAddItems(mediaItems),
+                resolved,
                 selectedIndex,
                 startPositionMs,
             )
         }
-        val selected = mediaItems.getOrNull(if (startIndex == C.INDEX_UNSET) 0 else startIndex)
+        val selected = mediaItems.getOrNull(selectedIndex)
             ?: throw IllegalArgumentException(context.getString(R.string.car_unavailable))
-        val playback = if (selected.mediaId.isNotEmpty()) {
+        val playback = page ?: if (selected.mediaId.isNotEmpty()) {
             catalog.playback(selected.mediaId)
         } else {
             val query = selected.requestMetadata.searchQuery.orEmpty()
@@ -341,9 +394,12 @@ internal open class CarBrowser(
         } ?: throw IllegalArgumentException(context.getString(R.string.car_choose_result))
         require(sessions.current?.artworkOwner == expectedOwner) { context.getString(R.string.car_pair) }
         val base = sessions.current?.baseUrl ?: throw IllegalArgumentException(context.getString(R.string.car_pair))
-        val items = withContext(Dispatchers.Default) {
+        mediaSession.player.playlistMetadata = catalog.context(selectedId)?.let(MediaItems::contextMetadata)
+            ?: MediaMetadata.EMPTY
+        val items = withContext(playbackDispatcher) {
             playback.first.map { MediaItems.from(it, base) }
         }
+        require(sessions.current?.artworkOwner == expectedOwner) { context.getString(R.string.car_pair) }
         MediaSession.MediaItemsWithStartPosition(
             items,
             playback.second,
@@ -361,6 +417,25 @@ internal open class CarBrowser(
         }
     }
 
+    private suspend fun recommendationEntries(catalog: CarLibrary) = withContext(Dispatchers.IO) {
+        catalog.recommendations(
+            LocalDate.now(PARIS),
+            history?.counts(
+                library.playlists.value.map {
+                    it.name
+                },
+            ).orEmpty(),
+        )
+    }
+
+    protected suspend fun carSuggestedItems(): List<MediaItem> {
+        withContext(Dispatchers.IO) { sessions.ensureLoaded() }
+        val catalog = awaitIndex() ?: return emptyList()
+        val expectedOwner = sessions.current?.artworkOwner
+        val items = recommendationEntries(catalog).map { item(it) }
+        return if (sessions.current?.artworkOwner == expectedOwner) items else emptyList()
+    }
+
     private suspend fun awaitIndex(): CarLibrary? {
         current()?.let { return it }
         if (sessions.current == null) return null
@@ -372,16 +447,6 @@ internal open class CarBrowser(
 
     private suspend fun item(entry: CarLibrary.Entry): MediaItem {
         if (entry.id.startsWith(CarLibrary.SHUFFLE_PREFIX)) {
-            val extras = Bundle().apply {
-                putInt(
-                    MediaConstants.EXTRAS_KEY_CONTENT_STYLE_BROWSABLE,
-                    MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM,
-                )
-                putInt(
-                    MediaConstants.EXTRAS_KEY_CONTENT_STYLE_PLAYABLE,
-                    MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM,
-                )
-            }
             return MediaItem.Builder()
                 .setMediaId(entry.id)
                 .setMediaMetadata(
@@ -389,7 +454,7 @@ internal open class CarBrowser(
                         .setTitle(entry.title)
                         .setIsBrowsable(false)
                         .setIsPlayable(true)
-                        .setExtras(extras)
+                        .setExtras(styleExtras(entry.id))
                         .setMediaType(MediaMetadata.MEDIA_TYPE_FOLDER_MIXED)
                         .build(),
                 )
@@ -400,35 +465,45 @@ internal open class CarBrowser(
         val cover = entry.coverTrackId?.takeIf { base != null }?.let {
             artwork.cached(it, Uri.parse(ServerUrls.cover(checkNotNull(base), it, ServerUrls.COVER_LARGE)))
         }
+        val track = entry.track ?: entry.suggestion?.let { current()?.playback(entry.id)?.first?.firstOrNull() }
+        val title = when (entry.suggestion) {
+            "likes" -> context.getString(R.string.car_favorites)
+            "daily" -> context.getString(R.string.car_daily_mix)
+            else -> entry.title
+        }
+        val subtitle = when (entry.suggestion) {
+            "most_played" -> context.getString(R.string.car_most_played_playlist)
+            "playlist" -> context.getString(R.string.car_playlist_pick)
+            else -> entry.subtitle
+        }
+        return (
+            track?.let { MediaItems.from(it, base).buildUpon().setMediaId(entry.id).build() }
+                ?: folder(entry.id, entry.title)
+            ).let { media ->
+            val mergedExtras = Bundle(media.mediaMetadata.extras ?: Bundle.EMPTY).apply {
+                putAll(styleExtras(entry.id))
+            }
+            media.buildUpon().setMediaMetadata(
+                media.mediaMetadata.buildUpon().setTitle(title).setSubtitle(subtitle)
+                    .setArtworkUri(cover).setExtras(mergedExtras).build(),
+            ).build()
+        }
+    }
+
+    private fun styleExtras(id: String): Bundle {
         val styleHint = when {
-            entry.id == CarLibrary.ARTISTS || entry.id == CarLibrary.ALBUMS || entry.id.startsWith("auto:artist:") ->
+            id == CarLibrary.ARTISTS || id == CarLibrary.ALBUMS || id.startsWith("auto:artist:") ->
                 MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_GRID_ITEM
 
             else ->
                 MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM
         }
-        val metadataExtras = Bundle().apply {
+        return Bundle().apply {
             putInt(MediaConstants.EXTRAS_KEY_CONTENT_STYLE_BROWSABLE, styleHint)
             putInt(
                 MediaConstants.EXTRAS_KEY_CONTENT_STYLE_PLAYABLE,
                 MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM,
             )
-        }
-
-        return (
-            entry.track?.let { MediaItems.from(it, base).buildUpon().setMediaId(entry.id).build() }
-                ?: folder(entry.id, entry.title)
-            ).let { media ->
-            val mergedExtras = Bundle(media.mediaMetadata.extras ?: Bundle.EMPTY).apply {
-                putAll(metadataExtras)
-            }
-            media.buildUpon().setMediaMetadata(
-                media.mediaMetadata.buildUpon()
-                    .setSubtitle(entry.subtitle)
-                    .setArtworkUri(cover)
-                    .setExtras(mergedExtras)
-                    .build(),
-            ).build()
         }
     }
 
@@ -455,6 +530,8 @@ internal open class CarBrowser(
         SessionError(SessionError.ERROR_IO, context.getString(R.string.car_loading))
 
     private companion object {
+        const val SUGGESTIONS = "auto:suggestions"
+        val PARIS: ZoneId = ZoneId.of("Europe/Paris")
         const val LIBRARY = "auto:library"
         const val COLLECTIONS = "auto:collections"
     }

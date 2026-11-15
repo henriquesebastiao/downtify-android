@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -45,6 +46,7 @@ import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
@@ -71,6 +73,7 @@ import com.henriquesebastiao.downtify.core.model.PlaybackContext
 import com.henriquesebastiao.downtify.core.model.PlaybackContextType
 import com.henriquesebastiao.downtify.core.model.StreamIds
 import com.henriquesebastiao.downtify.core.network.ServerUrls
+import com.henriquesebastiao.downtify.core.player.LocalDjReadiness
 import com.henriquesebastiao.downtify.core.player.PlayerState
 import com.henriquesebastiao.downtify.core.player.QueueEntry
 import com.henriquesebastiao.downtify.ui.common.LocalCoverUrls
@@ -86,7 +89,28 @@ data class QueueActions(
     val onClearQueued: () -> Unit = {},
     /** Play the item at `from` right after the item at `after` (player indices); `queued` = "Next in queue". */
     val onMove: (from: Int, after: Int, queued: Boolean) -> Unit = { _, _, _ -> },
+    val onToggleDj: () -> Unit = {},
+    val onSelectMixMode: (PlaybackMixMode) -> Unit = {},
+    val onRetryLocalDj: () -> Unit = {},
+    val onServerDj: () -> Unit = {},
 )
+
+data class QueueDjState(
+    val available: Boolean = false,
+    val ready: Boolean = false,
+    val active: Boolean = false,
+    val message: String = "",
+    val checking: Boolean = false,
+    val preparing: Boolean = false,
+    val waiting: Boolean = false,
+    val local: Boolean = false,
+    val reason: String = "",
+    val mode: PlaybackMixMode = PlaybackMixMode.Disabled,
+    val localReadiness: LocalDjReadiness = LocalDjReadiness(),
+) {
+    val visible: Boolean
+        get() = available || checking || message.isNotBlank() || reason.isNotBlank()
+}
 
 /**
  * The queue, as Spotify shows it: what's playing, the songs the user queued
@@ -100,6 +124,7 @@ fun QueueScreen(
     actions: QueueActions,
     controls: NowPlayingActions,
     modifier: Modifier = Modifier,
+    dj: QueueDjState = QueueDjState(),
 ) {
     val now = nowPlayingRow(state) ?: return
     val listState = rememberLazyListState()
@@ -118,7 +143,48 @@ fun QueueScreen(
             modifier = modifier.fillMaxSize(),
         ) {
             Column(Modifier.fillMaxSize().safeDrawingPadding()) {
-                TopBar(state.context, actions.onClose)
+                TopBar(state.context, state.queueSize, actions.onClose)
+                if (dj.visible || state.dj != null) {
+                    PlaybackMixSelector(
+                        selected = if (state.dj != null) PlaybackMixMode.Dj else dj.mode,
+                        onSelect = actions.onSelectMixMode,
+                    )
+                    TextButton(
+                        onClick = actions.onToggleDj,
+                        enabled = !dj.checking || dj.active || state.dj != null,
+                        modifier = Modifier.padding(horizontal = Spacing.screen),
+                    ) {
+                        Text(
+                            when {
+                                dj.preparing -> "Annuler la préparation DJ"
+                                dj.waiting -> "Annuler le relais DJ"
+                                dj.mode == PlaybackMixMode.Transitions && dj.active -> "Désactiver les transitions"
+                                dj.active || state.dj != null -> "Désactiver le mode DJ"
+                                dj.checking -> "Vérification du DJ…"
+                                !dj.ready -> "Vérifier le DJ"
+                                dj.mode == PlaybackMixMode.Transitions -> "Activer les transitions"
+                                else -> "Activer le DJ sur cette file"
+                            },
+                        )
+                    }
+                    if (dj.local && dj.mode == PlaybackMixMode.Dj) {
+                        LocalDjFeedback(dj.localReadiness, actions.onRetryLocalDj, actions.onServerDj)
+                    }
+                    if (dj.checking || dj.preparing) {
+                        LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = Spacing.screen))
+                    }
+                    if (dj.message.isNotBlank() ||
+                        !dj.ready
+                    ) {
+                        Text(
+                            dj.message.ifBlank {
+                                dj.reason.ifBlank { "Vérifiez les réglages DJ dans Paramètres → IA." }
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(horizontal = Spacing.screen),
+                        )
+                    }
+                }
                 LazyColumn(
                     state = listState,
                     contentPadding = PaddingValues(horizontal = Spacing.screen, vertical = Spacing.sm),
@@ -137,7 +203,23 @@ fun QueueScreen(
                             trailing = { PlayingBars(animate = state.isPlaying) },
                         )
                     }
-                    if (queued.isNotEmpty()) {
+                    if (state.dj != null && rest.isNotEmpty()) {
+                        item(key = "dj-next") {
+                            Column {
+                                QueueHeader("À suivre")
+                                QueueRow(
+                                    title = rest.first().title,
+                                    artist = rest.first().artist,
+                                    artworkUrl = null,
+                                    current = false,
+                                    onClick = {},
+                                    containerColor = rowColor,
+                                    trailing = {},
+                                )
+                            }
+                        }
+                    }
+                    if (state.dj == null && queued.isNotEmpty()) {
                         item(key = "queued-header") {
                             QueueHeader(
                                 stringResource(R.string.player_queue_next_in_queue),
@@ -147,7 +229,7 @@ fun QueueScreen(
                         }
                         entries(queued, actions, reorder, rowColor)
                     }
-                    if (rest.isNotEmpty()) {
+                    if (state.dj == null && rest.isNotEmpty()) {
                         item(key = "rest-header") { QueueHeader(nextFromLabel(state.context)) }
                         entries(rest, actions, reorder, rowColor)
                     }
@@ -406,6 +488,7 @@ private fun nowPlayingRow(state: PlayerState): NowRow? {
         return NowRow(track.displayTitle, track.displayArtist, cover)
     }
     return state.stream?.let { NowRow(it.title, it.artist, it.coverUrl.ifBlank { null }) }
+        ?: state.dj?.let { NowRow(it.title, it.artist, null) }
 }
 
 /**
@@ -435,7 +518,7 @@ private fun nextFromLabel(context: PlaybackContext?): String {
 }
 
 @Composable
-private fun TopBar(context: PlaybackContext?, onClose: () -> Unit) {
+private fun TopBar(context: PlaybackContext?, queueSize: Int, onClose: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().height(64.dp).padding(horizontal = Spacing.lg),
         verticalAlignment = Alignment.CenterVertically,
@@ -454,7 +537,12 @@ private fun TopBar(context: PlaybackContext?, onClose: () -> Unit) {
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.semantics { heading() },
             )
-            val title = context?.title.orEmpty()
+            val count = if (queueSize > 0) {
+                pluralStringResource(R.plurals.player_queue_item_count, queueSize, queueSize)
+            } else {
+                ""
+            }
+            val title = listOf(context?.title.orEmpty(), count).filter { it.isNotBlank() }.joinToString(" · ")
             if (title.isNotBlank()) {
                 Text(
                     title,

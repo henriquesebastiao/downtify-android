@@ -53,6 +53,12 @@ class StreamResolver @Inject constructor(
     private val local = LruCache<String, Boolean>(CHOSEN_CACHE_SIZE)
 
     override fun resolveDataSpec(dataSpec: DataSpec): DataSpec {
+        DjMediaItems.addressOf(dataSpec.uri)?.let { address ->
+            val session = sessions.current ?: throw IOException("Not paired with a server")
+            return dataSpec.withUri(
+                Uri.parse(ServerUrls.djFile(session.baseUrl, address.id, address.mode)),
+            ).buildUpon().setKey(null).build()
+        }
         // A song that isn't in the library: the server's stream cache has
         // the audio (or downloads it now), with seeking, under the token.
         MediaItems.streamVideoIdOf(dataSpec.uri)?.let { videoId ->
@@ -80,6 +86,10 @@ class StreamResolver @Inject constructor(
         return dataSpec.withUri(Uri.parse(ServerUrls.stream(session.baseUrl, trackId, quality))).buildUpon()
             .setKey(cache.key(trackId, quality.encode())).build()
     }
+
+    fun isDjHlsResource(uri: Uri): Boolean = sessions.current?.let {
+        ServerUrls.isDjHlsResource(it.baseUrl, uri.toString())
+    } == true
 
     /** Resolve a future item without changing a playing track's selected representation. */
     fun preloadSpec(uri: Uri, quality: StreamQuality): DataSpec? {

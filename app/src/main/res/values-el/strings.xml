@@ -555,6 +555,15 @@
     <string name="settings_normalization_louder">Πιο δυνατά</string>
     <string name="settings_normalization_maximum">Μέγιστο</string>
     <string name="settings_normalization_level_hint">Αυξάνει την ένταση εντός του ασφαλούς ορίου κάθε τραγουδιού. Τα αρχεία ήχου δεν αλλάζουν.</string>
+    <string name="nav_music_ai">Η μουσική σας</string>
+    <string name="music_dj_server">Διακομιστής</string>
+    <string name="music_dj_device_beta">Αυτή η συσκευή · Beta</string>
+    <string name="music_dj_local_description">Ρυθμικά σχέδια από επαληθευμένες αναλύσεις διακομιστή· η μίξη γίνεται στη συσκευή. Χωρίς λήψη μοντέλου Android. Προαιρετική beta, χωρίς πιστοποίηση σε Pixel.</string>
+    <string name="music_dj_server_description">Ο διακομιστής ετοιμάζει τις μεταβάσεις. Το τηλέφωνο αναπαράγει την πιστοποιημένη ροή ήχου.</string>
+    <plurals name="player_queue_item_count">
+        <item quantity="one">%1$d στοιχείο</item>
+        <item quantity="other">%1$d στοιχεία</item>
+    </plurals>
     <string name="connect_client_certificate">Πιστοποιητικό πελάτη</string>
     <string name="connect_client_certificate_selected">Πιστοποιητικό πελάτη: %1$s</string>
     <string name="connect_client_certificate_clear">Αφαίρεση πιστοποιητικού πελάτη</string>
@@ -563,4 +572,17 @@
     <string name="settings_client_certificate_active">Παρουσίαση του «%1$s» από τον χώρο αποθήκευσης διαπιστευτηρίων του Android όταν ο διακομιστής ζητά πιστοποιητικό πελάτη.</string>
     <string name="settings_client_certificate_change">Αλλαγή</string>
     <string name="settings_client_certificate_remove">Αφαίρεση</string>
+    <string name="music_dj_engine_label">Μηχανή ρυθμικού DJ</string>
+    <string name="music_dj_modes_description">Μεταβάσεις: τοπικά fades με επιλεγμένη διάρκεια. DJ beta: συγχρονισμός από επαληθευμένες αναλύσεις διακομιστή· χωρίς μοντέλο ρυθμού στη συσκευή ακόμη.</string>
+    <string name="music_dj_profiles_preparing">Έλεγχος ρυθμικών σχεδίων. Το τρέχον κομμάτι συνεχίζεται.</string>
+    <string name="music_dj_profiles_ready">DJ συσκευής έτοιμο · επαληθευμένες αναλύσεις διακομιστή.</string>
+    <string name="music_dj_profiles_unsupported">Ο διακομιστής δεν υποστηρίζει επαληθευμένα σχέδια DJ συσκευής. Χρησιμοποιήστε τη μηχανή διακομιστή.</string>
+    <string name="music_dj_profiles_disabled">Το DJ συσκευής είναι ανενεργό στις ρυθμίσεις AI.</string>
+    <string name="music_dj_profiles_network">Τα σχέδια δεν είναι διαθέσιμα στο δίκτυο. Η αναπαραγωγή συνεχίζεται· οι έγκυρες αποθηκευμένες μεταβάσεις παραμένουν διαθέσιμες.</string>
+    <string name="music_dj_profiles_invalid">Ο διακομιστής επέστρεψε ασύμβατο σχέδιο DJ. Η κανονική αναπαραγωγή συνεχίζεται.</string>
+    <string name="music_dj_profiles_speed">Το DJ συσκευής απαιτεί κανονική ταχύτητα και τονικό ύψος.</string>
+    <string name="music_dj_profiles_missing">Λείπουν κατάλληλες επαληθευμένες ρυθμικές αναλύσεις. Η αναπαραγωγή συνεχίζεται· δοκιμάστε τη μηχανή διακομιστή.</string>
+    <string name="music_dj_profiles_retry">Έλεγχος ξανά</string>
+    <string name="music_dj_profiles_server">Χρήση DJ διακομιστή</string>
+    <string name="music_dj_profiles_queue">Το DJ συσκευής απαιτεί τουλάχιστον δύο τοπικά κομμάτια, χωρίς τυχαία σειρά ή επανάληψη κομματιού. Η αναπαραγωγή συνεχίζεται· χρησιμοποιήστε το DJ διακομιστή ή αλλάξτε την ουρά.</string>
 </resources>

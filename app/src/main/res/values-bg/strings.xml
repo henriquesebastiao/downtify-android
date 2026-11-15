@@ -555,6 +555,15 @@
     <string name="settings_normalization_louder">По-силно</string>
     <string name="settings_normalization_maximum">Максимум</string>
     <string name="settings_normalization_level_hint">Увеличава звука до безопасната граница за всяка песен. Аудиофайловете не се променят.</string>
+    <string name="nav_music_ai">Вашата музика</string>
+    <string name="music_dj_server">Сървър</string>
+    <string name="music_dj_device_beta">Това устройство · Бета</string>
+    <string name="music_dj_local_description">Проверените сървърни анализи предоставят ритмични планове; смесването е на устройството. Не се изтегля Android модел. Доброволна бета без квалификация на Pixel.</string>
+    <string name="music_dj_server_description">Сървърът подготвя преходите. Телефонът възпроизвежда удостоверения аудиопоток.</string>
+    <plurals name="player_queue_item_count">
+        <item quantity="one">%1$d елемент</item>
+        <item quantity="other">%1$d елемента</item>
+    </plurals>
     <string name="connect_client_certificate">Клиентски сертификат</string>
     <string name="connect_client_certificate_selected">Клиентски сертификат: %1$s</string>
     <string name="connect_client_certificate_clear">Премахни клиентския сертификат</string>
@@ -563,4 +572,17 @@
     <string name="settings_client_certificate_active">Представя „%1$s“ от хранилището за идентификационни данни на Android, когато сървърът поиска клиентски сертификат.</string>
     <string name="settings_client_certificate_change">Промени</string>
     <string name="settings_client_certificate_remove">Премахни</string>
+    <string name="music_dj_engine_label">Двигател за ритмичен DJ</string>
+    <string name="music_dj_modes_description">Преходи: локално затихване с избрана продължителност. DJ бета: синхронизиране по проверени сървърни анализи; все още без модел за ритъм на устройството.</string>
+    <string name="music_dj_profiles_preparing">Проверка на ритмичните планове. Текущата песен продължава.</string>
+    <string name="music_dj_profiles_ready">DJ на устройството е готов · проверени сървърни анализи.</string>
+    <string name="music_dj_profiles_unsupported">Този сървър не поддържа проверени DJ планове за устройството. Използвайте сървърния двигател.</string>
+    <string name="music_dj_profiles_disabled">DJ на устройството е изключен в настройките за ИИ.</string>
+    <string name="music_dj_profiles_network">Плановете са недостъпни по мрежата. Възпроизвеждането продължава; валидните кеширани преходи остават достъпни.</string>
+    <string name="music_dj_profiles_invalid">Сървърът върна несъвместим DJ план. Обикновеното възпроизвеждане продължава.</string>
+    <string name="music_dj_profiles_speed">DJ на устройството изисква нормална скорост и височина на звука.</string>
+    <string name="music_dj_profiles_missing">Липсват проверени ритмични анализи или са неподходящи. Възпроизвеждането продължава; опитайте сървърния двигател.</string>
+    <string name="music_dj_profiles_retry">Проверка отново</string>
+    <string name="music_dj_profiles_server">Използване на сървърен DJ</string>
+    <string name="music_dj_profiles_queue">DJ на устройството изисква поне две локални песни, без разбъркване и повторение на песента. Възпроизвеждането продължава; използвайте сървърен DJ или променете опашката.</string>
 </resources>

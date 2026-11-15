@@ -16,9 +16,11 @@ import com.henriquesebastiao.downtify.core.model.StreamQuality
 import com.henriquesebastiao.downtify.core.model.Transcoding
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -70,7 +72,9 @@ class SettingsViewModel @Inject constructor(
             locationChange = locationChange,
             clientCertificate = clientCert,
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), SettingsUiState())
+    }
+        .flowOn(Dispatchers.IO)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), SettingsUiState())
 
     init {
         viewModelScope.launch { server.refresh() }

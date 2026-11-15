@@ -4,8 +4,10 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import com.henriquesebastiao.downtify.core.data.listens.ListenReporter
+import com.henriquesebastiao.downtify.core.model.DjIds
 import com.henriquesebastiao.downtify.core.model.EpisodeIds
 import com.henriquesebastiao.downtify.core.model.ListenCounter
+import com.henriquesebastiao.downtify.core.model.PlaybackContext
 import com.henriquesebastiao.downtify.core.model.StreamIds
 import java.time.Instant
 import java.util.UUID
@@ -23,6 +25,7 @@ internal class ListenTracker(
     private val player: Player,
     private val reporter: ListenReporter,
     private val scope: CoroutineScope,
+    private val onCounted: (PlaybackContext?) -> Unit = {},
 ) : Player.Listener {
     private val counter = ListenCounter()
     private var trackId: String? = null
@@ -58,12 +61,17 @@ internal class ListenTracker(
         val id = player.currentMediaItem?.mediaId ?: return
         if (id != trackId) newPlay(id)
         // Podcast episodes and streams don't count as listens (they're not tracks the server knows).
-        if (EpisodeIds.isEpisode(id) || StreamIds.isStream(id)) return
+        if (EpisodeIds.isEpisode(id) || StreamIds.isStream(id) ||
+            DjIds.isDj(id)
+        ) {
+            return
+        }
         val duration = player.duration.takeIf { it != C.TIME_UNSET }
             ?: player.mediaMetadata.durationMs
             ?: return
         when (counter.onPosition(player.currentPosition / MS, duration / MS)) {
             ListenCounter.Progress.Counted -> {
+                onCounted(MediaItems.contextOf(player.playlistMetadata))
                 val report = Triple(id, playId, startedAt)
                 scope.launch { reporter.report(report.first, report.second, report.third) }
             }

@@ -1,5 +1,10 @@
 package com.henriquesebastiao.downtify.feature.player
 
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -99,6 +104,7 @@ data class NowPlayingActions(
     /** Moves the synced lyrics this many ms later (earlier when negative). */
     val onShiftLyrics: (Long) -> Unit = {},
     val onResetLyrics: () -> Unit = {},
+    val onSleepTimer: (Int?) -> Unit = {},
 )
 
 /**
@@ -117,6 +123,8 @@ data class NowPlayingActions(
 @Composable
 fun NowPlayingScreen(
     state: PlayerState,
+    sleepActive: Boolean = false,
+    sleepDeadline: Long? = null,
     isLiked: Boolean,
     serverName: String,
     actions: NowPlayingActions,
@@ -125,11 +133,14 @@ fun NowPlayingScreen(
     hasLibraryCopy: Boolean = false,
     libraryTrack: Track? = null,
     coverModifier: Modifier = Modifier,
+    mixLabel: String = "",
+    localTransition: com.henriquesebastiao.downtify.core.player.LocalDjTransition =
+        com.henriquesebastiao.downtify.core.player.LocalDjTransition(),
 ) {
     val track = state.track
     val episode = state.episode
     val stream = state.stream
-    if (track == null && episode == null && stream == null) return
+    if (!state.hasMedia) return
     val downloaded = hasLibraryCopy || downloadJob?.status == ServerJobStatus.Done
     // Where the artist tap goes: the track's artist, or that of the library copy behind a stream.
     val artistId = (track ?: libraryTrack.takeIf { stream != null })?.artistId.orEmpty()
@@ -150,12 +161,16 @@ fun NowPlayingScreen(
                     verticalArrangement = Arrangement.spacedBy(if (compact) Spacing.sm else Spacing.md),
                 ) {
                     Header(
+                        track = track,
+                        sleepActive = sleepActive,
                         context = state.context,
                         episode = episode,
                         actions = actions,
-                        lyrics = episode == null && (stream == null || hasLibraryCopy),
+                        lyrics = state.dj == null && episode == null && (stream == null || hasLibraryCopy),
                         queue = episode == null,
                     )
+                    val badge = mixLabel.ifBlank { if (state.dj != null) "DJ actif" else "" }
+                    if (badge.isNotBlank()) Badge(badge)
                     // The cover takes whatever the rest leaves, square.
                     Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                         Artwork(
@@ -170,15 +185,32 @@ fun NowPlayingScreen(
                                 .then(coverModifier),
                         )
                     }
+                    PlaybackOverlap(state, localTransition)
+                    SleepTimerStatus(sleepDeadline) { actions.onSleepTimer(null) }
                     TitleBlock(
-                        title = track?.displayTitle ?: stream?.title ?: episode?.title.orEmpty(),
-                        artist = track?.displayArtist ?: stream?.artist ?: episode?.showName.orEmpty(),
+                        title = track?.displayTitle ?: stream?.title ?: state.dj?.title ?: episode?.title.orEmpty(),
+                        artist =
+                            track?.displayArtist ?: stream?.artist ?: state.dj?.artist
+                                ?: episode?.showName.orEmpty(),
                         onArtist = when {
                             episode != null -> ({ actions.onGoToShow(episode.showId) })
                             artistId.isNotEmpty() -> ({ actions.onGoToArtist(artistId) })
                             else -> null
                         },
                     )
+                    state.dj?.let { dj ->
+                        if (dj.nextTitle.isNotBlank()) {
+                            Text(
+                                "À suivre · ${dj.nextTitle} · ${dj.nextArtist}",
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                        dj.transition?.let { progress ->
+                            TransitionLine(progress)
+                        }
+                    }
                     SeekBar(state, actions.onSeek, formatOf(track, state))
                     if (episode != null) {
                         EpisodeTransport(state, actions, compact)
@@ -187,7 +219,7 @@ fun NowPlayingScreen(
                             state = state,
                             actions = actions,
                             compact = compact,
-                            isLiked = isLiked.takeIf { stream == null || hasLibraryCopy },
+                            isLiked = isLiked.takeIf { state.dj == null && (stream == null || hasLibraryCopy) },
                             trailing = if (stream != null && !downloaded) {
                                 {
                                     StreamDownloadButton(
@@ -216,6 +248,8 @@ fun NowPlayingScreen(
  */
 @Composable
 private fun Header(
+    track: Track?,
+    sleepActive: Boolean,
     context: PlaybackContext?,
     episode: PlayingEpisode?,
     actions: NowPlayingActions,
@@ -268,6 +302,7 @@ private fun Header(
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+            PlayerOptions(track, sleepActive, actions.onSleepTimer)
             if (lyrics) {
                 HeaderButton(
                     DowntifyIcons.Lyrics,
@@ -369,6 +404,7 @@ internal fun TrackTransport(
         labels = transportLabels(R.string.player_previous, R.string.player_next),
         compact = compact,
     )
+    if (state.dj != null) return
     val toggles = buildList {
         add(
             PlayerToggle(
@@ -498,6 +534,46 @@ private fun StreamDownloadButton(job: ServerJob?, title: String, onDownload: () 
     }
 }
 
+/**
+ * Marks the DJ mix: a static pill, plus a dot that pulses while two decks overlap so a look at the
+ * phone says whether the transition is happening right now.
+ */
+@Composable
+private fun Badge(label: String) {
+    Tag(label, tone = TagTone.Primary, small = true)
+}
+
+/** "Transition en cours" with a pulsing dot and the real overlap progress. */
+@Composable
+private fun TransitionLine(progress: Float) {
+    val pulse = rememberInfiniteTransition(label = "dj-transition")
+    val alpha = pulse.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            tween(durationMillis = 700),
+            repeatMode = androidx.compose.animation.core.RepeatMode.Reverse,
+        ),
+        label = "dj-transition-alpha",
+    ).value
+    Column(
+        Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+        ) {
+            Box(
+                Modifier.size(6.dp).alpha(alpha).background(MaterialTheme.colorScheme.primary, CircleShape),
+            )
+            Text("Transition en cours", style = MaterialTheme.typography.labelSmall)
+        }
+        androidx.compose.material3.LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
+    }
+}
+
 /** Where it plays from, the offline buffer and the last error, under everything else. */
 @Composable
 private fun SourceLines(state: PlayerState, track: Track?, serverName: String) {
@@ -510,6 +586,7 @@ private fun SourceLines(state: PlayerState, track: Track?, serverName: String) {
             when {
                 track != null -> sourceLine(serverName, state.quality, state.fromPhone)
                 state.stream != null -> stringResource(R.string.player_source_stream, serverName)
+                state.dj != null -> "Mix DJ local · $serverName"
                 else -> stringResource(R.string.player_source_unknown, serverName)
             },
             style = MaterialTheme.typography.bodySmall,

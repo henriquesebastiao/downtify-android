@@ -4,7 +4,9 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import com.henriquesebastiao.downtify.core.model.DjIds
 import com.henriquesebastiao.downtify.core.model.EpisodeIds
+import com.henriquesebastiao.downtify.core.model.MediaIds
 import com.henriquesebastiao.downtify.core.model.PlaybackContext
 import com.henriquesebastiao.downtify.core.model.PlaybackContextType
 import com.henriquesebastiao.downtify.core.model.PodcastEpisode
@@ -128,8 +130,14 @@ object MediaItems {
     fun restored(saved: SavedPlaybackItem, baseUrl: String): MediaItem {
         val videoId = saved.videoId
         val uri = when {
+            DjIds.referenceOf(saved.mediaId) != null -> requireNotNull(DjIds.referenceOf(saved.mediaId)).let {
+                DjMediaItems.uri(it.id, it.mode)
+            }
+
             saved.episodeId != null -> Uri.parse(EpisodeIds.fileUrl(baseUrl, saved.episodeFile.orEmpty()))
+
             videoId != null -> streamUri(videoId)
+
             else -> uriFor(saved.mediaId)
         }
         val artwork = when {
@@ -149,6 +157,7 @@ object MediaItems {
         return MediaItem.Builder()
             .setMediaId(saved.mediaId)
             .setUri(uri)
+            .apply { DjIds.referenceOf(saved.mediaId)?.let { setMimeType(DjMediaItems.mimeType(it.mode)) } }
             .setRequestMetadata(MediaItem.RequestMetadata.Builder().setMediaUri(uri).build())
             .setMediaMetadata(
                 MediaMetadata.Builder()
@@ -171,11 +180,7 @@ object MediaItems {
 
     /** Keeps the restored mini player visible before Room's library snapshot arrives. */
     fun trackFromMetadata(item: MediaItem): Track? {
-        if (EpisodeIds.isEpisode(item.mediaId) || StreamIds.isStream(item.mediaId) ||
-            item.mediaId.isBlank()
-        ) {
-            return null
-        }
+        if (!MediaIds.isLibrary(item.mediaId)) return null
         val metadata = item.mediaMetadata
         return Track(
             id = item.mediaId, file = item.mediaId, title = metadata.title?.toString().orEmpty(),

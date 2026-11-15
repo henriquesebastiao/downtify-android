@@ -1,5 +1,7 @@
 package com.henriquesebastiao.downtify.feature.settings
 
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
@@ -33,11 +35,30 @@ class SettingsScreenTest {
         compose.setContent { DowntifyTheme { SettingsScreen(state, actions) } }
     }
 
+    @Test fun transitionsAreConfigurableInPlaybackSettings() {
+        var mode: com.henriquesebastiao.downtify.feature.player.PlaybackMixMode? = null
+        compose.setContent {
+            DowntifyTheme {
+                SettingsScreen(
+                    SettingsUiState(),
+                    SettingsActions(),
+                    transitionSeconds = 8,
+                    onPlaybackMode = { mode = it },
+                )
+            }
+        }
+        compose.onNodeWithText("Transitions et DJ").performScrollTo().assertExists()
+        compose.onNodeWithText("Durée du fondu local : 8 s").performScrollTo().assertExists()
+        compose.onNodeWithText("Transitions").performScrollTo().performClick()
+        assertEquals(com.henriquesebastiao.downtify.feature.player.PlaybackMixMode.Transitions, mode)
+    }
+
     @Test
     fun groupsTheSettings() {
         show()
         listOf("Playback", "Downloads", "Appearance", "About", "Server").forEach {
-            compose.onNodeWithText(it).performScrollTo().assertExists()
+            compose.onNode(hasText(it) and SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+                .performScrollTo().assertExists()
         }
     }
 

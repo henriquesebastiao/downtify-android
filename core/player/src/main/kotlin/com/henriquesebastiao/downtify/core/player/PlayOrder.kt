@@ -30,6 +30,27 @@ internal object PlayOrder {
     fun shuffled(timeline: Timeline): List<Int> =
         if (timeline.isEmpty) emptyList() else walk(timeline, timeline.getFirstWindowIndex(true), true)
 
+    /**
+     * Moves a freshly shuffled queue onto the first item of its permutation. Media3 builds that
+     * permutation itself when shuffle turns on; starting anywhere else silently drops every item
+     * that precedes the current one in it, so a random start plays as little as one song.
+     */
+    fun startShuffled(player: Player) {
+        val timeline = player.currentTimeline
+        if (timeline.isEmpty || !player.shuffleModeEnabled) return
+        val first = timeline.getFirstWindowIndex(true)
+        if (first != C.INDEX_UNSET && first != player.currentMediaItemIndex) {
+            player.seekTo(first, C.TIME_UNSET)
+        }
+    }
+
+    /**
+     * An explicit Shuffle launch drops "repeat one" — it would replay the same song forever inside
+     * a queue meant to be heard once — but keeps "repeat all" if the user had chosen it.
+     */
+    fun repeatAfterShuffle(repeatMode: Int): Int =
+        if (repeatMode == Player.REPEAT_MODE_ONE) Player.REPEAT_MODE_ALL else repeatMode
+
     private fun walk(timeline: Timeline, from: Int, shuffle: Boolean): List<Int> {
         val order = ArrayList<Int>()
         var index = from

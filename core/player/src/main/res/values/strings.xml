@@ -2,4 +2,9 @@
 <resources>
     <string name="player_like">Add to Liked songs</string>
     <string name="player_unlike">Remove from Liked songs</string>
+    <string name="player_shuffle_on">Shuffle on</string>
+    <string name="player_shuffle_off">Shuffle off</string>
+    <string name="player_repeat_off">Repeat off</string>
+    <string name="player_repeat_all">Repeat all</string>
+    <string name="player_repeat_one">Repeat one</string>
 </resources>

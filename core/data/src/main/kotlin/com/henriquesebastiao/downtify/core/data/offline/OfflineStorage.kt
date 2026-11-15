@@ -21,7 +21,8 @@ class OfflineStorage @Inject constructor(@ApplicationContext private val context
             MediaScannerConnection.scanFile(context, arrayOf(file.path), null, null)
         },
     )
-    private var treeUri: String? = null
+
+    @Volatile private var treeUri: String? = null
 
     internal constructor(context: Context, root: File) : this(context) {
         backend = FileOfflineBackend(root)
@@ -165,7 +166,7 @@ class OfflineStorage @Inject constructor(@ApplicationContext private val context
         if (target == null || target.bytes != audio.bytes) throw IOException("Could not move ${audio.path}")
     }
 
-    @Synchronized
+    // UI metadata must remain readable while migration holds the storage monitor for file I/O.
     fun locationLabel(): String = treeUri?.let { Uri.parse(it).lastPathSegment ?: it }
         ?: "Android/media/${context.packageName}"
 

@@ -20,6 +20,31 @@ class MiniPlayerTest {
     @get:Rule
     val compose = createComposeRule()
 
+    @Test fun aDjSetUsesTheSameVisiblePlayerAndPauseControl() {
+        var pauses = 0
+        var opened = 0
+        compose.setContent {
+            DowntifyTheme {
+                MiniPlayer(
+                    PlayerState(
+                        dj = com.henriquesebastiao.downtify.core.player.PlayingDj(
+                            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                            "DJ fixture",
+                            artist = "Fixture artist",
+                        ),
+                        isPlaying = true,
+                    ),
+                    onOpen = { opened++ },
+                    onTogglePlay = { pauses++ },
+                )
+            }
+        }
+        compose.onNodeWithText("DJ fixture").performClick()
+        compose.onNodeWithContentDescription("Pause").performClick()
+        assertEquals(1, pauses)
+        assertEquals(1, opened)
+    }
+
     @Test
     fun showsTheTrackAndTogglesPlayback() {
         val track = PreviewData.tracks[1]

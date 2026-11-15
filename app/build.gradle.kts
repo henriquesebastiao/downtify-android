@@ -40,6 +40,13 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
+        create("beta") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".debug"
+            signingConfig = signingConfigs.getByName("debug")
+            isDebuggable = false
+            matchingFallbacks += listOf("release")
+        }
     }
 
     buildFeatures {
@@ -55,6 +62,25 @@ android {
 
     packaging {
         resources.excludes += setOf("/META-INF/{AL2.0,LGPL2.1}", "/META-INF/versions/9/OSGI-INF/MANIFEST.MF")
+    }
+}
+
+androidComponents {
+    onVariants(selector().withBuildType("beta")) { variant ->
+        val betaCode = providers.gradleProperty("musicAiBetaVersionCode").orNull?.let { value ->
+            requireNotNull(
+                value.toIntOrNull()?.takeIf {
+                    it > 0
+                },
+            ) { "musicAiBetaVersionCode must be a positive integer" }
+        }
+        val betaName = providers.gradleProperty("musicAiBetaVersionName").orNull?.also { value ->
+            require(value.isNotBlank()) { "musicAiBetaVersionName must not be blank" }
+        }
+        variant.outputs.forEach { output ->
+            betaCode?.let { output.versionCode.set(it) }
+            betaName?.let { output.versionName.set(it) }
+        }
     }
 }
 
