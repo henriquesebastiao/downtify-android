@@ -19,6 +19,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.henriquesebastiao.downtify.core.data.settings.DeviceDefaults
 import com.henriquesebastiao.downtify.core.data.settings.ThemeMode
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyTheme
 import com.henriquesebastiao.downtify.core.model.AppFont
@@ -37,6 +38,8 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
 
     @Inject lateinit var player: PlayerController
+
+    @Inject lateinit var deviceDefaults: DeviceDefaults
 
     private val viewModel: MainViewModel by viewModels()
 
@@ -72,7 +75,8 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val settings by viewModel.settings.collectAsStateWithLifecycle()
-            val darkTheme = when (settings?.theme) {
+            // Until the settings load, this device's default (dark on a TV), so a TV never flashes light.
+            val darkTheme = when (settings?.theme ?: deviceDefaults.theme) {
                 ThemeMode.Dark -> true
                 ThemeMode.Light -> false
                 else -> isSystemInDarkTheme()

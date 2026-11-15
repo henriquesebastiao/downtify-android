@@ -529,14 +529,14 @@ private fun nowPlayingRow(state: PlayerState): NowRow? {
  * stream the address its search result gave: neither has a server cover.
  */
 @Composable
-private fun artworkOf(entry: QueueEntry): String? {
+internal fun artworkOf(entry: QueueEntry): String? {
     if (entry.artworkUrl == null) return null
     if (EpisodeIds.isEpisode(entry.trackId) || StreamIds.isStream(entry.trackId)) return entry.artworkUrl
     return LocalCoverUrls.current.track(entry.trackId, ServerUrls.COVER_SMALL)
 }
 
 @Composable
-private fun nextFromLabel(context: PlaybackContext?): String {
+internal fun nextFromLabel(context: PlaybackContext?): String {
     val title = context?.title.orEmpty()
     return when {
         context?.type == PlaybackContextType.Liked -> stringResource(

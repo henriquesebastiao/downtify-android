@@ -563,4 +563,12 @@
     <string name="settings_client_certificate_active">Sunucu bir istemci sertifikası istediğinde Android kimlik bilgisi deposundan “%1$s” sunuluyor.</string>
     <string name="settings_client_certificate_change">Değiştir</string>
     <string name="settings_client_certificate_remove">Kaldır</string>
+    <string name="tv_exit_title">Downtify kapatılsın mı?</string>
+    <string name="tv_exit_body">Kapatınca müzik durur.</string>
+    <string name="tv_exit_stay">Şimdi değil</string>
+    <string name="tv_exit_close">Downtify’ı kapat</string>
+    <string name="tv_dark_mode">Karanlık mod</string>
+    <string name="tv_dark_mode_on">Karanlık mod açık</string>
+    <string name="tv_dark_mode_on_body">Ekran karardığında aydınlatmak için herhangi bir düğmeye basın.</string>
+    <string name="tv_about_artist">Sanatçı hakkında</string>
 </resources>

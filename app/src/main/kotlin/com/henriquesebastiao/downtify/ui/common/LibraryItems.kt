@@ -89,6 +89,7 @@ fun CoverCard(
     placeholderIcon: Int = DowntifyIcons.Album,
     titleColor: Color = Color.Unspecified,
     centered: Boolean = false,
+    fallbackUrl: String? = null,
 ) {
     // A TV remote's focus rings the cover, the card's face, rather than the whole column.
     val interaction = remember { MutableInteractionSource() }
@@ -109,6 +110,7 @@ fun CoverCard(
             contentDescription = null,
             shape = shape,
             placeholderIcon = placeholderIcon,
+            fallbackUrl = fallbackUrl,
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)
@@ -259,6 +261,7 @@ fun CoverItem(
     subtitleLines: Int = 1,
     shape: Shape = ListStyle.Separated.shapeOf(0, 1),
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainer,
+    fallbackUrl: String? = null,
     trailing: (@Composable RowScope.() -> Unit)? = null,
 ) {
     MediaListItem(
@@ -277,6 +280,7 @@ fun CoverItem(
                 contentDescription = null,
                 shape = if (round) CircleShape else DowntifyShape.ArtworkThumb,
                 placeholderIcon = placeholderIcon,
+                fallbackUrl = fallbackUrl,
                 modifier = Modifier.size(ITEM_COVER),
             )
         },
@@ -394,13 +398,21 @@ private fun TrackMenu(track: Track, isLiked: Boolean, actions: TrackActions, col
     }
 }
 
-/** A round artist avatar with the name under it. */
+/** A round artist avatar with the name under it; [fallbackUrl] (a cover of theirs) when [coverUrl] fails. */
 @Composable
-fun ArtistCard(name: String, coverUrl: String?, onClick: () -> Unit, modifier: Modifier = Modifier, size: Dp = 88.dp) {
+fun ArtistCard(
+    name: String,
+    coverUrl: String?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    size: Dp = 88.dp,
+    fallbackUrl: String? = null,
+) {
     CoverCard(
         title = name,
         subtitle = null,
         coverUrl = coverUrl,
+        fallbackUrl = fallbackUrl,
         onClick = onClick,
         shape = CircleShape,
         placeholderIcon = DowntifyIcons.Artist,

@@ -563,4 +563,12 @@
     <string name="settings_client_certificate_active">Παρουσίαση του «%1$s» από τον χώρο αποθήκευσης διαπιστευτηρίων του Android όταν ο διακομιστής ζητά πιστοποιητικό πελάτη.</string>
     <string name="settings_client_certificate_change">Αλλαγή</string>
     <string name="settings_client_certificate_remove">Αφαίρεση</string>
+    <string name="tv_exit_title">Κλείσιμο του Downtify;</string>
+    <string name="tv_exit_body">Με το κλείσιμο η μουσική σταματά.</string>
+    <string name="tv_exit_stay">Όχι τώρα</string>
+    <string name="tv_exit_close">Κλείσιμο του Downtify</string>
+    <string name="tv_dark_mode">Σκοτεινή λειτουργία</string>
+    <string name="tv_dark_mode_on">Η σκοτεινή λειτουργία είναι ενεργή</string>
+    <string name="tv_dark_mode_on_body">Πατήστε οποιοδήποτε κουμπί για να φωτίσει ξανά η οθόνη όταν σκοτεινιάσει.</string>
+    <string name="tv_about_artist">Σχετικά με τον καλλιτέχνη</string>
 </resources>

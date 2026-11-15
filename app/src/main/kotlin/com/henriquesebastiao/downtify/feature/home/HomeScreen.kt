@@ -33,6 +33,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -293,7 +294,7 @@ private fun HomeAccess(state: HomeUiState, onOpen: (RecentContext) -> Unit) {
     val favorites = state.favoritePlaylists.map { playlist ->
         RecentContext(PlaybackContextType.Playlist, playlist.name, playlist.title, playlist.trackIds.firstOrNull(), 0)
     }
-    val playlists = state.favoritePlaylists.associateBy { it.name }
+    val playlists = remember(state.favoritePlaylists, state.playlistsByName) { state.knownPlaylists }
     BoxWithConstraints {
         val columns = if (maxWidth >= 480.dp) 3 else 2
         val recentTitle = stringResource(R.string.home_jump_back_in)
@@ -395,12 +396,14 @@ private fun QuickAccessTile(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(Spacing.md),
         ) {
+            val isArtist = entry.type == PlaybackContextType.Artist
             Artwork(
-                url = if (playlist != null) {
-                    covers.playlist(playlist, playlist.trackIds.firstOrNull())
-                } else {
-                    covers.track(entry.coverTrackId, ServerUrls.COVER_SMALL)
+                url = when {
+                    playlist != null -> covers.playlist(playlist, playlist.trackIds.firstOrNull())
+                    isArtist -> covers.artist(entry.title)
+                    else -> covers.track(entry.coverTrackId, ServerUrls.COVER_SMALL)
                 },
+                fallbackUrl = if (isArtist) covers.track(entry.coverTrackId, ServerUrls.COVER_SMALL) else null,
                 contentDescription = null,
                 shape = if (entry.type == PlaybackContextType.Artist) CircleShape else DowntifyShape.ArtworkThumb,
                 placeholderIcon = when (entry.type) {

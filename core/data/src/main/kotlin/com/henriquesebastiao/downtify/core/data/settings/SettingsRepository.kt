@@ -18,16 +18,27 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
+/**
+ * What a setting is until the user changes it, where that depends on the device: on a TV the font
+ * is Downtify classic (Sora and DM Sans, which the APK carries; a TV has no Play services to fetch
+ * Google Sans Flex) and the theme dark (Fire TV says it's day, which made the first screens white
+ * in a dark room). The app provides it.
+ */
+data class DeviceDefaults(val font: AppFont = AppFont.Default, val theme: ThemeMode = ThemeMode.System)
+
 @Singleton
-class SettingsRepository @Inject constructor(private val store: DataStore<Preferences>) {
+class SettingsRepository @Inject constructor(
+    private val store: DataStore<Preferences>,
+    private val deviceDefaults: DeviceDefaults = DeviceDefaults(),
+) {
     val settings: Flow<UserSettings> = store.data.map { prefs ->
         val defaults = UserSettings()
         val sort = enumOr(prefs[LIBRARY_SORT], defaults.librarySort)
         UserSettings(
-            theme = enumOr(prefs[THEME], defaults.theme),
+            theme = enumOr(prefs[THEME], deviceDefaults.theme),
             dynamicColor = prefs[DYNAMIC_COLOR] ?: defaults.dynamicColor,
             amoled = prefs[AMOLED] ?: defaults.amoled,
-            font = AppFont.of(prefs[FONT]),
+            font = AppFont.of(prefs[FONT], deviceDefaults.font),
             floatingNavBar = prefs[FLOATING_NAV_BAR] ?: defaults.floatingNavBar,
             wifiQuality = StreamQuality.decode(prefs[WIFI_QUALITY]) ?: defaults.wifiQuality,
             mobileQuality = StreamQuality.decode(prefs[MOBILE_QUALITY]) ?: defaults.mobileQuality,

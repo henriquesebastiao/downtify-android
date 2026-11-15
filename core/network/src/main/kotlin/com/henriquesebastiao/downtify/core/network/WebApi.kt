@@ -1,5 +1,6 @@
 package com.henriquesebastiao.downtify.core.network
 
+import com.henriquesebastiao.downtify.core.network.dto.ArtistArtDto
 import com.henriquesebastiao.downtify.core.network.dto.AuthStatusDto
 import com.henriquesebastiao.downtify.core.network.dto.BlockArtistRequest
 import com.henriquesebastiao.downtify.core.network.dto.DiscoverArtistsDto
@@ -63,6 +64,10 @@ interface WebApi {
 
     @POST("api/download/batch")
     suspend fun downloadBatch(@Body body: JsonObject): Response<Unit>
+
+    /** An artist's saved photo and banner ([ArtistArtDto]); a device may read it. */
+    @GET("api/artists/art")
+    suspend fun artistArt(@Query("name") name: String): ArtistArtDto
 
     @GET("api/queue")
     suspend fun queue(): JsonArray

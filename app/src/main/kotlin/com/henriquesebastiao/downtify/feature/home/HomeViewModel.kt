@@ -29,12 +29,21 @@ data class HomeUiState(
     val jumpBackIn: List<RecentContext> = emptyList(),
     val recentlyAdded: List<Album> = emptyList(),
     val favoritePlaylists: List<Playlist> = emptyList(),
+    /** Every playlist by name, for the covers of the ones in [jumpBackIn]: favourite or not. */
+    val playlistsByName: Map<String, Playlist> = emptyMap(),
     val refreshing: Boolean = false,
     val libraryEmpty: Boolean = false,
     /** What the server can do (`capabilities`): the shortcuts below "Recently added". */
     val showDiscover: Boolean = false,
     val showPodcasts: Boolean = false,
-)
+) {
+    /**
+     * Every playlist Home knows, by name: what a tile looks its playlist up in, so a recent
+     * playlist shows its own cover, not its first song's, whether it is a favourite or not.
+     */
+    val knownPlaylists: Map<String, Playlist>
+        get() = favoritePlaylists.associateBy { it.name } + playlistsByName
+}
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -71,6 +80,7 @@ class HomeViewModel @Inject constructor(
             jumpBackIn = jump.take(RECENT_CONTEXT_LIMIT),
             recentlyAdded = newest.take(RECENTLY_ADDED_SIZE),
             favoritePlaylists = playlists.filter { it.favorite && !it.liked }.sortedBy { it.title.lowercase() },
+            playlistsByName = playlists.associateBy { it.name },
             refreshing = syncStatus == SyncStatus.Syncing,
             libraryEmpty = snapshot?.isEmpty == true,
             showDiscover = info?.capabilities?.discover == true,

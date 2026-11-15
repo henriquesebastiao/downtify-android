@@ -15,7 +15,10 @@ enum class AppFont {
     companion object {
         val Default = GoogleSansFlex
 
-        /** The font saved under [name], or the default one for a name this version doesn't know. */
-        fun of(name: String?): AppFont = entries.firstOrNull { it.name == name } ?: Default
+        /**
+         * The font saved under [name], or [default] when nothing was saved or for a name this
+         * version doesn't know (a TV defaults to [Downtify]).
+         */
+        fun of(name: String?, default: AppFont = Default): AppFont = entries.firstOrNull { it.name == name } ?: default
     }
 }

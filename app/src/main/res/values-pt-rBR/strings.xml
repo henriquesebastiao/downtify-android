@@ -577,4 +577,12 @@
     <string name="settings_client_certificate_active">Apresentando “%1$s” do armazenamento de credenciais do Android quando o servidor solicita um certificado de cliente.</string>
     <string name="settings_client_certificate_change">Alterar</string>
     <string name="settings_client_certificate_remove">Remover</string>
+    <string name="tv_exit_title">Quer fechar o Downtify?</string>
+    <string name="tv_exit_body">Ao fechar, a música para.</string>
+    <string name="tv_exit_stay">Agora não</string>
+    <string name="tv_exit_close">Fechar o Downtify</string>
+    <string name="tv_dark_mode">Modo escuro</string>
+    <string name="tv_dark_mode_on">O modo escuro está ativado</string>
+    <string name="tv_dark_mode_on_body">Pressione qualquer botão para reacender a tela quando ela escurecer.</string>
+    <string name="tv_about_artist">Sobre o artista</string>
 </resources>

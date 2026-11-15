@@ -563,4 +563,12 @@
     <string name="settings_client_certificate_active">A(z) „%1$s” bemutatása az Android hitelesítőadat-tárából, amikor a szerver ügyféltanúsítványt kér.</string>
     <string name="settings_client_certificate_change">Módosítás</string>
     <string name="settings_client_certificate_remove">Eltávolítás</string>
+    <string name="tv_exit_title">Bezárod a Downtify-t?</string>
+    <string name="tv_exit_body">Bezáráskor a zene leáll.</string>
+    <string name="tv_exit_stay">Most nem</string>
+    <string name="tv_exit_close">Downtify bezárása</string>
+    <string name="tv_dark_mode">Sötét mód</string>
+    <string name="tv_dark_mode_on">A sötét mód be van kapcsolva</string>
+    <string name="tv_dark_mode_on_body">Nyomj meg bármelyik gombot, hogy a képernyő újra kivilágosodjon, ha elsötétül.</string>
+    <string name="tv_about_artist">Az előadóról</string>
 </resources>

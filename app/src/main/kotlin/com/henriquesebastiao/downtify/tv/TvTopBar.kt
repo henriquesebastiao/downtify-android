@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import com.henriquesebastiao.downtify.R
 import com.henriquesebastiao.downtify.core.designsystem.component.Artwork
 import com.henriquesebastiao.downtify.core.designsystem.component.DowntifyIcons
+import com.henriquesebastiao.downtify.core.designsystem.component.PlayingBars
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyTheme
 import com.henriquesebastiao.downtify.core.designsystem.theme.Spacing
 import com.henriquesebastiao.downtify.core.player.PlayerState
@@ -109,14 +110,14 @@ private fun TvTab(label: String, icon: Int, selected: Boolean, onClick: () -> Un
                 role = Role.Tab,
                 onClick = onClick,
             )
-            .padding(horizontal = Spacing.lg, vertical = Spacing.sm),
+            .padding(horizontal = Spacing.md, vertical = Spacing.xs),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {
-        Icon(painterResource(icon), contentDescription = null, tint = color, modifier = Modifier.size(24.dp))
+        Icon(painterResource(icon), contentDescription = null, tint = color, modifier = Modifier.size(TabIcon))
         Text(
             label,
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.labelLarge,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
             color = color,
             maxLines = 1,
@@ -140,14 +141,14 @@ internal fun TvIconButton(icon: Int, label: String, onClick: () -> Unit, modifie
             painterResource(icon),
             contentDescription = label,
             tint = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.size(28.dp),
+            modifier = Modifier.size(TabIcon),
         )
     }
 }
 
 /**
- * What's playing, as a card: the cover, the title over the artist. OK opens the player. Shows
- * nothing while nothing is loaded.
+ * What's playing, as a card as wide as the bar's side leaves (up to 300 dp): the cover, the title
+ * over the artist and, while it plays, the playing bars. OK opens the player. Shows nothing while nothing is loaded.
  */
 @Composable
 fun TvNowPlayingCard(state: PlayerState, onOpen: () -> Unit, modifier: Modifier = Modifier) {
@@ -163,6 +164,7 @@ fun TvNowPlayingCard(state: PlayerState, onOpen: () -> Unit, modifier: Modifier 
     Row(
         modifier
             .widthIn(max = NowPlayingMaxWidth)
+            .fillMaxWidth()
             .tvFocusFrame(focused, NowPlayingRingShape)
             .clickable(interaction, indication = null, onClickLabel = open, role = Role.Button, onClick = onOpen)
             .background(MaterialTheme.colorScheme.surfaceContainerHigh, NowPlayingShape),
@@ -176,7 +178,7 @@ fun TvNowPlayingCard(state: PlayerState, onOpen: () -> Unit, modifier: Modifier 
             placeholderIcon = if (episode != null) DowntifyIcons.Podcasts else DowntifyIcons.Song,
             modifier = Modifier.size(NowPlayingCover),
         )
-        Column(Modifier.padding(end = Spacing.md)) {
+        Column(Modifier.weight(1f)) {
             Text(
                 title,
                 style = MaterialTheme.typography.titleSmall,
@@ -192,14 +194,20 @@ fun TvNowPlayingCard(state: PlayerState, onOpen: () -> Unit, modifier: Modifier 
                 overflow = TextOverflow.Ellipsis,
             )
         }
+        // The bars say it's playing, not just loaded, as the TV music apps do.
+        Box(Modifier.padding(end = Spacing.md).size(BarsSize), contentAlignment = Alignment.Center) {
+            if (state.isPlaying) PlayingBars(Modifier.size(BarsSize))
+        }
     }
 }
 
 /** The side margins of the TV screens: clear of the edges a TV may crop (overscan). */
 internal val TvMargin = 48.dp
-private val TvIconButtonSize = 48.dp
-private val NowPlayingMaxWidth = 280.dp
-private val NowPlayingCover = 48.dp
+private val TvIconButtonSize = 40.dp
+private val TabIcon = 20.dp
+private val NowPlayingMaxWidth = 300.dp
+private val NowPlayingCover = 44.dp
+private val BarsSize = 16.dp
 private val NowPlayingShape = RoundedCornerShape(8.dp)
 private val NowPlayingRingShape = RoundedCornerShape(8.dp + TvRingSpace)
 

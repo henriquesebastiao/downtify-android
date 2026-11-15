@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -49,6 +50,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.henriquesebastiao.downtify.R
 import com.henriquesebastiao.downtify.core.designsystem.component.Artwork
 import com.henriquesebastiao.downtify.core.designsystem.component.DowntifyIcons
+import com.henriquesebastiao.downtify.core.designsystem.component.PlayingBars
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyTheme
 import com.henriquesebastiao.downtify.core.designsystem.theme.Spacing
 import com.henriquesebastiao.downtify.core.network.ServerUrls
@@ -176,7 +178,8 @@ private fun LazyGridScope.artists(state: LibraryUiState, navigation: LibraryNavi
         TvCoverCard(
             title = artist.name,
             subtitle = null,
-            coverUrl = LocalCoverUrls.current.track(artist.coverTrackId, ServerUrls.COVER_LARGE),
+            coverUrl = LocalCoverUrls.current.artist(artist.name),
+            fallbackUrl = LocalCoverUrls.current.track(artist.coverTrackId, ServerUrls.COVER_LARGE),
             onClick = { navigation.onArtist(artist.id) },
             shape = CircleShape,
             ringShape = CircleShape,
@@ -195,6 +198,7 @@ private fun LazyGridScope.songs(state: LibraryUiState, onPlay: (Int) -> Unit) {
             onClick = { onPlay(index) },
             placeholderIcon = DowntifyIcons.Song,
             current = track.id == state.currentTrackId,
+            playing = state.isPlaying,
         )
     }
 }
@@ -202,7 +206,7 @@ private fun LazyGridScope.songs(state: LibraryUiState, onPlay: (Int) -> Unit) {
 /**
  * A cover with its title and a line under it. Focus rings the cover along [ringShape], a small gap
  * out, and leaves the text alone; there's no tint over the picture. [current] marks what's playing
- * by its title's color.
+ * by its title's color and, before it, the bars ([playing] animates them).
  */
 @Composable
 internal fun TvCoverCard(
@@ -216,6 +220,8 @@ internal fun TvCoverCard(
     placeholderIcon: Int = DowntifyIcons.Album,
     centered: Boolean = false,
     current: Boolean = false,
+    playing: Boolean = false,
+    fallbackUrl: String? = null,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
@@ -229,20 +235,20 @@ internal fun TvCoverCard(
             contentDescription = null,
             shape = shape,
             placeholderIcon = placeholderIcon,
+            fallbackUrl = fallbackUrl,
             modifier = Modifier
                 .fillMaxWidth()
                 .tvFocusFrame(focused, ringShape)
                 .aspectRatio(1f),
         )
         Column(Modifier.padding(horizontal = TvRingSpace), horizontalAlignment = align) {
-            Text(
-                title,
-                style = MaterialTheme.typography.titleSmall,
-                color = if (current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = if (centered) TextAlign.Center else TextAlign.Start,
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+            ) {
+                if (current) PlayingBars(Modifier.size(14.dp), animate = playing)
+                CardTitle(title, current, centered)
+            }
             if (subtitle != null) {
                 Text(
                     subtitle,
@@ -254,6 +260,18 @@ internal fun TvCoverCard(
             }
         }
     }
+}
+
+@Composable
+private fun CardTitle(title: String, current: Boolean, centered: Boolean) {
+    Text(
+        title,
+        style = MaterialTheme.typography.titleSmall,
+        color = if (current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        textAlign = if (centered) TextAlign.Center else TextAlign.Start,
+    )
 }
 
 /** A section's pill: filled when selected, ringed when focused. */

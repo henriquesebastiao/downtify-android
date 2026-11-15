@@ -15,9 +15,11 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.update
 import retrofit2.HttpException
 
@@ -35,6 +37,9 @@ class CatalogRepository @Inject constructor(
     private val queue: ServerQueueRepository,
 ) {
     private val requested = MutableStateFlow<Map<String, List<String>>>(emptyMap())
+
+    /** Each artist's banner URL (null: none saved), by server and name, as the server last answered. */
+    private val banners = MutableStateFlow<Map<String, String?>>(emptyMap())
 
     /** Albums (by id or link) this phone asked for, with their songs' ids — for "Downloading 4/9". */
     val requestedAlbums: StateFlow<Map<String, List<String>>> = requested.asStateFlow()
@@ -99,6 +104,31 @@ class CatalogRepository @Inject constructor(
         is ServerResult.Failed -> ServerResult.Failed(resolved.status)
 
         ServerResult.Unreachable -> ServerResult.Unreachable
+    }
+
+    /**
+     * The hero banner saved for [artist] on the server (`GET /api/artists/art`), the one the web
+     * app shows over their page, as a URL (null: none). The last answer comes first, so a banner
+     * already seen shows at once; then the server is asked again, since the banner can be changed
+     * on the web page at any time (a new one has a new `?v=`). A failed ask keeps the last answer.
+     */
+    fun artistBanner(artist: String): Flow<String?> = flow {
+        val baseUrl = sessions.current?.baseUrl
+        if (baseUrl == null || artist.isBlank()) {
+            emit(null)
+            return@flow
+        }
+        val key = "$baseUrl|$artist"
+        val known = banners.value
+        if (key in known) emit(known[key])
+        when (val answer = call { api -> api.artistArt(artist).bannerUrl(baseUrl) }) {
+            is ServerResult.Ok -> {
+                banners.update { it + (key to answer.value) }
+                emit(answer.value)
+            }
+
+            else -> if (key !in known) emit(null)
+        }
     }
 
     private suspend fun <T> call(block: suspend (WebApi) -> T): ServerResult<T> =

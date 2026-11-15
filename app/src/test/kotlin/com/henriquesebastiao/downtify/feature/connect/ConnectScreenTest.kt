@@ -1,6 +1,13 @@
 package com.henriquesebastiao.downtify.feature.connect
 
+import android.content.Context
+import android.content.pm.PackageManager
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -9,9 +16,13 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.pressKey
+import androidx.compose.ui.test.requestFocus
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyTheme
 import com.henriquesebastiao.downtify.core.model.Capabilities
@@ -21,6 +32,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
@@ -85,6 +97,24 @@ class ConnectScreenTest {
         compose.onNodeWithText("Server address").performTextInput("192.168.1.20")
         assertEquals("192.168.1.20", typed)
         assertTrue(!connected)
+    }
+
+    @OptIn(ExperimentalTestApi::class)
+    @Test
+    fun withoutATouchscreenAFieldTakesTextOnlyAfterOk() {
+        // A TV: focus landing on a field must not pop the keyboard up; OK does.
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        shadowOf(context.packageManager).setSystemFeature(PackageManager.FEATURE_TOUCHSCREEN, false)
+        var typed = ""
+        show(ConnectUiState(searching = false), onAddressChange = { typed = it })
+        val address = compose.onNodeWithText("Server address")
+        address.requestFocus()
+        address.assert(SemanticsMatcher.expectValue(SemanticsProperties.IsEditable, false))
+
+        address.performKeyInput { pressKey(Key.DirectionCenter) }
+        address.assert(SemanticsMatcher.expectValue(SemanticsProperties.IsEditable, true))
+        address.performTextInput("192.168.1.20")
+        assertEquals("192.168.1.20", typed)
     }
 
     @Test

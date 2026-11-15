@@ -577,4 +577,12 @@
     <string name="settings_client_certificate_active">Se presenta «%1$s» del almacén de credenciales de Android cuando el servidor pide un certificado de cliente.</string>
     <string name="settings_client_certificate_change">Cambiar</string>
     <string name="settings_client_certificate_remove">Quitar</string>
+    <string name="tv_exit_title">¿Quieres cerrar Downtify?</string>
+    <string name="tv_exit_body">Al cerrarlo, la música se detiene.</string>
+    <string name="tv_exit_stay">Ahora no</string>
+    <string name="tv_exit_close">Cerrar Downtify</string>
+    <string name="tv_dark_mode">Modo oscuro</string>
+    <string name="tv_dark_mode_on">El modo oscuro está activado</string>
+    <string name="tv_dark_mode_on_body">Pulsa cualquier botón para reactivar la pantalla cuando se oscurezca.</string>
+    <string name="tv_about_artist">Acerca del artista</string>
 </resources>

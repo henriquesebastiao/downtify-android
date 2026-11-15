@@ -370,7 +370,7 @@ private fun ModeTabs(static: Boolean, onSelect: (Boolean) -> Unit) {
  * in the frame it starts rather than at the next tick, up to half a second late.
  */
 @Composable
-private fun rememberActiveLine(lines: List<LyricLine>, state: PlayerState): Int {
+internal fun rememberActiveLine(lines: List<LyricLine>, state: PlayerState): Int {
     val positionMs = state.positionMs
     val speed = state.speed
     val running = state.isPlaying && speed > 0f

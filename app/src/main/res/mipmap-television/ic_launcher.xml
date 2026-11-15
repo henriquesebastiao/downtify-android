@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- On a TV the launcher icon is the square TV icon (tv_icon): Fire TV shows a sideloaded app by its
+     icon, drawn in a square on a grey tile, and squeezed the 16:9 banner into it. The banner stays
+     the app's android:banner for Android TV's launcher. Phones and tablets keep the adaptive icon
+     (mipmap-anydpi). Fire TV keeps the icon it read when the app was first installed: a new one
+     shows only after uninstalling and installing again. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/tv_icon" />
+</layer-list>

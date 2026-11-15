@@ -59,3 +59,27 @@ internal fun rememberTvGridBringIntoViewSpec(top: Dp): BringIntoViewSpec {
         }
     }
 }
+
+/**
+ * Scrolls a TV list only when the focused item would come within [margin] of an edge, and then
+ * just far enough: a short list (the queue panel) keeps its heading in view, and moving down a
+ * long one shows what comes next. An item too tall for the room goes to the top margin.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+internal fun rememberTvKeepVisibleSpec(margin: Dp): BringIntoViewSpec {
+    val marginPx = with(LocalDensity.current) { margin.toPx() }
+    return remember(marginPx) {
+        object : BringIntoViewSpec {
+            override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float {
+                val bottom = containerSize - marginPx
+                return when {
+                    size >= bottom - marginPx -> offset - marginPx
+                    offset < marginPx -> offset - marginPx
+                    offset + size > bottom -> offset + size - bottom
+                    else -> 0f
+                }
+            }
+        }
+    }
+}

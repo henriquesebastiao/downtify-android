@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- On a TV the window (and the splash screen behind the logo) is black whatever the system's
+         night mode: Fire TV reports day mode, which would flash white. -->
+    <color name="window_background">#000000</color>
+</resources>

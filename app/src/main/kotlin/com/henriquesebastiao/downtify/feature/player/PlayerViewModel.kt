@@ -87,6 +87,20 @@ class PlayerViewModel @Inject constructor(
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), null)
 
+    /**
+     * The hero banner the server has for the playing song's artist (the web app's, over their
+     * page), or null: the TV player shows it behind the controls, else the cover. Asked only while
+     * someone watches (the phone's Now Playing doesn't), and again each time the player opens or
+     * the artist changes, so a banner changed on the web page shows.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val artistBanner: StateFlow<String?> = player.state
+        .map { s -> s.track?.let { it.albumArtist.ifBlank { it.displayArtist } } ?: s.stream?.artist }
+        .distinctUntilChanged()
+        .flatMapLatest { artist -> artist?.let(catalog::artistBanner) ?: flowOf(null) }
+        // Stops as the player closes, so opening it again asks again (the last banner shows meanwhile).
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), null)
+
     private val lyricsState = MutableStateFlow<LyricsState>(LyricsState.Loading)
     val lyrics: StateFlow<LyricsState> = lyricsState.asStateFlow()
 

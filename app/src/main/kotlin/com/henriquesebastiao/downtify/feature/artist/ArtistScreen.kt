@@ -149,7 +149,8 @@ fun ArtistScreen(
                         verticalArrangement = Arrangement.spacedBy(Spacing.md),
                     ) {
                         Artwork(
-                            url = covers.track(artist.coverTrackId, ServerUrls.COVER_LARGE),
+                            url = covers.artist(artist.name),
+                            fallbackUrl = covers.track(artist.coverTrackId, ServerUrls.COVER_LARGE),
                             contentDescription = null,
                             shape = MaterialShapes.Cookie9Sided.toShape(),
                             placeholderIcon = DowntifyIcons.Artist,
