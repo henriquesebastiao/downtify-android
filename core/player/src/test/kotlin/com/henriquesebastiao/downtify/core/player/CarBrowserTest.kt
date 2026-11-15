@@ -126,6 +126,28 @@ class CarBrowserTest {
         assertEquals(9000L, result.startPositionMs)
     }
 
+    @Test fun `artist folders keep grid style while shuffle rows remain playable list actions`() {
+        val artist = browser.onGetChildren(session, controller, CarLibrary.ARTISTS, 0, 20, null)
+            .get(5, TimeUnit.SECONDS).value!!.single()
+        assertEquals(
+            MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_GRID_ITEM,
+            artist.mediaMetadata.extras!!.getInt(MediaConstants.EXTRAS_KEY_CONTENT_STYLE_BROWSABLE),
+        )
+        val shuffled = browser.onGetChildren(session, controller, CarLibrary.FAVORITES, 0, 20, null)
+            .get(5, TimeUnit.SECONDS).value!!.single { it.mediaId.startsWith(CarLibrary.SHUFFLE_PREFIX) }
+        assertTrue(shuffled.mediaMetadata.isPlayable == true)
+        val styles = listOf(
+            MediaConstants.EXTRAS_KEY_CONTENT_STYLE_BROWSABLE,
+            MediaConstants.EXTRAS_KEY_CONTENT_STYLE_PLAYABLE,
+        )
+        for (key in styles) {
+            assertEquals(
+                MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM,
+                shuffled.mediaMetadata.extras!!.getInt(key),
+            )
+        }
+    }
+
     @Test fun `external controllers can connect and non app controllers cannot impersonate the app`() {
         every { controller.uid } returns 200
         every { controller.packageName } returns "untrusted.example"

@@ -447,16 +447,6 @@ internal open class CarBrowser(
 
     private suspend fun item(entry: CarLibrary.Entry): MediaItem {
         if (entry.id.startsWith(CarLibrary.SHUFFLE_PREFIX)) {
-            val extras = Bundle().apply {
-                putInt(
-                    MediaConstants.EXTRAS_KEY_CONTENT_STYLE_BROWSABLE,
-                    MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM,
-                )
-                putInt(
-                    MediaConstants.EXTRAS_KEY_CONTENT_STYLE_PLAYABLE,
-                    MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM,
-                )
-            }
             return MediaItem.Builder()
                 .setMediaId(entry.id)
                 .setMediaMetadata(
@@ -464,7 +454,7 @@ internal open class CarBrowser(
                         .setTitle(entry.title)
                         .setIsBrowsable(false)
                         .setIsPlayable(true)
-                        .setExtras(extras)
+                        .setExtras(styleExtras(entry.id))
                         .setMediaType(MediaMetadata.MEDIA_TYPE_FOLDER_MIXED)
                         .build(),
                 )
@@ -486,32 +476,34 @@ internal open class CarBrowser(
             "playlist" -> context.getString(R.string.car_playlist_pick)
             else -> entry.subtitle
         }
-        val styleHint = when {
-            entry.id == CarLibrary.ARTISTS || entry.id == CarLibrary.ALBUMS || entry.id.startsWith("auto:artist:") ->
-                MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_GRID_ITEM
-
-            else ->
-                MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM
-        }
-        val metadataExtras = Bundle().apply {
-            putInt(MediaConstants.EXTRAS_KEY_CONTENT_STYLE_BROWSABLE, styleHint)
-            putInt(
-                MediaConstants.EXTRAS_KEY_CONTENT_STYLE_PLAYABLE,
-                MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM,
-            )
-        }
-
         return (
             track?.let { MediaItems.from(it, base).buildUpon().setMediaId(entry.id).build() }
                 ?: folder(entry.id, entry.title)
             ).let { media ->
             val mergedExtras = Bundle(media.mediaMetadata.extras ?: Bundle.EMPTY).apply {
-                putAll(metadataExtras)
+                putAll(styleExtras(entry.id))
             }
             media.buildUpon().setMediaMetadata(
                 media.mediaMetadata.buildUpon().setTitle(title).setSubtitle(subtitle)
                     .setArtworkUri(cover).setExtras(mergedExtras).build(),
             ).build()
+        }
+    }
+
+    private fun styleExtras(id: String): Bundle {
+        val styleHint = when {
+            id == CarLibrary.ARTISTS || id == CarLibrary.ALBUMS || id.startsWith("auto:artist:") ->
+                MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_GRID_ITEM
+
+            else ->
+                MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM
+        }
+        return Bundle().apply {
+            putInt(MediaConstants.EXTRAS_KEY_CONTENT_STYLE_BROWSABLE, styleHint)
+            putInt(
+                MediaConstants.EXTRAS_KEY_CONTENT_STYLE_PLAYABLE,
+                MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM,
+            )
         }
     }
 
