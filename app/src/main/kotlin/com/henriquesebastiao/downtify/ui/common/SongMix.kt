@@ -117,6 +117,7 @@ class SongMixViewModel @Inject constructor(
             if (localPrepared) local.setArmed(false)
         }
         localPrepared = false
+        local.setMode(com.henriquesebastiao.downtify.core.player.LocalDjMode.Dj)
         serverRequest = !local.device.value
         val mine = ++djGeneration
         requestOwner = owner
@@ -240,7 +241,7 @@ class SongMixViewModel @Inject constructor(
         local.setArmed(true)
         localPrepared = true
         djStatus = djStatus.copy(
-            message = "Mix DJ local prêt · transitions à la fin du titre en cours.",
+            message = "File locale prête · vérification des analyses rythmiques dans le lecteur.",
             preparing = false,
             canCancel = true,
             canOpenPlayer = true,
@@ -269,7 +270,8 @@ class SongMixViewModel @Inject constructor(
     }
 
     private fun localRequestCurrent(request: LocalPreparation) = request.generation == djGeneration &&
-        sessions.current == request.owner && local.device.value
+        sessions.current == request.owner && local.device.value &&
+        local.mode.value == com.henriquesebastiao.downtify.core.player.LocalDjMode.Dj
 
     private fun ensureLocalRequest(request: LocalPreparation, unchanged: Boolean = true) {
         val sameSelection = player.selectionVersion.value == request.selection &&

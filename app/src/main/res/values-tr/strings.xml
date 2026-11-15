@@ -558,7 +558,7 @@
     <string name="nav_music_ai">Müziğiniz</string>
     <string name="music_dj_server">Sunucu</string>
     <string name="music_dj_device_beta">Bu cihaz · Beta</string>
-    <string name="music_dj_local_description">Geçerli kuyruğu bu telefonda kısa geçişlerle miksleyin. Ritim analizi hazırlanıyor. Model otomatik indirilmez. Pil ve ses kalitesi cihazda test edilmeyi bekliyor.</string>
+    <string name="music_dj_local_description">Doğrulanmış sunucu analizlerinden ritmik planlar; miks cihazda yapılır. Android modeli indirilmez. İsteğe bağlı beta, Pixel doğrulaması yok.</string>
     <string name="music_dj_server_description">Sunucu geçişleri hazırlar. Telefon kimliği doğrulanmış ses akışını çalar.</string>
     <plurals name="player_queue_item_count">
         <item quantity="one">%1$d öğe</item>
@@ -572,4 +572,16 @@
     <string name="settings_client_certificate_active">Sunucu bir istemci sertifikası istediğinde Android kimlik bilgisi deposundan “%1$s” sunuluyor.</string>
     <string name="settings_client_certificate_change">Değiştir</string>
     <string name="settings_client_certificate_remove">Kaldır</string>
+    <string name="music_dj_engine_label">Ritmik DJ motoru</string>
+    <string name="music_dj_modes_description">Geçişler: seçilen süreyle yerel ses geçişleri. DJ beta: doğrulanmış sunucu analizleriyle ritim hizalama; cihazda henüz ritim modeli yok.</string>
+    <string name="music_dj_profiles_preparing">Ritmik planlar kontrol ediliyor. Geçerli parça çalmaya devam eder.</string>
+    <string name="music_dj_profiles_ready">Cihaz DJ hazır · doğrulanmış sunucu analizleri.</string>
+    <string name="music_dj_profiles_unsupported">Bu sunucu doğrulanmış cihaz DJ planlarını desteklemiyor. Sunucu motorunu kullanın.</string>
+    <string name="music_dj_profiles_disabled">Cihaz DJ, yapay zekâ ayarlarında kapalı.</string>
+    <string name="music_dj_profiles_network">Planlara ağdan erişilemiyor. Çalma sürer; geçerli önbellek geçişleri kullanılabilir kalır.</string>
+    <string name="music_dj_profiles_invalid">Sunucu uyumsuz bir DJ planı döndürdü. Normal çalma devam eder.</string>
+    <string name="music_dj_profiles_speed">Cihaz DJ normal hız ve perde gerektirir.</string>
+    <string name="music_dj_profiles_missing">Doğrulanmış ritim analizleri eksik veya uygun değil. Çalma devam eder; sunucu motorunu deneyin.</string>
+    <string name="music_dj_profiles_retry">Tekrar kontrol et</string>
+    <string name="music_dj_profiles_server">Sunucu DJ kullan</string>
 </resources>

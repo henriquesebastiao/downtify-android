@@ -159,9 +159,25 @@ allocator target is 64 MiB across the two local decoders. Live HLS uses a separa
 These are configured budgets, not measured phone memory, battery or temperature.
 Server mixing remains the initial choice. **This device · Beta** enables a local
 dual-deck prototype for the current queue, using the same player and audio session.
-It currently uses short fades; on-device beat-model inference is not integrated
-and no AI model is downloaded. Shuffle, repeat-one and remote streams retain
-ordinary playback. Phone quality, latency, temperature and battery remain unqualified.
+**Transitions** applies simple local fades with an independent 1–12 second setting.
+**DJ · Beta** respects the remembered rhythmic engine choice (server or this device).
+Device DJ consumes beat-aligned transition plans from existing, source-verified
+server analyses, for the current track and at most three following occurrences.
+It passes these plans and revisions to the dual-deck engine; missing, stale or
+unsuitable analyses never become a fade labelled as rhythmic DJ. Normal playback
+continues and an explicit server fallback is offered. Choosing simple transitions
+does not overwrite the rhythmic engine preference.
+
+Device plans require optional protocol `dj.local_plans_version=1`. Account, server,
+queue/source generation and source revisions fence their in-memory cache and late
+responses. Requests follow queue/source changes or an explicit retry, without a
+periodic catalog scan or model process. Plans adjust tempo by at most ±4%, preserve
+pitch and return to nominal speed before arming the next plan. This is not a claim
+of DJ equalisation, stem separation or professional mix quality. On-device
+Beat This!/ONNX inference is **not integrated**, and no AI model is downloaded.
+Shuffle, repeat-one, remote streams and nonstandard playback speed retain ordinary
+playback with an availability explanation. Phone quality, latency, temperature,
+battery and the one-hour physical-device acceptance remain unqualified.
 
 DJ sets now appear in the mini player and open Now Playing after joining. Direct
 controls are shown only after this device joins, avoiding a server-only resume.

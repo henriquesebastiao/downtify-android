@@ -331,6 +331,7 @@ class SongMixViewModelTest {
         }
         val local = mockk<LocalDjSettings>(relaxed = true) {
             every { this@mockk.device } returns MutableStateFlow(device)
+            every { mode } returns MutableStateFlow(com.henriquesebastiao.downtify.core.player.LocalDjMode.Dj)
         }
         val viewModel = SongMixViewModel(ai, library, player, sessions, dj, local)
 

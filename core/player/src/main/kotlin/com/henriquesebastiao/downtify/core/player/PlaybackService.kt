@@ -123,6 +123,8 @@ class PlaybackService : MediaLibraryService() {
 
     @Inject lateinit var localDj: LocalDjSettings
 
+    @Inject lateinit var localPlans: com.henriquesebastiao.downtify.core.data.musicai.DjLocalPlansRepository
+
     @Inject lateinit var carHistory: CarRecommendationHistory
     private var localFocus: LocalDjAudioFocus? = null
     private var session: MediaLibrarySession? = null
@@ -222,11 +224,15 @@ class PlaybackService : MediaLibraryService() {
             localDj.transitionSeconds.collect { player.setTransitionMs(it * 1000L) }
         }
         scope.launch {
-            combine(localDj.device, localDj.armed, musicAi.capabilities) { device, armed, caps ->
+            combine(localDj.device, localDj.mode, localDj.armed, musicAi.capabilities) { device, mode, armed, caps ->
                 if (caps.version > 0 && !caps.enabled("dj_interactive")) localDj.setArmed(false)
-                device && armed && caps.enabled("dj_interactive")
-            }.distinctUntilChanged().collect { player.setEnabled(it) }
+                mode to ((mode == LocalDjMode.Transitions || device) && armed && caps.enabled("dj_interactive"))
+            }.distinctUntilChanged().collect { (mode, enabled) ->
+                player.setMixMode(mode)
+                player.setEnabled(enabled)
+            }
         }
+        LocalDjProfiles(player, localDj, musicAi, library, localPlans, scope).start()
 
         return player
     }

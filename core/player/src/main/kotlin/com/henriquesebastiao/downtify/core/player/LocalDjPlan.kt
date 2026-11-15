@@ -1,5 +1,6 @@
 package com.henriquesebastiao.downtify.core.player
 
+import com.henriquesebastiao.downtify.core.model.DjLocalProblem
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.max
@@ -8,9 +9,24 @@ import kotlin.math.sin
 /** Timing supplied by a verified analysis, never inferred in the audio callback. */
 data class LocalDjAnalysis(val bpm: Float, val downbeatsMs: List<Long>, val confidence: Float, val revision: String)
 
+enum class LocalDjMode { Transitions, Dj }
+
+data class LocalDjReadiness(val preparing: Boolean = false, val ready: Boolean = false, val problem: DjLocalProblem? = null)
+
+/** The plan is fenced to occurrences and to both cached source revisions. */
+internal data class LocalDjVerifiedPlan(
+    val outgoingIndex: Int,
+    val incomingIndex: Int,
+    val outgoingId: String,
+    val incomingId: String,
+    val outgoingRevision: String,
+    val incomingRevision: String,
+    val plan: LocalDjPlan,
+)
+
 enum class LocalDjPhase { Disabled, Waiting, Prepared, Mixing }
 
-enum class LocalDjFallback { None, MissingAnalysis, TempoMismatch, NotBuffered, UnsupportedQueue, DecoderFailure }
+enum class LocalDjFallback { None, MissingAnalysis, TempoMismatch, NotBuffered, UnsupportedQueue, DecoderFailure, UnsupportedPlayback }
 
 data class LocalDjTransition(
     val phase: LocalDjPhase = LocalDjPhase.Disabled,

@@ -16,6 +16,8 @@ internal class LocalDjEngine(first: Player, second: Player, private val onDomina
         private set
     private val standby get() = decks.first { it !== active }
     private var analyses = emptyMap<String, LocalDjAnalysis>()
+    private var verifiedPlans = emptyList<LocalDjVerifiedPlan>()
+    private var mode = LocalDjMode.Transitions
 
     /** Local crossfade length, in milliseconds: the user's setting (1-12 s, 5 s by default). */
     var transitionMs: Long = LocalDjPlan.DEFAULT_TRANSITION_MS
@@ -50,17 +52,72 @@ internal class LocalDjEngine(first: Player, second: Player, private val onDomina
     fun setEnabled(value: Boolean) {
         enabled = value
         reset()
-        if (!value) analyses = emptyMap()
+        if (!value) {
+            analyses = emptyMap()
+            verifiedPlans = emptyList()
+        }
         publishWaiting()
     }
 
     fun updateAnalyses(values: Map<String, LocalDjAnalysis>) {
-        val found = values.entries.take(16).associate { (id, value) ->
+        val found = values.entries.take(4).associate { (id, value) ->
             id to value.copy(downbeatsMs = value.downbeatsMs.take(20_000).filter { it >= 0 }.distinct().sorted())
         }
         if (found == analyses) return
         analyses = found
-        if (blend == null) reset()
+        evidenceChanged()
+    }
+
+    fun setMode(value: LocalDjMode) {
+        if (mode == value) return
+        mode = value
+        clearEvidence()
+    }
+
+    fun updatePlans(values: List<LocalDjVerifiedPlan>) {
+        val bounded = values.take(3).toList()
+        if (bounded == verifiedPlans) return
+        verifiedPlans = bounded
+        evidenceChanged()
+    }
+
+    fun clearEvidence() {
+        analyses = emptyMap()
+        verifiedPlans = emptyList()
+        reset()
+    }
+
+    fun retainEvidence(window: LocalDjWindow, sources: Set<String>) {
+        updateAnalyses(analyses.filterKeys { it in sources })
+        updatePlans(verifiedPlans.filter {
+            it.outgoingId in sources && it.incomingId in sources &&
+                it.outgoingIndex in window.indices && it.incomingIndex in window.indices
+        })
+    }
+
+    fun currentPlanReady(window: LocalDjWindow): Boolean = verifiedPlans.any {
+        it.outgoingIndex == window.indices.firstOrNull() && it.incomingIndex == window.indices.getOrNull(1) &&
+            it.outgoingId == window.ids.firstOrNull() && it.incomingId == window.ids.getOrNull(1) &&
+            analyses[it.outgoingId]?.revision == it.outgoingRevision &&
+            analyses[it.incomingId]?.revision == it.incomingRevision
+    }
+
+    private fun evidenceChanged() {
+        // Updating future evidence cannot interrupt an audible overlap or its speed release.
+        if (blend != null || mode == LocalDjMode.Transitions) return
+        val pending = armed
+        if (pending != null && verifiedPlans.any {
+                it.outgoingIndex == pending.outgoingIndex && it.incomingIndex == pending.index &&
+                    it.plan == pending.plan && analyses[it.outgoingId]?.revision == it.outgoingRevision &&
+                    analyses[it.incomingId]?.revision == it.incomingRevision
+            }
+        ) return
+        generation++
+        armed = null
+        standby.pause()
+        standby.stop()
+        standby.clearMediaItems()
+        publishWaiting()
     }
 
     fun reset() {
@@ -126,6 +183,7 @@ internal class LocalDjEngine(first: Player, second: Player, private val onDomina
             return
         }
         easeSpeed()
+        if (mode == LocalDjMode.Dj && releaseSpeed != null) return
         if (!canMix()) return
         val next = active.nextMediaItemIndex
         val prepared = armed
@@ -149,15 +207,35 @@ internal class LocalDjEngine(first: Player, second: Player, private val onDomina
     }
 
     private fun arm(index: Int) {
+        armed = null
         val incoming = standby
         val current = active.currentMediaItem ?: return
         val next = active.getMediaItemAt(index)
-        val plan = LocalDjPlan.create(
-            active.duration,
-            analyses[current.mediaId],
-            analyses[next.mediaId],
-            transitionMs,
-        )
+        val plan = if (mode == LocalDjMode.Transitions) {
+            LocalDjPlan.create(active.duration, null, null, transitionMs)
+        } else {
+            if (playbackParameters.speed != 1f || playbackParameters.pitch != 1f) {
+                publishWaiting(LocalDjFallback.UnsupportedPlayback)
+                return
+            }
+            val found = verifiedPlans.firstOrNull {
+                it.outgoingIndex == active.currentMediaItemIndex && it.incomingIndex == index &&
+                    it.outgoingId == current.mediaId && it.incomingId == next.mediaId &&
+                    analyses[it.outgoingId]?.revision == it.outgoingRevision &&
+                    analyses[it.incomingId]?.revision == it.incomingRevision &&
+                    analyses[it.outgoingId]?.confidence?.let { value -> value.isFinite() && value >= .75f } == true &&
+                    analyses[it.incomingId]?.confidence?.let { value -> value.isFinite() && value >= .75f } == true
+            }?.plan?.takeIf {
+                it.analysed && it.startMs >= 0 && it.cueMs >= 0 && it.durationMs in 1L..transitionMs &&
+                    it.speed.isFinite() && it.speed in .96f..1.04f &&
+                    it.startMs + it.durationMs <= active.duration + 50
+            }
+            if (found == null) {
+                publishWaiting(LocalDjFallback.MissingAnalysis)
+                return
+            }
+            found
+        }
         incoming.pause()
         incoming.volume = 0f
         incoming.repeatMode = active.repeatMode

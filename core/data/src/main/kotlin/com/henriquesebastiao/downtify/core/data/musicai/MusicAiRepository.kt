@@ -146,6 +146,9 @@ class MusicAiRepository @Inject constructor(
     }
 
     suspend fun preferences() = call { it.preferences().preferences }
+    internal suspend fun localPlans(ids: List<String>, transitionMs: Long, expectedOwner: Session) = call(expectedOwner = expectedOwner) {
+        it.djLocalPlans(com.henriquesebastiao.downtify.core.network.dto.MusicDjLocalRequestDto(ids, transitionMs))
+    }
     suspend fun djWeekly(): com.henriquesebastiao.downtify.core.network.dto.MusicDjWeeklyDto {
         val owner = sessions.current
         requireWeeklyOwner(owner)
@@ -390,9 +393,10 @@ class MusicAiRepository @Inject constructor(
         call { it.listen(event) }
     }
 
-    private suspend fun <T> call(commands: Boolean = false, block: suspend (MusicAiApi) -> T): T =
+    private suspend fun <T> call(commands: Boolean = false, expectedOwner: Session? = null, block: suspend (MusicAiApi) -> T): T =
         withContext(Dispatchers.IO) {
             val paired = sessions.current ?: throw MusicAiFailure()
+            if (expectedOwner != null && paired != expectedOwner) throw CancellationException("Account changed")
             try {
                 val result = block(apis.createMusicAi(paired, commands) { sessions.current })
                 if (sessions.current != paired) throw CancellationException("Account changed")

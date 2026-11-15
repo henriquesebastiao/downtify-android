@@ -81,6 +81,33 @@ class LocalDjPlayer(first: Player, second: Player, private val scope: CoroutineS
 
     fun updateAnalyses(values: Map<String, LocalDjAnalysis>) = engine.updateAnalyses(values)
 
+    internal fun setMixMode(value: LocalDjMode) = engine.setMode(value)
+
+    internal fun evidenceWindow(): LocalDjWindow {
+        val active = engine.active
+        val indices = localDjWindowIndices(active.mediaItemCount, active.currentMediaItemIndex, active.repeatMode == Player.REPEAT_MODE_ALL)
+        return LocalDjWindow(queueGeneration, occurrenceRevision, indices,
+            indices.map { active.getMediaItemAt(it).mediaId }, active.shuffleModeEnabled,
+            active.repeatMode == Player.REPEAT_MODE_ONE, engine.playbackParameters.speed, engine.playbackParameters.pitch)
+    }
+
+    internal fun retainEvidence(window: LocalDjWindow, sources: Set<String>) = engine.retainEvidence(window, sources)
+
+    internal fun clearEvidence() = engine.clearEvidence()
+
+    internal fun currentPlanReady(window: LocalDjWindow) = engine.currentPlanReady(window)
+
+    internal fun updateEvidence(
+        expected: LocalDjWindow,
+        analyses: Map<String, LocalDjAnalysis>,
+        plans: List<LocalDjVerifiedPlan>,
+    ): Boolean {
+        if (expected != evidenceWindow()) return false
+        updateAnalyses(analyses)
+        engine.updatePlans(plans)
+        return true
+    }
+
     /** Crossfade length chosen by the user; applied to the next armed transition. */
     fun setTransitionMs(value: Long) {
         engine.transitionMs = value
@@ -224,7 +251,7 @@ class LocalDjPlayer(first: Player, second: Player, private val scope: CoroutineS
         startPositionMs: Long,
     ): ListenableFuture<*> {
         queueGeneration++
-        engine.reset()
+        engine.clearEvidence()
         occurrenceRevision++
         occurrenceIds.clear()
         repeat(mediaItems.size) { occurrenceIds.add(Any()) }
@@ -232,14 +259,14 @@ class LocalDjPlayer(first: Player, second: Player, private val scope: CoroutineS
     }
 
     override fun handleAddMediaItems(index: Int, mediaItems: List<MediaItem>): ListenableFuture<*> {
-        engine.reset()
+        engine.clearEvidence()
         occurrenceRevision++
         occurrenceIds.addAll(index, List(mediaItems.size) { Any() })
         return super.handleAddMediaItems(index, mediaItems)
     }
 
     override fun handleMoveMediaItems(fromIndex: Int, toIndex: Int, newIndex: Int): ListenableFuture<*> {
-        engine.reset()
+        engine.clearEvidence()
         occurrenceRevision++
         val moved = occurrenceIds.subList(fromIndex, toIndex).toList()
         occurrenceIds.subList(fromIndex, toIndex).clear()
@@ -252,7 +279,7 @@ class LocalDjPlayer(first: Player, second: Player, private val scope: CoroutineS
         toIndex: Int,
         mediaItems: List<MediaItem>,
     ): ListenableFuture<*> {
-        engine.reset()
+        engine.clearEvidence()
         occurrenceRevision++
         occurrenceIds.subList(fromIndex, toIndex).clear()
         occurrenceIds.addAll(fromIndex, List(mediaItems.size) { Any() })
@@ -261,7 +288,7 @@ class LocalDjPlayer(first: Player, second: Player, private val scope: CoroutineS
 
     override fun handleRemoveMediaItems(fromIndex: Int, toIndex: Int): ListenableFuture<*> {
         if (fromIndex == 0 && toIndex == mediaItemCount && toIndex > 0) queueGeneration++
-        engine.reset()
+        engine.clearEvidence()
         occurrenceRevision++
         occurrenceIds.subList(fromIndex, toIndex).clear()
         return super.handleRemoveMediaItems(fromIndex, toIndex)

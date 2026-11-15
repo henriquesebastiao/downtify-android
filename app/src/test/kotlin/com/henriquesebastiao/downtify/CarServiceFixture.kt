@@ -60,6 +60,7 @@ internal class CarServiceFixture {
             org.robolectric.RuntimeEnvironment.getApplication(),
             service.sessions,
         )
+        service.localPlans = mockk(relaxed = true)
         service.musicAi = mockk(relaxed = true) {
             every { session } returns association
             every { capabilities } returns MutableStateFlow(MusicAiCapabilitiesDto())

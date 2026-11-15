@@ -10,6 +10,8 @@ import com.henriquesebastiao.downtify.core.network.session.Session
 import com.henriquesebastiao.downtify.core.player.DjPhase
 import com.henriquesebastiao.downtify.core.player.DjPlaybackCoordinator
 import com.henriquesebastiao.downtify.core.player.LocalDjSettings
+import com.henriquesebastiao.downtify.core.player.LocalDjMode
+import com.henriquesebastiao.downtify.core.player.LocalDjReadiness
 import com.henriquesebastiao.downtify.core.player.LocalDjTransition
 import com.henriquesebastiao.downtify.core.player.PlayerController
 import com.henriquesebastiao.downtify.core.player.PlayerState
@@ -64,6 +66,8 @@ class QueueDjViewModelTest {
     }
 
     @Test fun `selecting server DJ disarms transitions and preserves paused playback`() = check { f ->
+        f.device.value = false
+        f.mode.value = LocalDjMode.Transitions
         f.localArmed.value = true
         f.vm.selectMode(PlaybackMixMode.Dj)
         runCurrent()
@@ -93,6 +97,7 @@ class QueueDjViewModelTest {
     }
 
     @Test fun `local toggle refreshes stale gates before arming and explains the end of track handover`() = check { f ->
+        f.mode.value = LocalDjMode.Transitions
         f.serverMessage.value = "Mode DJ désactivé"
         f.caps.value = MusicAiCapabilitiesDto()
         coEvery { f.music.refresh(true) } coAnswers {
@@ -244,7 +249,8 @@ class QueueDjViewModelTest {
 
     @Test fun `return from server timeout is visible without arming local DJ`() = check { f ->
         f.state.value = PlayerState(dj = PlayingDj("mix", "Mix"))
-        f.vm.toggle()
+        f.mode.value = LocalDjMode.Transitions
+        f.vm.selectMode(PlaybackMixMode.Dj)
         runCurrent()
         assertTrue(f.vm.checking.value)
         advanceTimeBy(2001)
@@ -291,6 +297,40 @@ class QueueDjViewModelTest {
         verify(exactly = 0) { f.coordinator.toggleQueue() }
     }
 
+    @Test fun `mode selection preserves engine preference and local DJ is not labelled transitions`() = check { f ->
+        f.vm.selectMode(PlaybackMixMode.Transitions)
+        runCurrent()
+        assertTrue(f.device.value)
+        assertEquals(PlaybackMixMode.Transitions, f.vm.mixMode.value)
+        f.vm.selectMode(PlaybackMixMode.Dj)
+        runCurrent()
+        assertTrue(f.device.value)
+        assertEquals(PlaybackMixMode.Dj, f.vm.mixMode.value)
+        verify(exactly = 0) { f.coordinator.toggleQueue() }
+        verify(exactly = 0) { f.local.chooseDevice(any()) }
+    }
+
+    @Test fun `changing rhythmic engine while simple transitions play does not stop them`() = check { f ->
+        f.mode.value = LocalDjMode.Transitions
+        f.localArmed.value = true
+        f.vm.chooseDevice(false)
+        runCurrent()
+        assertTrue(f.localArmed.value)
+        assertFalse(f.device.value)
+        assertEquals(PlaybackMixMode.Transitions, f.vm.mixMode.value)
+        verify(exactly = 0) { f.coordinator.stop() }
+    }
+
+    @Test fun `explicit fallback selects server while old plans cannot arm local playback`() = check { f ->
+        f.localArmed.value = true
+        f.vm.useServerFallback()
+        runCurrent()
+        assertFalse(f.device.value)
+        assertFalse(f.localArmed.value)
+        verify(exactly = 1) { f.coordinator.toggleQueue() }
+        verify(exactly = 0) { f.local.setArmed(true) }
+    }
+
     private fun check(block: suspend TestScope.(Fixture) -> Unit) = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val fixture = Fixture()
@@ -311,6 +351,7 @@ class QueueDjViewModelTest {
         val session = Session("https://fixture.test", "server", "Test", "device", "fixture")
         val owner = MutableStateFlow<Session?>(session)
         val device = MutableStateFlow(true)
+        val mode = MutableStateFlow(LocalDjMode.Dj)
         val localArmed = MutableStateFlow(false)
         val serverBusy = MutableStateFlow(false)
         val serverMessage = MutableStateFlow("")
@@ -337,12 +378,20 @@ class QueueDjViewModelTest {
             every { coordinator.busy } returns serverBusy
             every { coordinator.armed } returns MutableStateFlow(false)
             every { local.device } returns device
+            every { local.mode } returns mode
+            every { local.readiness } returns MutableStateFlow(LocalDjReadiness())
+            every { local.transitionSeconds } returns MutableStateFlow(5)
             every { local.armed } returns localArmed
             every { local.transition } returns MutableStateFlow(LocalDjTransition())
             every { local.setArmed(any()) } answers { localArmed.value = firstArg() }
             every { local.chooseDevice(any()) } answers {
-                localArmed.value = false
+                if (mode.value == LocalDjMode.Dj) localArmed.value = false
                 device.value = firstArg()
+            }
+            every { local.setMode(any()) } answers {
+                val value = firstArg<LocalDjMode>()
+                if (mode.value != value) localArmed.value = false
+                mode.value = value
             }
             every { player.state } returns state
             every { player.selectionVersion } returns selection

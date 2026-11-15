@@ -105,20 +105,20 @@ fun SettingsRoute(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val device by playback.localDevice.collectAsStateWithLifecycle()
-    val armed by playback.armed.collectAsStateWithLifecycle()
-    val busy by playback.busy.collectAsStateWithLifecycle()
-    val phase by playback.phase.collectAsStateWithLifecycle()
+    val mode by playback.mixMode.collectAsStateWithLifecycle()
+    val readiness by playback.localReadiness.collectAsStateWithLifecycle()
     val seconds by playback.transitionSeconds.collectAsStateWithLifecycle()
     val message by playback.message.collectAsStateWithLifecycle()
     val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         uri?.let { viewModel.setOfflineDirectory(it.toString()) }
     }
     SettingsScreen(
-        playbackMode = when {
-            device && armed -> PlaybackMixMode.Transitions
-            busy || armed || phase == com.henriquesebastiao.downtify.core.player.DjPhase.Active -> PlaybackMixMode.Dj
-            else -> PlaybackMixMode.Disabled
-        },
+        playbackMode = mode,
+        playbackDevice = device,
+        localReadiness = readiness,
+        onPlaybackDevice = playback::chooseDevice,
+        onLocalRetry = playback::retryLocalPlans,
+        onServerFallback = playback::useServerFallback,
         transitionSeconds = seconds,
         playbackMessage = message,
         onPlaybackMode = playback::selectMode,
@@ -212,6 +212,11 @@ fun SettingsScreen(
     playbackMessage: String = "",
     onPlaybackMode: (PlaybackMixMode) -> Unit = {},
     onTransitionSeconds: (Int) -> Unit = {},
+    playbackDevice: Boolean = false,
+    localReadiness: com.henriquesebastiao.downtify.core.player.LocalDjReadiness = com.henriquesebastiao.downtify.core.player.LocalDjReadiness(),
+    onPlaybackDevice: (Boolean) -> Unit = {},
+    onLocalRetry: () -> Unit = {},
+    onServerFallback: () -> Unit = {},
 ) {
     var dialog by rememberSaveable { mutableStateOf<SettingsDialog?>(null) }
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
@@ -250,6 +255,10 @@ fun SettingsScreen(
             ) {
                 Text("Transitions et DJ", style = MaterialTheme.typography.titleMedium)
                 PlaybackMixSelector(playbackMode, onPlaybackMode)
+                com.henriquesebastiao.downtify.feature.player.RhythmicDjEngine(playbackDevice, onPlaybackDevice)
+                if (playbackDevice && playbackMode == PlaybackMixMode.Dj) {
+                    com.henriquesebastiao.downtify.feature.player.LocalDjFeedback(localReadiness, onLocalRetry, onServerFallback)
+                }
                 Text("Durée du fondu local : $transitionSeconds s", style = MaterialTheme.typography.bodyMedium)
                 var sliding by androidx.compose.runtime.remember(transitionSeconds) {
                     mutableStateOf(transitionSeconds.toFloat())
@@ -263,7 +272,7 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Text(
-                    "Transitions : fondu entre les titres. DJ · Bêta : mixage rythmique sur le serveur.",
+                    stringResource(R.string.music_dj_modes_description),
                     style = MaterialTheme.typography.bodySmall,
                 )
                 if (playbackMessage.isNotBlank()) Text(playbackMessage, style = MaterialTheme.typography.bodySmall)

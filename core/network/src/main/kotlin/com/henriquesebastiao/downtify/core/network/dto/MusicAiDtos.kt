@@ -11,6 +11,7 @@ import kotlinx.serialization.Serializable
     @SerialName("queue_supported") val queueSupported: Boolean = false,
     @SerialName("continuous_supported") val continuousSupported: Boolean = false,
     @SerialName("interactive_trial_ready") val interactiveTrialReady: Boolean = false,
+    @SerialName("local_plans_version") val localPlansVersion: Int = 0,
 )
 
 @Serializable data class MusicAiCapabilitiesDto(

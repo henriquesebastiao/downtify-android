@@ -177,6 +177,9 @@ fun MusicStudioRoute(
     val queue: com.henriquesebastiao.downtify.feature.player.QueueDjViewModel = hiltViewModel()
     val queueMessage by queue.message.collectAsStateWithLifecycle()
     val localDevice by queue.localDevice.collectAsStateWithLifecycle()
+    val mode by queue.mixMode.collectAsStateWithLifecycle()
+    val localMode by queue.localMode.collectAsStateWithLifecycle()
+    val localReadiness by queue.localReadiness.collectAsStateWithLifecycle()
     val queueChecking by queue.checking.collectAsStateWithLifecycle()
     val queueArmed by queue.armed.collectAsStateWithLifecycle()
     val queueBusy by queue.busy.collectAsStateWithLifecycle()
@@ -201,16 +204,11 @@ fun MusicStudioRoute(
                         "Les transitions et les titres restent dans votre lecteur habituel.",
                 )
                 TextButton(onClick = onSettings) { Text("Paramètres IA") }
-                val mode = when {
-                    !queueArmed && !queueBusy && !queueChecking &&
-                        queuePhase == com.henriquesebastiao.downtify.core.player.DjPhase.Classic ->
-                        com.henriquesebastiao.downtify.feature.player.PlaybackMixMode.Disabled
-
-                    localDevice -> com.henriquesebastiao.downtify.feature.player.PlaybackMixMode.Transitions
-
-                    else -> com.henriquesebastiao.downtify.feature.player.PlaybackMixMode.Dj
-                }
                 com.henriquesebastiao.downtify.feature.player.PlaybackMixSelector(mode, queue::selectMode)
+                com.henriquesebastiao.downtify.feature.player.RhythmicDjEngine(localDevice, queue::chooseDevice)
+                if (localDevice && mode == com.henriquesebastiao.downtify.feature.player.PlaybackMixMode.Dj) {
+                    com.henriquesebastiao.downtify.feature.player.LocalDjFeedback(localReadiness, queue::retryLocalPlans, queue::useServerFallback)
+                }
                 Text(
                     androidx.compose.ui.res.stringResource(
                         if (localDevice) {
@@ -221,7 +219,7 @@ fun MusicStudioRoute(
                     ),
                     style = MaterialTheme.typography.bodySmall,
                 )
-                if (localDevice) {
+                if (localMode == com.henriquesebastiao.downtify.core.player.LocalDjMode.Transitions || localDevice) {
                     val seconds by queue.transitionSeconds.collectAsStateWithLifecycle()
                     Column {
                         Text(
@@ -255,17 +253,17 @@ fun MusicStudioRoute(
                             queuePhase == com.henriquesebastiao.downtify.core.player.DjPhase.Ready ->
                                 "Annuler le relais DJ"
 
-                            localDevice && queueArmed -> "Désactiver les transitions"
+                            mode == com.henriquesebastiao.downtify.feature.player.PlaybackMixMode.Transitions && queueArmed -> "Désactiver les transitions"
 
                             queueArmed || queueBusy ||
                                 queuePhase == com.henriquesebastiao.downtify.core.player.DjPhase.Active ->
                                 "Désactiver le mode DJ"
 
-                            queueChecking && localDevice -> "Vérification des transitions…"
+                            queueChecking && localMode == com.henriquesebastiao.downtify.core.player.LocalDjMode.Transitions -> "Vérification des transitions…"
 
                             queueChecking -> "Vérification du DJ…"
 
-                            queueAvailability.ready && localDevice -> "Activer les transitions"
+                            queueAvailability.ready && localMode == com.henriquesebastiao.downtify.core.player.LocalDjMode.Transitions -> "Activer les transitions"
 
                             queueAvailability.ready -> "Activer le DJ sur la file"
 

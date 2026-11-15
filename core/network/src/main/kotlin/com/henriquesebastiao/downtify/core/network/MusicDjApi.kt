@@ -8,6 +8,11 @@ import retrofit2.http.POST
 import retrofit2.http.Path
 
 interface MusicDjApi {
+    @POST("api/v1/music-ai/dj/local-plans")
+    suspend fun djLocalPlans(
+        @Body request: com.henriquesebastiao.downtify.core.network.dto.MusicDjLocalRequestDto,
+    ): com.henriquesebastiao.downtify.core.network.dto.MusicDjLocalPlansDto
+
     @GET("api/v1/music-ai/dj/weekly")
     suspend fun djWeekly(): com.henriquesebastiao.downtify.core.network.dto.MusicDjWeeklyDto
 

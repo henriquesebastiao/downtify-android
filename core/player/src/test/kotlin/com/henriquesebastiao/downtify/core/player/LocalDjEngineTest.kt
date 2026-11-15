@@ -31,6 +31,83 @@ class LocalDjEngineTest {
         engine.pulse()
     }
 
+    private fun evidence(revision: String = "r1") {
+        engine.updateAnalyses(listOf("a", "b", "c").associateWith {
+            LocalDjAnalysis(120f, listOf(0, 2_000, 4_000, 6_000, 8_000), .9f, revision)
+        })
+        engine.updatePlans(listOf(
+            LocalDjVerifiedPlan(0, 1, "a", "b", revision, revision,
+                LocalDjPlan(8_800, 800, 1_200, 1.02f, LocalDjFallback.None)),
+            LocalDjVerifiedPlan(1, 2, "b", "c", revision, revision,
+                LocalDjPlan(8_800, 0, 1_200, 1f, LocalDjFallback.None)),
+        ))
+    }
+
+    @Test fun `rhythmic mode without verified plans never silently arms a fade`() {
+        engine.setMode(LocalDjMode.Dj)
+        begin()
+        engine.updateAnalyses(mapOf("a" to LocalDjAnalysis(120f, listOf(0), .9f, "r1")))
+        first.position(9_000)
+        engine.pulse()
+        assertEquals(0, second.mediaItemCount)
+        assertEquals(1f, first.volume, .001f)
+        assertEquals(LocalDjFallback.MissingAnalysis, engine.transition.value.fallback)
+    }
+
+    @Test fun `server verified plan supplies tempo cue and preserves immediate pause`() {
+        engine.setMode(LocalDjMode.Dj)
+        begin()
+        evidence()
+        engine.pulse()
+        assertEquals(800L, second.currentPosition)
+        assertEquals(1.02f, second.playbackParameters.speed, .001f)
+        first.position(8_800)
+        engine.pulse()
+        assertTrue(engine.transition.value.analysed)
+        engine.setPlaying(false)
+        assertFalse(first.playWhenReady)
+        assertFalse(second.playWhenReady)
+    }
+
+    @Test fun `changed profile revision retires an already armed plan before overlap`() {
+        engine.setMode(LocalDjMode.Dj)
+        begin()
+        evidence()
+        engine.pulse()
+        engine.updateAnalyses(mapOf("a" to LocalDjAnalysis(120f, listOf(0), .9f, "replaced")))
+        first.position(8_800)
+        engine.pulse()
+        assertFalse(second.playWhenReady)
+        assertEquals(0, second.mediaItemCount)
+        assertEquals(1f, first.volume, .001f)
+    }
+
+    @Test fun `updating future evidence cannot interrupt overlap or bypass nominal speed release`() {
+        engine.setMode(LocalDjMode.Dj)
+        begin()
+        evidence()
+        engine.pulse()
+        first.position(8_800)
+        engine.pulse()
+        first.position(9_400)
+        second.position(1_400)
+        engine.pulse()
+        evidence("r2")
+        assertTrue(second.playWhenReady)
+        assertEquals(LocalDjPhase.Mixing, engine.transition.value.phase)
+        first.position(10_000)
+        second.position(2_000)
+        engine.pulse()
+        evidence("r3")
+        engine.pulse()
+        assertEquals(0, first.mediaItemCount)
+        assertEquals(1.02f, second.playbackParameters.speed, .001f)
+        second.position(6_000)
+        engine.pulse()
+        assertEquals(1f, second.playbackParameters.speed, .001f)
+        assertEquals(3, first.mediaItemCount)
+    }
+
     @Test fun `duplicate titles preserve the occurrence index at dominance`() {
         begin(listOf("a", "a", "b"))
         first.position(8800)

@@ -74,6 +74,7 @@ import com.henriquesebastiao.downtify.core.model.PlaybackContextType
 import com.henriquesebastiao.downtify.core.model.StreamIds
 import com.henriquesebastiao.downtify.core.network.ServerUrls
 import com.henriquesebastiao.downtify.core.player.PlayerState
+import com.henriquesebastiao.downtify.core.player.LocalDjReadiness
 import com.henriquesebastiao.downtify.core.player.QueueEntry
 import com.henriquesebastiao.downtify.ui.common.LocalCoverUrls
 import com.henriquesebastiao.downtify.ui.common.PreviewData
@@ -90,6 +91,8 @@ data class QueueActions(
     val onMove: (from: Int, after: Int, queued: Boolean) -> Unit = { _, _, _ -> },
     val onToggleDj: () -> Unit = {},
     val onSelectMixMode: (PlaybackMixMode) -> Unit = {},
+    val onRetryLocalDj: () -> Unit = {},
+    val onServerDj: () -> Unit = {},
 )
 
 data class QueueDjState(
@@ -102,6 +105,8 @@ data class QueueDjState(
     val waiting: Boolean = false,
     val local: Boolean = false,
     val reason: String = "",
+    val mode: PlaybackMixMode = PlaybackMixMode.Disabled,
+    val localReadiness: LocalDjReadiness = LocalDjReadiness(),
 ) {
     val visible: Boolean
         get() = available || checking || message.isNotBlank() || reason.isNotBlank()
@@ -141,12 +146,7 @@ fun QueueScreen(
                 TopBar(state.context, state.queueSize, actions.onClose)
                 if (dj.visible || state.dj != null) {
                     PlaybackMixSelector(
-                        selected = when {
-                            state.dj != null -> PlaybackMixMode.Dj
-                            dj.local && (dj.active || dj.checking) -> PlaybackMixMode.Transitions
-                            dj.active || dj.checking -> PlaybackMixMode.Dj
-                            else -> PlaybackMixMode.Disabled
-                        },
+                        selected = if (state.dj != null) PlaybackMixMode.Dj else dj.mode,
                         onSelect = actions.onSelectMixMode,
                     )
                     TextButton(
@@ -158,14 +158,17 @@ fun QueueScreen(
                             when {
                                 dj.preparing -> "Annuler la préparation DJ"
                                 dj.waiting -> "Annuler le relais DJ"
-                                dj.local && dj.active -> "Désactiver les transitions"
+                                dj.mode == PlaybackMixMode.Transitions && dj.active -> "Désactiver les transitions"
                                 dj.active || state.dj != null -> "Désactiver le mode DJ"
                                 dj.checking -> "Vérification du DJ…"
                                 !dj.ready -> "Vérifier le DJ"
-                                dj.local -> "Activer les transitions"
+                                dj.mode == PlaybackMixMode.Transitions -> "Activer les transitions"
                                 else -> "Activer le DJ sur cette file"
                             },
                         )
+                    }
+                    if (dj.local && dj.mode == PlaybackMixMode.Dj) {
+                        LocalDjFeedback(dj.localReadiness, actions.onRetryLocalDj, actions.onServerDj)
                     }
                     if (dj.checking || dj.preparing) {
                         LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = Spacing.screen))

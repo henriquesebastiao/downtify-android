@@ -557,6 +557,8 @@ private fun NowPlayingOverlay(
     val djPhase by queueDj.phase.collectAsStateWithLifecycle()
     val djAvailability by queueDj.availability.collectAsStateWithLifecycle()
     val localDjDevice by queueDj.localDevice.collectAsStateWithLifecycle()
+    val mixMode by queueDj.mixMode.collectAsStateWithLifecycle()
+    val localReadiness by queueDj.localReadiness.collectAsStateWithLifecycle()
     val localTransition by queueDj.localTransition.collectAsStateWithLifecycle()
     var lyricsOpen by rememberSaveable { mutableStateOf(false) }
     var queueOpen by rememberSaveable { mutableStateOf(false) }
@@ -669,6 +671,8 @@ private fun NowPlayingOverlay(
                 onMove = player::moveInQueue,
                 onToggleDj = queueDj::toggle,
                 onSelectMixMode = queueDj::selectMode,
+                onRetryLocalDj = queueDj::retryLocalPlans,
+                onServerDj = queueDj::useServerFallback,
             ),
             controls = controls,
             dj = com.henriquesebastiao.downtify.feature.player.QueueDjState(
@@ -681,6 +685,8 @@ private fun NowPlayingOverlay(
                 waiting = djPhase == com.henriquesebastiao.downtify.core.player.DjPhase.Ready,
                 local = localDjDevice,
                 reason = djAvailability.reason,
+                mode = mixMode,
+                localReadiness = localReadiness,
             ),
         )
     }

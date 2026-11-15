@@ -558,7 +558,7 @@
     <string name="nav_music_ai">Saját zenék</string>
     <string name="music_dj_server">Kiszolgáló</string>
     <string name="music_dj_device_beta">Ez az eszköz · Béta</string>
-    <string name="music_dj_local_description">A jelenlegi sor keverése ezen a telefonon rövid átmenetekkel. Az ütemelemzés még készül. Nincs automatikus modellletöltés. Az akkumulátor és a hangminőség tesztelése még hátravan.</string>
+    <string name="music_dj_local_description">Ellenőrzött szerverelemzésekből készült ritmikus tervek; keverés az eszközön. Nincs Android modellletöltés. Önkéntes béta, Pixel minősítés nélkül.</string>
     <string name="music_dj_server_description">A kiszolgáló előkészíti az átmeneteket. A telefon a hitelesített hangfolyamot játssza le.</string>
     <plurals name="player_queue_item_count">
         <item quantity="one">%1$d elem</item>
@@ -572,4 +572,16 @@
     <string name="settings_client_certificate_active">A(z) „%1$s” bemutatása az Android hitelesítőadat-tárából, amikor a szerver ügyféltanúsítványt kér.</string>
     <string name="settings_client_certificate_change">Módosítás</string>
     <string name="settings_client_certificate_remove">Eltávolítás</string>
+    <string name="music_dj_engine_label">Ritmikus DJ motor</string>
+    <string name="music_dj_modes_description">Átmenetek: helyi áttűnések a választott hosszal. DJ béta: ütemillesztés ellenőrzött szerverelemzésekből; az eszközön még nincs ritmusmodell.</string>
+    <string name="music_dj_profiles_preparing">Ritmikus tervek ellenőrzése. Az aktuális szám lejátszása folytatódik.</string>
+    <string name="music_dj_profiles_ready">Eszköz DJ kész · ellenőrzött szerverelemzések.</string>
+    <string name="music_dj_profiles_unsupported">Ez a szerver nem támogat ellenőrzött eszköz-DJ terveket. Használja a szerver motorját.</string>
+    <string name="music_dj_profiles_disabled">Az eszköz DJ ki van kapcsolva az MI-beállításokban.</string>
+    <string name="music_dj_profiles_network">A tervek hálózaton nem érhetők el. A lejátszás folytatódik; az érvényes gyorsítótárazott átmenetek elérhetők maradnak.</string>
+    <string name="music_dj_profiles_invalid">A szerver nem kompatibilis DJ tervet adott vissza. A normál lejátszás folytatódik.</string>
+    <string name="music_dj_profiles_speed">Az eszköz DJ normál sebességet és hangmagasságot igényel.</string>
+    <string name="music_dj_profiles_missing">Hiányzó vagy nem megfelelő ellenőrzött ritmuselemzések. A lejátszás folytatódik; próbálja a szerver motorját.</string>
+    <string name="music_dj_profiles_retry">Újraellenőrzés</string>
+    <string name="music_dj_profiles_server">Szerver DJ használata</string>
 </resources>
