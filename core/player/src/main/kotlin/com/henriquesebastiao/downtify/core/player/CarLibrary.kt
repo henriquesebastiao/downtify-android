@@ -228,6 +228,9 @@ internal class CarLibrary(
     fun isSuggestion(id: String) = id == SUGGESTED_LIKES || id in suggestionSources || dailyDate(id) != null
     fun isShuffle(id: String) = id in shuffleSources
 
+    /** Playable shortcuts represent a collection rather than one occurrence. */
+    fun isCollectionAction(id: String) = isSuggestion(id) || isShuffle(id)
+
     fun context(id: String): PlaybackContext? {
         val source = positions[id]?.first ?: shuffleSources[id] ?: suggestionSources[id] ?: id
         playlistsById[source]?.let { return PlaybackContext(PlaybackContextType.Playlist, it.name, it.title) }
