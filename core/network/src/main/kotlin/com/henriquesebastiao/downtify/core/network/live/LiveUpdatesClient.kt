@@ -31,6 +31,11 @@ sealed interface LiveEvent {
     /** Likes changed somewhere: refetch them. */
     data object LikesChanged : LiveEvent
 
+    /**
+     * A playlist was shared, renamed, had its tracks changed, …: refetch `GET /api/v1/playlists`.
+     */
+    data object PlaylistsChanged : LiveEvent
+
     /** A server download moved on (no `type`; the job's own fields). */
     data class DownloadProgress(val job: ServerJob) : LiveEvent
 
@@ -115,6 +120,7 @@ class LiveUpdatesClient @Inject constructor(@DefaultClient client: OkHttpClient)
             return when (json["type"]?.jsonPrimitive?.content) {
                 "library_changed" -> LiveEvent.LibraryChanged
                 "likes" -> LiveEvent.LikesChanged
+                "playlists_changed" -> LiveEvent.PlaylistsChanged
                 "queue_reload" -> LiveEvent.QueueReload
                 null -> CatalogJson.job(json)?.let(LiveEvent::DownloadProgress)
                 else -> null

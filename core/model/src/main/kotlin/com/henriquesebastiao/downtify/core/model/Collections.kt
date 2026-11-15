@@ -34,6 +34,27 @@ data class Playlist(
     val favorite: Boolean = false,
     val displayName: String = "",
     val favoriteSupported: Boolean = false,
+    /**
+     * A playlist made in the library's own list. Only these can be edited by track ID: the write
+     * routes refuse an imported playlist with `403`.
+     */
+    val manual: Boolean = false,
+    /**
+     * The caller may add, remove and reorder its songs: it is theirs, or they are one of its
+     * editors. An editor may change songs but never rename or share it.
+     */
+    val canEditTracks: Boolean = false,
+    /** The caller owns it (only then may it be renamed). */
+    val mine: Boolean = false,
+    /** The owner's username; blank on the caller's own playlists. */
+    val owner: String = "",
 ) {
     val title: String get() = displayName.ifBlank { name }
+
+    /** Whether its songs may be edited here and now: [serverSupportsEditing] is the capability flag. */
+    fun isEditable(serverSupportsEditing: Boolean): Boolean = serverSupportsEditing && manual && canEditTracks
+
+    /** Whether it may be renamed here: its owner, on a server that edits playlists, never an editor. */
+    fun isRenamable(serverSupportsEditing: Boolean): Boolean =
+        serverSupportsEditing && manual && mine && canEditTracks
 }

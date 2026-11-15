@@ -2,6 +2,7 @@ package com.henriquesebastiao.downtify.feature.collection
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -30,6 +31,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
@@ -43,6 +46,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,6 +56,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -74,14 +84,19 @@ import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyShape
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyTheme
 import com.henriquesebastiao.downtify.core.designsystem.theme.ListStyle
 import com.henriquesebastiao.downtify.core.designsystem.theme.Spacing
+import com.henriquesebastiao.downtify.core.model.Track
 import com.henriquesebastiao.downtify.core.model.totalMinutes
 import com.henriquesebastiao.downtify.core.network.ServerUrls
 import com.henriquesebastiao.downtify.feature.trash.LocalMoveToTrash
+import com.henriquesebastiao.downtify.ui.common.AddSongsSheet
 import com.henriquesebastiao.downtify.ui.common.LocalBottomBarsInset
 import com.henriquesebastiao.downtify.ui.common.LocalCoverUrls
+import com.henriquesebastiao.downtify.ui.common.PlaylistNameDialog
 import com.henriquesebastiao.downtify.ui.common.PreviewData
+import com.henriquesebastiao.downtify.ui.common.SwipeToRemove
 import com.henriquesebastiao.downtify.ui.common.TrackActions
 import com.henriquesebastiao.downtify.ui.common.TrackItem
+import com.henriquesebastiao.downtify.ui.common.playlistErrorMessage
 import com.henriquesebastiao.downtify.ui.common.plusBottomBars
 import com.henriquesebastiao.downtify.ui.common.songsCount
 
@@ -123,8 +138,34 @@ fun CollectionRoute(
         ),
         modifier = modifier,
         onToggleFavorite = viewModel::toggleFavorite,
+        editActions = CollectionEditActions(
+            onToggleEditing = viewModel::toggleEditing,
+            onOpenRename = viewModel::openRename,
+            onDismissRename = viewModel::dismissRename,
+            onRename = viewModel::rename,
+            onOpenAddSongs = viewModel::openAddSongs,
+            onDismissAddSongs = viewModel::dismissAddSongs,
+            onAddSongs = viewModel::addSongs,
+            onRemoveAt = viewModel::removeAt,
+            onMove = viewModel::move,
+            onDismissError = viewModel::dismissError,
+        ),
     )
 }
+
+/** What a playlist page does to its own songs: rename, add, drag, swipe away. */
+data class CollectionEditActions(
+    val onToggleEditing: () -> Unit = {},
+    val onOpenRename: () -> Unit = {},
+    val onDismissRename: () -> Unit = {},
+    val onRename: (String) -> Unit = {},
+    val onOpenAddSongs: () -> Unit = {},
+    val onDismissAddSongs: () -> Unit = {},
+    val onAddSongs: (List<String>) -> Unit = {},
+    val onRemoveAt: (Int) -> Unit = {},
+    val onMove: (Int, Int) -> Unit = {},
+    val onDismissError: () -> Unit = {},
+)
 
 /**
  * An album, a playlist or Liked songs (v3): the header and its top bar take the cover's colors
@@ -144,6 +185,7 @@ fun CollectionScreen(
     onToggleOffline: () -> Unit = {},
     trackActions: TrackActions = TrackActions(),
     onToggleFavorite: () -> Unit = {},
+    editActions: CollectionEditActions = CollectionEditActions(),
 ) {
     val covers = LocalCoverUrls.current
     val coverUrl = state.playlist?.let { covers.playlist(it, state.coverTrackId, ServerUrls.COVER_LARGE) }
@@ -153,6 +195,8 @@ fun CollectionScreen(
     // Captured outside the cover's theme: the header fades into the app's surface, not the cover's.
     val appSurface = MaterialTheme.colorScheme.surface
     val list = rememberLazyListState()
+    // One key per row that survives a move: the song and which copy of it this is.
+    val keys = remember(state.tracks) { rowKeys(state.tracks) }
     Scaffold(
         modifier = modifier,
         contentWindowInsets = WindowInsets(0),
@@ -172,8 +216,25 @@ fun CollectionScreen(
                         )
                     },
                     actions = {
-                        state.playlist?.takeIf { it.favoriteSupported }?.let { playlist ->
-                            FavoriteButton(playlist.favorite, enabled = !state.favoriteBusy, onClick = onToggleFavorite)
+                        if (state.editing) {
+                            TextButton(onClick = editActions.onToggleEditing) {
+                                Text(
+                                    stringResource(R.string.pl_done),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = scheme.onPrimaryContainer,
+                                )
+                            }
+                        } else {
+                            state.playlist?.takeIf { it.favoriteSupported }?.let { playlist ->
+                                FavoriteButton(
+                                    playlist.favorite,
+                                    enabled = !state.favoriteBusy,
+                                    onClick = onToggleFavorite,
+                                )
+                            }
+                            if (state.canRename || state.canEditTracks) {
+                                PlaylistMenu(state, editActions)
+                            }
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = scheme.primaryContainer),
@@ -228,23 +289,60 @@ fun CollectionScreen(
                             )
                         }
                     }
-                    itemsIndexed(state.tracks, key = { i, t -> "$i:${t.id}" }) { index, track ->
-                        TrackItem(
-                            track = track,
-                            onClick = { onPlay(index) },
-                            number = if (state.kind == CollectionKind.Album) {
-                                track.trackNumber.takeIf { it > 0 } ?: (index + 1)
-                            } else {
-                                null
-                            },
-                            coverUrl = covers.track(track.id.takeIf { track.hasCover }, ServerUrls.COVER_SMALL),
-                            isCurrent = track.id == state.currentTrackId && state.isCurrentContext,
-                            isPlaying = state.isPlaying,
-                            isLiked = track.id in state.likedIds,
-                            downloaded = track.id in state.offline.downloadedIds,
-                            actions = trackActions,
-                            modifier = Modifier.padding(horizontal = Spacing.screen),
-                        )
+                    state.editError?.let { error ->
+                        item(key = "edit-error") {
+                            Text(
+                                playlistErrorMessage(error),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier
+                                    .padding(horizontal = Spacing.screen)
+                                    .clickable(onClick = editActions.onDismissError),
+                            )
+                        }
+                    }
+                    if (state.editing) {
+                        item(key = "edit-hint") { EditHint() }
+                    }
+                    itemsIndexed(
+                        state.tracks,
+                        key = { i, _ -> "${state.revision}:${keys.getOrElse(i) { i.toString() }}" },
+                    ) { index, track ->
+                        val row = Modifier.padding(horizontal = Spacing.screen)
+                        val number = if (state.kind == CollectionKind.Album) {
+                            track.trackNumber.takeIf { it > 0 } ?: (index + 1)
+                        } else {
+                            null
+                        }
+                        if (state.editing) {
+                            EditableTrackRow(
+                                track = track,
+                                index = index,
+                                count = state.tracks.size,
+                                number = number,
+                                coverUrl = covers.track(track.id.takeIf { track.hasCover }, ServerUrls.COVER_SMALL),
+                                isCurrent = track.id == state.currentTrackId && state.isCurrentContext,
+                                isPlaying = state.isPlaying,
+                                isLiked = track.id in state.likedIds,
+                                downloaded = track.id in state.offline.downloadedIds,
+                                onRemove = { editActions.onRemoveAt(index) },
+                                onMove = editActions.onMove,
+                                modifier = row,
+                            )
+                        } else {
+                            TrackItem(
+                                track = track,
+                                onClick = { onPlay(index) },
+                                number = number,
+                                coverUrl = covers.track(track.id.takeIf { track.hasCover }, ServerUrls.COVER_SMALL),
+                                isCurrent = track.id == state.currentTrackId && state.isCurrentContext,
+                                isPlaying = state.isPlaying,
+                                isLiked = track.id in state.likedIds,
+                                downloaded = track.id in state.offline.downloadedIds,
+                                actions = trackActions,
+                                modifier = row,
+                            )
+                        }
                     }
                     // No navigation bar here: the list clears the system's, unless the mini player under it does.
                     item(key = "system-bar") { Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars)) }
@@ -253,7 +351,203 @@ fun CollectionScreen(
             }
         }
     }
+    PlaylistEditingSheets(state, editActions)
 }
+
+/**
+ * A key per row that survives a move: a manual playlist may hold the same song twice, so the song's
+ * id alone isn't enough — this says which copy of it the row is.
+ */
+internal fun rowKeys(tracks: List<Track>): List<String> {
+    val seen = HashMap<String, Int>()
+    return tracks.map { track ->
+        val nth = seen.getOrDefault(track.id, 0)
+        seen[track.id] = nth + 1
+        "${track.id}#$nth"
+    }
+}
+
+/** The page's menu: a rename for its owner, songs for anyone it lets edit them. */
+@Composable
+private fun PlaylistMenu(state: CollectionUiState, editActions: CollectionEditActions) {
+    var open by remember { mutableStateOf(false) }
+    val scheme = MaterialTheme.colorScheme
+    Box {
+        CircleButton(
+            DowntifyIcons.MoreVert,
+            stringResource(R.string.pl_more),
+            { open = true },
+            containerColor = scheme.onPrimaryContainer.copy(alpha = TINT_ALPHA),
+            contentColor = scheme.onPrimaryContainer,
+        )
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            if (state.canRename) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.pl_rename)) },
+                    leadingIcon = { Icon(painterResource(DowntifyIcons.Edit), contentDescription = null) },
+                    onClick = {
+                        open = false
+                        editActions.onOpenRename()
+                    },
+                )
+            }
+            if (state.canEditTracks) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.pl_add_songs)) },
+                    leadingIcon = { Icon(painterResource(DowntifyIcons.Add), contentDescription = null) },
+                    onClick = {
+                        open = false
+                        editActions.onOpenAddSongs()
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.pl_edit_songs)) },
+                    leadingIcon = { Icon(painterResource(DowntifyIcons.DragHandle), contentDescription = null) },
+                    onClick = {
+                        open = false
+                        editActions.onToggleEditing()
+                    },
+                )
+            }
+        }
+    }
+}
+
+/** "Press and hold to move a song, swipe to take it out" — what edit mode is for. */
+@Composable
+private fun EditHint() {
+    Text(
+        stringResource(R.string.pl_edit_hint),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = Spacing.screen),
+    )
+}
+
+/**
+ * A row in edit mode: swiped left it leaves the playlist, and its handle drags it up or down. The
+ * dragged row follows the finger and swaps with its neighbour each time it is halfway across it;
+ * the new order shows at once and the ViewModel sends it (`PUT /api/v1/playlists/order`).
+ */
+@Composable
+private fun EditableTrackRow(
+    track: Track,
+    index: Int,
+    count: Int,
+    number: Int?,
+    coverUrl: String?,
+    isCurrent: Boolean,
+    isPlaying: Boolean,
+    isLiked: Boolean,
+    downloaded: Boolean,
+    onRemove: () -> Unit,
+    onMove: (from: Int, to: Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var heightPx by remember { mutableFloatStateOf(0f) }
+    var lift by remember { mutableFloatStateOf(0f) }
+    var dragging by remember { mutableStateOf(false) }
+    // The row keeps its identity while it moves, so the drag reads the position as it is now.
+    val at by rememberUpdatedState(index)
+    val rows by rememberUpdatedState(count)
+    val haptics = LocalHapticFeedback.current
+    val scheme = MaterialTheme.colorScheme
+    Box(modifier.onSizeChanged { heightPx = it.height.toFloat() }) {
+        Box(Modifier.graphicsLayer { translationY = lift }) {
+            SwipeToRemove(
+                onRemove = onRemove,
+                shape = DowntifyShape.Section,
+                label = stringResource(R.string.pl_remove_from_playlist),
+            ) {
+                TrackItem(
+                    track = track,
+                    // Playing a row would fight the drag: in edit mode a tap does nothing.
+                    onClick = {},
+                    number = number,
+                    coverUrl = coverUrl,
+                    isCurrent = isCurrent,
+                    isPlaying = isPlaying,
+                    isLiked = isLiked,
+                    downloaded = downloaded,
+                    // No menu while editing: the handle and the swipe are the actions here.
+                    actions = TrackActions(),
+                    modifier = Modifier.padding(end = Spacing.xl),
+                )
+            }
+        }
+        Box(
+            Modifier
+                .align(Alignment.CenterEnd)
+                .size(DRAG_TOUCH)
+                .pointerInput(Unit) {
+                    detectDragGesturesAfterLongPress(
+                        onDragStart = {
+                            dragging = true
+                            lift = 0f
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        },
+                        onDrag = { change, amount ->
+                            change.consume()
+                            lift += amount.y
+                            val half = heightPx / 2f
+                            // Halfway across the next row, the two trade places and the drag goes on.
+                            if (heightPx > 0f) {
+                                when {
+                                    lift > half && at < rows - 1 -> {
+                                        onMove(at, at + 1)
+                                        lift -= heightPx
+                                    }
+
+                                    lift < -half && at > 0 -> {
+                                        onMove(at, at - 1)
+                                        lift += heightPx
+                                    }
+                                }
+                            }
+                        },
+                        onDragEnd = {
+                            dragging = false
+                            lift = 0f
+                        },
+                        onDragCancel = {
+                            dragging = false
+                            lift = 0f
+                        },
+                    )
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painterResource(DowntifyIcons.DragHandle),
+                contentDescription = stringResource(R.string.pl_reorder_handle),
+                tint = if (dragging) scheme.primary else scheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/** The rename dialog and the song picker, driven by the state so tests can reach them. */
+@Composable
+private fun PlaylistEditingSheets(state: CollectionUiState, editActions: CollectionEditActions) {
+    if (state.renameOpen) {
+        PlaylistNameDialog(
+            title = stringResource(R.string.pl_rename),
+            confirmLabel = stringResource(R.string.pl_rename),
+            initialName = state.title,
+            onDismiss = editActions.onDismissRename,
+            onConfirm = editActions.onRename,
+        )
+    }
+    if (state.addSongsOpen) {
+        AddSongsSheet(
+            songs = state.librarySongs,
+            onDismiss = editActions.onDismissAddSongs,
+            onConfirm = editActions.onAddSongs,
+        )
+    }
+}
+
+private val DRAG_TOUCH = 48.dp
 
 /** A playlist's favorite (the server's pin on the home screen), on the cover's colors. */
 @Composable

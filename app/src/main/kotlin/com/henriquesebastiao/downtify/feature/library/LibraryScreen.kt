@@ -2,6 +2,7 @@ package com.henriquesebastiao.downtify.feature.library
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -51,6 +52,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -61,6 +63,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -80,24 +83,31 @@ import com.henriquesebastiao.downtify.core.designsystem.component.IconAvatar
 import com.henriquesebastiao.downtify.core.designsystem.component.PhonePreviews
 import com.henriquesebastiao.downtify.core.designsystem.component.PillTabs
 import com.henriquesebastiao.downtify.core.designsystem.component.ScrollbarTouchWidth
+import com.henriquesebastiao.downtify.core.designsystem.component.SelectionBottomBar
+import com.henriquesebastiao.downtify.core.designsystem.component.SelectionTopBar
 import com.henriquesebastiao.downtify.core.designsystem.component.VerticalScrollbar
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyShape
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyTheme
 import com.henriquesebastiao.downtify.core.designsystem.theme.ListStyle
 import com.henriquesebastiao.downtify.core.designsystem.theme.Spacing
+import com.henriquesebastiao.downtify.core.model.Selection
 import com.henriquesebastiao.downtify.core.model.Track
 import com.henriquesebastiao.downtify.core.network.ServerUrls
 import com.henriquesebastiao.downtify.feature.trash.LocalMoveToTrash
+import com.henriquesebastiao.downtify.ui.common.AddToPlaylistSheet
 import com.henriquesebastiao.downtify.ui.common.ArtistCard
 import com.henriquesebastiao.downtify.ui.common.CoverCard
 import com.henriquesebastiao.downtify.ui.common.CoverItem
 import com.henriquesebastiao.downtify.ui.common.LocalBottomBarsInset
 import com.henriquesebastiao.downtify.ui.common.LocalCoverUrls
+import com.henriquesebastiao.downtify.ui.common.PlaylistNameDialog
+import com.henriquesebastiao.downtify.ui.common.PlaylistTarget
 import com.henriquesebastiao.downtify.ui.common.PreviewData
 import com.henriquesebastiao.downtify.ui.common.TrackActions
 import com.henriquesebastiao.downtify.ui.common.TrackItem
 import com.henriquesebastiao.downtify.ui.common.albumSubtitle
 import com.henriquesebastiao.downtify.ui.common.artistSubtitle
+import com.henriquesebastiao.downtify.ui.common.playlistErrorMessage
 import com.henriquesebastiao.downtify.ui.common.plusBottomBars
 import com.henriquesebastiao.downtify.ui.common.songsCount
 
@@ -111,6 +121,26 @@ data class LibraryNavigation(
     val onSimilar: (artist: String, title: String) -> Unit = { _, _ -> },
 )
 
+/**
+ * What the library does about selections and playlists: a press-and-hold picks a song, the bar
+ * under the pick puts it in a playlist, and the tab's action makes a new one.
+ */
+data class LibraryEditActions(
+    val onStartSelection: (Track) -> Unit = {},
+    val onToggleSelection: (Track) -> Unit = {},
+    val onClearSelection: () -> Unit = {},
+    val onToggleSelectAll: () -> Unit = {},
+    val onOpenAddSheet: () -> Unit = {},
+    val onAddToPlaylist: (String) -> Unit = {},
+    val onAddToPlaylistForTrack: (Track) -> Unit = {},
+    val onNewPlaylist: () -> Unit = {},
+    val onCreatePlaylistFromSheet: () -> Unit = {},
+    val onCreatePlaylist: (String) -> Unit = {},
+    val onDismissAddSheet: () -> Unit = {},
+    val onDismissNaming: () -> Unit = {},
+    val onDismissError: () -> Unit = {},
+)
+
 @Composable
 fun LibraryRoute(
     navigation: LibraryNavigation,
@@ -118,6 +148,13 @@ fun LibraryRoute(
     viewModel: LibraryViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    // A playlist just made opens at once: naming it was the point.
+    LaunchedEffect(state.openPlaylist) {
+        state.openPlaylist?.let {
+            navigation.onPlaylist(it)
+            viewModel.playlistOpened()
+        }
+    }
     LibraryScreen(
         state = state,
         navigation = navigation,
@@ -135,6 +172,22 @@ fun LibraryRoute(
             onGoToArtist = { navigation.onArtist(it.artistId) },
             onFindSimilar = { artist, title -> navigation.onSimilar(artist, title) },
             onMoveToTrash = LocalMoveToTrash.current,
+            onAddToPlaylist = if (state.canEditPlaylists) viewModel::openAddSheetFor else null,
+        ),
+        editActions = LibraryEditActions(
+            onStartSelection = viewModel::startSelection,
+            onToggleSelection = viewModel::toggleSelection,
+            onClearSelection = viewModel::clearSelection,
+            onToggleSelectAll = viewModel::toggleSelectAll,
+            onOpenAddSheet = viewModel::openAddSheet,
+            onAddToPlaylist = viewModel::addToPlaylist,
+            onAddToPlaylistForTrack = viewModel::openAddSheetFor,
+            onNewPlaylist = viewModel::startNewPlaylist,
+            onCreatePlaylistFromSheet = viewModel::startNewPlaylistForSheet,
+            onCreatePlaylist = viewModel::createPlaylist,
+            onDismissAddSheet = viewModel::dismissAddSheet,
+            onDismissNaming = viewModel::dismissNaming,
+            onDismissError = viewModel::dismissError,
         ),
         modifier = modifier,
     )
@@ -158,22 +211,53 @@ fun LibraryScreen(
     onSortDescending: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
     trackActions: TrackActions = TrackActions(),
+    editActions: LibraryEditActions = LibraryEditActions(),
 ) {
     val scheme = MaterialTheme.colorScheme
     Scaffold(
         modifier = modifier,
         contentWindowInsets = WindowInsets(0),
         topBar = {
-            // One wash of primary behind the title and the tabs, fading into the surface.
-            val wash = Brush.verticalGradient(
-                listOf(scheme.primary.copy(alpha = TINT_ALPHA).compositeOver(scheme.surface), scheme.surface),
-            )
-            Column(Modifier.background(wash)) {
-                Header(onSearch = navigation.onSearch)
-                PillTabs(
-                    tabs = LibraryTab.entries.map { stringResource(it.label) },
-                    selectedIndex = LibraryTab.entries.indexOf(state.tab),
-                    onSelect = { onSelectTab(LibraryTab.entries[it]) },
+            if (state.selecting) {
+                SelectionTopBar(
+                    title = pluralStringResource(
+                        R.plurals.pl_selected_count,
+                        state.selection.count,
+                        state.selection.count,
+                    ),
+                    closeLabel = stringResource(R.string.pl_close_selection),
+                    selectAllLabel = stringResource(R.string.pl_select_all),
+                    clearLabel = stringResource(R.string.pl_clear_selection),
+                    allSelected = state.selection.covers(state.songs.map { it.id }),
+                    onClose = editActions.onClearSelection,
+                    onToggleAll = editActions.onToggleSelectAll,
+                )
+            } else {
+                // One wash of primary behind the title and the tabs, fading into the surface.
+                val wash = Brush.verticalGradient(
+                    listOf(scheme.primary.copy(alpha = TINT_ALPHA).compositeOver(scheme.surface), scheme.surface),
+                )
+                Column(Modifier.background(wash)) {
+                    Header(onSearch = navigation.onSearch)
+                    PillTabs(
+                        tabs = LibraryTab.entries.map { stringResource(it.label) },
+                        selectedIndex = LibraryTab.entries.indexOf(state.tab),
+                        onSelect = { onSelectTab(LibraryTab.entries[it]) },
+                    )
+                }
+            }
+        },
+        bottomBar = {
+            if (state.selecting) {
+                SelectionBottomBar(
+                    actionLabel = pluralStringResource(
+                        R.plurals.pl_add_n_to_playlist,
+                        state.selection.count,
+                        state.selection.count,
+                    ),
+                    icon = DowntifyIcons.AddToQueue,
+                    onClick = editActions.onOpenAddSheet,
+                    enabled = state.canEditPlaylists && !state.busy,
                 )
             }
         },
@@ -186,7 +270,12 @@ fun LibraryScreen(
                 modifier = Modifier.fillMaxSize().padding(top = Spacing.xs),
             ) {
                 Column {
-                    Toolbar(state, onSort, onSortDescending, onToggleLayout, onShuffle)
+                    if (!state.selecting) {
+                        Toolbar(state, onSort, onSortDescending, onToggleLayout, onShuffle, editActions.onNewPlaylist)
+                    }
+                    state.editError?.let { error ->
+                        ErrorLine(playlistErrorMessage(error), onDismiss = editActions.onDismissError)
+                    }
                     PullToRefreshBox(
                         isRefreshing = state.refreshing,
                         onRefresh = onRefresh,
@@ -201,13 +290,55 @@ fun LibraryScreen(
                                 LibraryTab.Albums -> Albums(state, navigation)
                                 LibraryTab.Artists -> Artists(state, navigation)
                                 LibraryTab.Playlists -> Playlists(state, navigation)
-                                LibraryTab.Songs -> Songs(state, onPlaySong, trackActions)
+                                LibraryTab.Songs -> Songs(state, onPlaySong, trackActions, editActions)
                             }
                         }
                     }
                 }
             }
         }
+    }
+    PlaylistDialogs(state, editActions)
+}
+
+/** The "Add to playlist" sheet and the name dialog, driven by the state so tests can reach them. */
+@Composable
+private fun PlaylistDialogs(state: LibraryUiState, editActions: LibraryEditActions) {
+    if (state.addSheetOpen) {
+        AddToPlaylistSheet(
+            targets = state.editablePlaylists.map { PlaylistTarget(it.name, it.title, it.trackIds.size) },
+            onDismiss = editActions.onDismissAddSheet,
+            onPick = editActions.onAddToPlaylist,
+            onCreateNew = editActions.onCreatePlaylistFromSheet,
+        )
+    }
+    if (state.naming) {
+        PlaylistNameDialog(
+            title = stringResource(R.string.pl_new),
+            confirmLabel = stringResource(R.string.pl_create),
+            onDismiss = editActions.onDismissNaming,
+            onConfirm = editActions.onCreatePlaylist,
+        )
+    }
+}
+
+/** What a refused write says, under the toolbar, until the next one. */
+@Composable
+private fun ErrorLine(message: String, onDismiss: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(start = Spacing.screen, end = Spacing.sm)
+            .clickable(onClick = onDismiss),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            message,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.weight(1f).padding(vertical = Spacing.sm),
+        )
+        Icon(painterResource(DowntifyIcons.Close), contentDescription = null, tint = MaterialTheme.colorScheme.error)
     }
 }
 
@@ -259,6 +390,7 @@ private fun Toolbar(
     onSortDescending: (Boolean) -> Unit,
     onToggleLayout: () -> Unit,
     onShuffle: () -> Unit,
+    onNewPlaylist: () -> Unit,
 ) {
     var sorting by rememberSaveable { mutableStateOf(false) }
     val scheme = MaterialTheme.colorScheme
@@ -284,6 +416,15 @@ private fun Toolbar(
         }
         Spacer(Modifier.weight(1f))
         Row(horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)) {
+            // Only where it belongs: playlists the user may make, on a server that edits them.
+            if (state.tab == LibraryTab.Playlists && state.canEditPlaylists) {
+                ToolbarButton(
+                    icon = DowntifyIcons.Add,
+                    label = stringResource(R.string.pl_new),
+                    shapes = IconButtonDefaults.shapes(),
+                    onClick = onNewPlaylist,
+                )
+            }
             val sortLabel = stringResource(R.string.library_sort, stringResource(state.sort.label))
             if (state.tab == LibraryTab.Songs) {
                 // Songs are always a list: the sort stands alone.
@@ -612,22 +753,33 @@ private fun Playlists(state: LibraryUiState, navigation: LibraryNavigation) {
 }
 
 @Composable
-private fun Songs(state: LibraryUiState, onPlay: (Int) -> Unit, actions: TrackActions) {
+private fun Songs(
+    state: LibraryUiState,
+    onPlay: (Int) -> Unit,
+    actions: TrackActions,
+    editActions: LibraryEditActions,
+) {
     val covers = LocalCoverUrls.current
     if (state.songs.isEmpty()) return Empty(R.string.library_empty_songs)
+    // A press-and-hold picks a song: with the pick made, a tap picks or unpicks, never plays.
+    val longPressLabel = stringResource(R.string.pl_select_song)
     Box(Modifier.fillMaxSize()) {
         val list = rememberLazyListState()
         LazyColumn(Modifier.fillMaxSize(), list, contentPadding = listPadding, verticalArrangement = songsGap) {
             itemsIndexed(state.songs, key = { _, track: Track -> track.id }) { index, track ->
                 TrackItem(
                     track = track,
-                    onClick = { onPlay(index) },
+                    onClick = { if (state.selecting) editActions.onToggleSelection(track) else onPlay(index) },
+                    onLongClick = { editActions.onStartSelection(track) },
+                    longClickLabel = longPressLabel,
                     coverUrl = covers.track(track.id.takeIf { track.hasCover }, 150),
                     isCurrent = track.id == state.currentTrackId,
                     isPlaying = state.isPlaying,
                     isLiked = track.id in state.likedIds,
                     actions = actions,
                     compact = true,
+                    selectionMode = state.selecting,
+                    selected = state.selection.contains(track.id),
                 )
             }
         }
@@ -698,6 +850,55 @@ private fun LibrarySongsPreview() {
             onRefresh = {},
             onPlaySong = {},
             trackActions = TrackActions(onAddToQueue = {}),
+        )
+    }
+}
+
+@PhonePreviews
+@Composable
+private fun LibrarySelectionPreview() {
+    DowntifyTheme {
+        LibraryScreen(
+            state = LibraryUiState(
+                loading = false,
+                tab = LibraryTab.Songs,
+                songs = PreviewData.tracks,
+                selection = Selection(listOf("t1", "t3")),
+                canEditPlaylists = true,
+                editablePlaylists = PreviewData.playlists,
+            ),
+            navigation = LibraryNavigation(),
+            onSelectTab = {},
+            onSort = {},
+            onToggleLayout = {},
+            onRefresh = {},
+            onPlaySong = {},
+            editActions = LibraryEditActions(),
+        )
+    }
+}
+
+@PhonePreviews
+@Composable
+private fun LibraryAddSheetPreview() {
+    DowntifyTheme {
+        LibraryScreen(
+            state = LibraryUiState(
+                loading = false,
+                tab = LibraryTab.Songs,
+                songs = PreviewData.tracks,
+                selection = Selection(listOf("t1", "t3")),
+                canEditPlaylists = true,
+                editablePlaylists = PreviewData.playlists,
+                addSheetOpen = true,
+            ),
+            navigation = LibraryNavigation(),
+            onSelectTab = {},
+            onSort = {},
+            onToggleLayout = {},
+            onRefresh = {},
+            onPlaySong = {},
+            editActions = LibraryEditActions(),
         )
     }
 }

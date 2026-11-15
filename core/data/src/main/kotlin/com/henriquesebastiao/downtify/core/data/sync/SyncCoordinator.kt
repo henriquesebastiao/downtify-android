@@ -7,6 +7,7 @@ import com.henriquesebastiao.downtify.core.data.catalog.ServerQueueRepository
 import com.henriquesebastiao.downtify.core.data.di.ApplicationScope
 import com.henriquesebastiao.downtify.core.data.library.LibraryRepository
 import com.henriquesebastiao.downtify.core.data.listens.ListenReporter
+import com.henriquesebastiao.downtify.core.data.playlists.PlaylistEditorRepository
 import com.henriquesebastiao.downtify.core.data.session.ConnectionState
 import com.henriquesebastiao.downtify.core.data.session.ServerRepository
 import com.henriquesebastiao.downtify.core.data.settings.SettingsRepository
@@ -47,6 +48,7 @@ class SyncCoordinator @Inject constructor(
     private val settings: SettingsRepository,
     private val live: LiveUpdatesClient,
     private val serverQueue: ServerQueueRepository,
+    private val playlists: PlaylistEditorRepository,
     @ApplicationScope private val scope: CoroutineScope,
 ) {
     private val syncRequests = SyncRequests()
@@ -113,11 +115,18 @@ class SyncCoordinator @Inject constructor(
                             attempt = 0
                             server.markConnected()
                             serverQueue.refresh()
+                            playlists.refresh()
                         }
 
                         LiveEvent.LibraryChanged -> requestSync()
 
                         LiveEvent.LikesChanged -> library.refreshLikes()
+
+                        // A playlist was renamed, shared or had its songs changed, here or elsewhere.
+                        LiveEvent.PlaylistsChanged -> {
+                            library.refreshPlaylists()
+                            playlists.refresh()
+                        }
 
                         is LiveEvent.Refused -> server.verifyStillPaired()
 

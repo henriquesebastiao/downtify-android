@@ -175,4 +175,7 @@ object DowntifyIcons {
     @DrawableRes val Coffee = R.drawable.ic_coffee
 
     @DrawableRes val Description = R.drawable.ic_description
+
+    /** Rename: a pencil. */
+    @DrawableRes val Edit = R.drawable.ic_edit
 }
