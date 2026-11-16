@@ -273,6 +273,22 @@ class PlayerController @Inject constructor(
     }
 
     /**
+     * Queues [tracks] in their order, after what's already queued (each goes after the last one
+     * queued), with one "added" event named [label] (an album's title) rather than one a song.
+     */
+    fun addAllToQueue(tracks: List<Track>, label: String) {
+        if (tracks.isEmpty()) return
+        main.launch {
+            val controller = connect()
+            tracks.forEach { track ->
+                val args = Bundle().apply { putString(PlaybackService.EXTRA_TRACK_ID, track.id) }
+                controller.sendCustomCommand(SessionCommand(PlaybackService.ACTION_ADD_TO_QUEUE, Bundle.EMPTY), args)
+            }
+            mutableEvents.tryEmit(PlayerEvent.AddedToQueue(label))
+        }
+    }
+
+    /**
      * Moves the item at [from] to play right after the item at [after] (indices in the
      * player's list); [queued] says whether it now belongs to "Next in queue".
      */

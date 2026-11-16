@@ -35,7 +35,9 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.henriquesebastiao.downtify.R
 import com.henriquesebastiao.downtify.core.designsystem.component.Artwork
 import com.henriquesebastiao.downtify.core.designsystem.component.DowntifyIcons
@@ -85,7 +87,13 @@ fun TvTopBar(
             }
         }
         Box(Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
-            TvIconButton(DowntifyIcons.Settings, stringResource(R.string.settings_title), onSettings)
+            TvIconButton(
+                DowntifyIcons.Settings,
+                stringResource(R.string.settings_title),
+                onSettings,
+                size = BarButtonSize,
+                iconSize = TabIcon,
+            )
         }
     }
 }
@@ -117,7 +125,7 @@ private fun TvTab(label: String, icon: Int, selected: Boolean, onClick: () -> Un
         Icon(painterResource(icon), contentDescription = null, tint = color, modifier = Modifier.size(TabIcon))
         Text(
             label,
-            style = MaterialTheme.typography.labelLarge,
+            style = MaterialTheme.typography.labelLarge.copy(fontSize = TabText),
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
             color = color,
             maxLines = 1,
@@ -125,23 +133,31 @@ private fun TvTab(label: String, icon: Int, selected: Boolean, onClick: () -> Un
     }
 }
 
-/** A round icon button with the TV's ring. */
+/** A round icon button with the TV's ring: [size] across, its icon [iconSize]. */
+@Suppress("LongParameterList")
 @Composable
-internal fun TvIconButton(icon: Int, label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+internal fun TvIconButton(
+    icon: Int,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    size: Dp = TvIconButtonSize,
+    iconSize: Dp = ButtonIcon,
+) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
     Box(
         modifier
             .tvFocusFrame(focused, CircleShape)
             .clickable(interaction, indication = null, onClickLabel = label, role = Role.Button, onClick = onClick)
-            .size(TvIconButtonSize),
+            .size(size),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             painterResource(icon),
             contentDescription = label,
             tint = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.size(TabIcon),
+            modifier = Modifier.size(iconSize),
         )
     }
 }
@@ -181,14 +197,14 @@ fun TvNowPlayingCard(state: PlayerState, onOpen: () -> Unit, modifier: Modifier 
         Column(Modifier.weight(1f)) {
             Text(
                 title,
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.titleSmall.copy(fontSize = CardTitleText),
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 subtitle,
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodySmall.copy(fontSize = CardSubtitleText),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -203,11 +219,18 @@ fun TvNowPlayingCard(state: PlayerState, onOpen: () -> Unit, modifier: Modifier 
 
 /** The side margins of the TV screens: clear of the edges a TV may crop (overscan). */
 internal val TvMargin = 48.dp
-private val TvIconButtonSize = 40.dp
-private val TabIcon = 20.dp
-private val NowPlayingMaxWidth = 300.dp
-private val NowPlayingCover = 44.dp
-private val BarsSize = 16.dp
+internal val TvIconButtonSize = 40.dp
+private val ButtonIcon = 20.dp
+
+// The top bar sized as the TV music apps size theirs: small, so the page below gets the room.
+private val TabIcon = 16.dp
+private val TabText = 13.sp
+private val BarButtonSize = 36.dp
+private val CardTitleText = 12.sp
+private val CardSubtitleText = 11.sp
+private val NowPlayingMaxWidth = 280.dp
+private val NowPlayingCover = 36.dp
+private val BarsSize = 14.dp
 private val NowPlayingShape = RoundedCornerShape(8.dp)
 private val NowPlayingRingShape = RoundedCornerShape(8.dp + TvRingSpace)
 

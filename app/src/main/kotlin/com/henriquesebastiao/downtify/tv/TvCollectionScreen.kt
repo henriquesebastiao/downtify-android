@@ -35,11 +35,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -85,6 +88,8 @@ fun TvCollectionRoute(
         onPlay = { viewModel.play(it) },
         onPlayOrPause = viewModel::playOrPause,
         onShuffle = viewModel::shuffle,
+        onAddToQueue = viewModel::addToQueue,
+        onAddAllToQueue = viewModel::addAllToQueue,
         modifier = modifier,
     )
 }
@@ -106,6 +111,8 @@ fun TvCollectionScreen(
     onPlayOrPause: () -> Unit,
     onShuffle: () -> Unit,
     modifier: Modifier = Modifier,
+    onAddToQueue: (Track) -> Unit = {},
+    onAddAllToQueue: () -> Unit = {},
 ) {
     when {
         state.loading -> Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) { LoadingIndicator() }
@@ -124,7 +131,14 @@ fun TvCollectionScreen(
             LaunchedEffect(state.tracks.isNotEmpty()) {
                 if (state.tracks.isNotEmpty()) firstSong.requestFocusWhenPlaced()
             }
-            Header(state, onArtist, onPlayOrPause, onShuffle, Modifier.width(HeaderWidth).fillMaxHeight())
+            Header(
+                state,
+                onArtist,
+                onPlayOrPause,
+                onShuffle,
+                onAddAllToQueue,
+                Modifier.width(HeaderWidth).fillMaxHeight(),
+            )
             CompositionLocalProvider(LocalBringIntoViewSpec provides rememberTvGridBringIntoViewSpec(ListTop)) {
                 LazyColumn(
                     contentPadding = PaddingValues(
@@ -143,6 +157,7 @@ fun TvCollectionScreen(
                             playing = state.isPlaying,
                             onClick = { onPlay(index) },
                             modifier = if (index == 0) Modifier.focusRequester(firstSong) else Modifier,
+                            onAddToQueue = { onAddToQueue(track) },
                         )
                     }
                 }
@@ -157,6 +172,7 @@ private fun Header(
     onArtist: (String) -> Unit,
     onPlayOrPause: () -> Unit,
     onShuffle: () -> Unit,
+    onAddAllToQueue: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val covers = LocalCoverUrls.current
@@ -199,6 +215,8 @@ private fun Header(
         ) {
             if (state.tracks.isNotEmpty()) {
                 TvIconButton(DowntifyIcons.Shuffle, stringResource(R.string.collection_shuffle), onShuffle)
+                // The whole album or playlist after what's queued, as the TV music apps offer.
+                TvIconButton(DowntifyIcons.AddToQueue, stringResource(R.string.track_add_to_queue), onAddAllToQueue)
                 Spacer(Modifier.weight(1f))
                 TvPlayDisc(playing = state.isCurrentContext && state.isPlaying, onClick = onPlayOrPause)
             }
@@ -267,10 +285,13 @@ internal fun TvPlayDisc(playing: Boolean, onClick: () -> Unit) {
 }
 
 /**
- * A song as a TV row: its cover, the title over [subtitle] (the artist, or the album on an artist's
- * page), the length at the end. Focused, the row lights up and rings; the one playing has its
- * title in the accent color, after the bars.
+ * A song as a TV row: its cover, the title over the artist ([subtitle]), the length at the end.
+ * Focused, the row lights up and its main part rings; the one playing has its title in the accent
+ * color, after the bars. With [onAddToQueue], a focused row also shows an "Add to queue" button at
+ * its end, reached with Right, as the TV music apps put their buttons. [modifier] goes on the main
+ * part, the one that takes focus (a page's first song).
  */
+@Suppress("LongParameterList")
 @Composable
 internal fun TvTrackRow(
     track: Track,
@@ -279,56 +300,77 @@ internal fun TvTrackRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     subtitle: String = track.displayArtist,
+    onAddToQueue: (() -> Unit)? = null,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
+    var rowFocused by remember { mutableStateOf(false) }
     val scheme = MaterialTheme.colorScheme
     Row(
-        modifier
+        Modifier
             .fillMaxWidth()
-            .tvFocusFrame(focused, RowRingShape)
-            .clickable(
-                interaction,
-                indication = null,
-                onClickLabel = track.displayTitle,
-                role = Role.Button,
-                onClick = onClick,
-            )
-            .background(if (focused) scheme.surfaceContainerHigh else scheme.surface.copy(alpha = 0f), RowShape)
-            .padding(Spacing.sm),
+            .onFocusChanged { rowFocused = it.hasFocus }
+            .background(if (rowFocused) scheme.surfaceContainerHigh else scheme.surface.copy(alpha = 0f), RowShape),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
     ) {
-        Artwork(
-            url = LocalCoverUrls.current.track(track.id.takeIf { track.hasCover }, ServerUrls.COVER_SMALL),
-            contentDescription = null,
-            shape = RowCoverShape,
-            modifier = Modifier.size(RowCover),
-        )
-        Column(Modifier.weight(1f)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-            ) {
-                if (current) PlayingBars(Modifier.size(16.dp), animate = playing)
+        Row(
+            modifier
+                .weight(1f)
+                .tvFocusFrame(focused, RowRingShape)
+                .clickable(
+                    interaction,
+                    indication = null,
+                    onClickLabel = track.displayTitle,
+                    role = Role.Button,
+                    onClick = onClick,
+                )
+                .padding(Spacing.sm),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
+        ) {
+            Artwork(
+                url = LocalCoverUrls.current.track(track.id.takeIf { track.hasCover }, ServerUrls.COVER_SMALL),
+                contentDescription = null,
+                shape = RowCoverShape,
+                modifier = Modifier.size(RowCover),
+            )
+            Column(Modifier.weight(1f)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                ) {
+                    if (current) PlayingBars(Modifier.size(16.dp), animate = playing)
+                    Text(
+                        track.displayTitle,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (current) scheme.primary else scheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
                 Text(
-                    track.displayTitle,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = if (current) scheme.primary else scheme.onSurface,
+                    subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = scheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Text(
-                subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = scheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Text(formatDuration(track.duration), style = DowntifyType.dataSmall, color = scheme.onSurfaceVariant)
         }
-        Text(formatDuration(track.duration), style = DowntifyType.dataSmall, color = scheme.onSurfaceVariant)
+        if (onAddToQueue != null) {
+            // The room is kept whether the button shows or not, so focus never shifts the row.
+            Box(Modifier.size(TvIconButtonSize + TvRingSpace * 2), contentAlignment = Alignment.Center) {
+                if (rowFocused) {
+                    TvIconButton(
+                        DowntifyIcons.AddToQueue,
+                        stringResource(R.string.track_add_to_queue),
+                        onAddToQueue,
+                    )
+                }
+            }
+        }
     }
 }
 

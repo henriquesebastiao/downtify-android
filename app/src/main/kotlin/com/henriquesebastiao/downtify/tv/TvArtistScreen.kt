@@ -67,6 +67,7 @@ import com.henriquesebastiao.downtify.core.designsystem.component.requestFocusWh
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyTheme
 import com.henriquesebastiao.downtify.core.designsystem.theme.Spacing
 import com.henriquesebastiao.downtify.core.model.Artist
+import com.henriquesebastiao.downtify.core.model.Track
 import com.henriquesebastiao.downtify.core.network.ServerUrls
 import com.henriquesebastiao.downtify.feature.artist.ArtistUiState
 import com.henriquesebastiao.downtify.feature.artist.ArtistViewModel
@@ -88,6 +89,7 @@ fun TvArtistRoute(
         onPlay = { viewModel.play(it) },
         onPlayOrPause = viewModel::playOrPause,
         onShuffle = viewModel::shuffle,
+        onAddToQueue = viewModel::addToQueue,
         modifier = modifier,
     )
 }
@@ -111,6 +113,7 @@ fun TvArtistScreen(
     onPlayOrPause: () -> Unit,
     onShuffle: () -> Unit,
     modifier: Modifier = Modifier,
+    onAddToQueue: (Track) -> Unit = {},
 ) {
     val artist = state.artist
     when {
@@ -126,7 +129,7 @@ fun TvArtistScreen(
 
         else -> Row(modifier.fillMaxSize().padding(start = TvMargin)) {
             Header(state, artist, onPlayOrPause, onShuffle, Modifier.width(HeaderWidth).fillMaxHeight())
-            Content(state, artist, onAlbum, onPlay, Modifier.weight(1f).fillMaxHeight())
+            Content(state, artist, onAlbum, onPlay, onAddToQueue, Modifier.weight(1f).fillMaxHeight())
         }
     }
 }
@@ -185,6 +188,7 @@ private fun Content(
     artist: Artist,
     onAlbum: (String) -> Unit,
     onPlay: (Int) -> Unit,
+    onAddToQueue: (Track) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var tab by rememberSaveable { mutableStateOf(TvArtistTab.Songs) }
@@ -240,6 +244,7 @@ private fun Content(
                             onClick = { onPlay(index) },
                             subtitle = track.album.ifBlank { track.displayArtist },
                             modifier = if (index == 0) Modifier.focusRequester(firstSong) else Modifier,
+                            onAddToQueue = { onAddToQueue(track) },
                         )
                     }
                 }
