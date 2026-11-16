@@ -55,7 +55,6 @@ import com.henriquesebastiao.downtify.feature.player.NowPlayingActions
 import com.henriquesebastiao.downtify.feature.player.PlayerViewModel
 import com.henriquesebastiao.downtify.feature.podcasts.ShowRoute
 import com.henriquesebastiao.downtify.feature.search.SearchNavigation
-import com.henriquesebastiao.downtify.feature.settings.SettingsRoute
 import com.henriquesebastiao.downtify.feature.similar.SimilarRoute as SimilarScreenRoute
 import com.henriquesebastiao.downtify.feature.trash.MoveToTrashHost
 import com.henriquesebastiao.downtify.ui.navigation.AboutRoute as AboutDestination
@@ -221,12 +220,7 @@ private fun TvNavHost(navController: NavHostController) {
                 ),
             )
         }
-        composable<SettingsDestination> {
-            SettingsRoute(
-                onBack = navController::popBackStack,
-                onOpenAbout = { navController.navigate(AboutDestination) },
-            )
-        }
+        composable<SettingsDestination> { TvSettingsRoute(onOpenAbout = { navController.navigate(AboutDestination) }) }
         composable<AboutDestination> {
             AboutRoute(onBack = navController::popBackStack, onOpenLicense = {
                 navController.navigate(LicenseDestination)

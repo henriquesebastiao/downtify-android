@@ -77,16 +77,16 @@ internal fun TvExitContent(onStay: () -> Unit, onClose: () -> Unit) {
                 textAlign = TextAlign.Center,
             )
             Row(Modifier.padding(top = Spacing.sm), horizontalArrangement = Arrangement.spacedBy(Spacing.lg)) {
-                DialogButton(stringResource(R.string.tv_exit_stay), onStay, Modifier.focusRequester(stayFocus))
-                DialogButton(stringResource(R.string.tv_exit_close), onClose)
+                TvDialogButton(stringResource(R.string.tv_exit_stay), onStay, Modifier.focusRequester(stayFocus))
+                TvDialogButton(stringResource(R.string.tv_exit_close), onClose)
             }
         }
     }
 }
 
-/** A text button with the TV's ring, a pill. */
+/** A text button with the TV's ring, a pill: the TV dialogs' answers. */
 @Composable
-private fun DialogButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+internal fun TvDialogButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
     Box(
