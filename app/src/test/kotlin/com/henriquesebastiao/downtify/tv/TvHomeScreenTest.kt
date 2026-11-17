@@ -63,6 +63,23 @@ class TvHomeScreenTest {
     }
 
     @Test
+    fun aLooseSongShowsItselfNotTheSongsList() {
+        val song = PreviewData.tracks.first()
+        val entry = RecentContext(PlaybackContextType.Songs, song.id, song.title, song.id, 0)
+        val opened = mutableListOf<RecentContext>()
+        show(
+            HomeUiState(loading = false, jumpBackIn = listOf(entry), recentSongs = mapOf(song.id to song)),
+            onOpenRecent = { opened += it },
+        )
+
+        compose.onNodeWithText(song.displayArtist).assertExists()
+        compose.onNodeWithText("Songs").assertDoesNotExist()
+        compose.onNodeWithText(song.title).performClick()
+
+        assertEquals(listOf(entry), opened)
+    }
+
+    @Test
     fun aRecentlyAddedAlbumOpensItsPage() {
         val opened = mutableListOf<String>()
         show(HomeUiState(loading = false, recentlyAdded = listOf(album)), onOpenAlbum = { opened += it })

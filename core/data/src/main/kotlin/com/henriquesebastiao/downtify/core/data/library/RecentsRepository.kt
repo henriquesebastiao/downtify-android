@@ -4,6 +4,7 @@ import com.henriquesebastiao.downtify.core.data.db.DowntifyDatabase
 import com.henriquesebastiao.downtify.core.data.db.RecentContextEntity
 import com.henriquesebastiao.downtify.core.model.PlaybackContext
 import com.henriquesebastiao.downtify.core.model.RecentContext
+import com.henriquesebastiao.downtify.core.model.isBareSongs
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
@@ -13,7 +14,7 @@ import kotlinx.coroutines.flow.map
 @Singleton
 class RecentsRepository @Inject constructor(private val db: DowntifyDatabase) {
     fun recents(limit: Int = HOME_LIMIT): Flow<List<RecentContext>> =
-        db.recents().observe(limit).map { rows -> rows.mapNotNull { it.toModel() } }
+        db.recents().observe(limit).map { rows -> rows.mapNotNull { it.toModel() }.filterNot { it.isBareSongs } }
 
     suspend fun record(context: PlaybackContext, coverTrackId: String?, now: Long = System.currentTimeMillis()) {
         val entity = RecentContextEntity(

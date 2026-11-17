@@ -64,6 +64,7 @@ import com.henriquesebastiao.downtify.core.model.Album
 import com.henriquesebastiao.downtify.core.model.PlaybackContextType
 import com.henriquesebastiao.downtify.core.model.Playlist
 import com.henriquesebastiao.downtify.core.model.RecentContext
+import com.henriquesebastiao.downtify.core.model.Track
 import com.henriquesebastiao.downtify.core.network.ServerUrls
 import com.henriquesebastiao.downtify.ui.common.CoverCard
 import com.henriquesebastiao.downtify.ui.common.LocalCoverUrls
@@ -88,7 +89,7 @@ fun HomeRoute(
     HomeScreen(
         state,
         onOpenSettings,
-        onOpenRecent,
+        { if (it.type == PlaybackContextType.Songs) viewModel.playRecentSong(it) else onOpenRecent(it) },
         onOpenAlbum,
         onSeeAll,
         viewModel::refresh,
@@ -299,17 +300,28 @@ private fun HomeAccess(state: HomeUiState, onOpen: (RecentContext) -> Unit) {
         val columns = if (maxWidth >= 480.dp) 3 else 2
         val recentTitle = stringResource(R.string.home_jump_back_in)
         val favoriteTitle = stringResource(R.string.favorite_playlists)
+        val songs = state.recentSongs
         if (maxWidth >= 840.dp && state.jumpBackIn.isNotEmpty() && favorites.isNotEmpty()) {
             Row(Modifier.fillMaxWidth()) {
-                QuickAccessSection(recentTitle, state.jumpBackIn, playlists, columns, onOpen, Modifier.weight(1f))
-                QuickAccessSection(favoriteTitle, favorites, playlists, columns, onOpen, Modifier.weight(1f))
+                QuickAccessSection(
+                    recentTitle,
+                    state.jumpBackIn,
+                    playlists,
+                    songs,
+                    columns,
+                    onOpen,
+                    Modifier.weight(1f),
+                )
+                QuickAccessSection(favoriteTitle, favorites, playlists, songs, columns, onOpen, Modifier.weight(1f))
             }
         } else {
             Column {
                 if (state.jumpBackIn.isNotEmpty()) {
-                    QuickAccessSection(recentTitle, state.jumpBackIn, playlists, columns, onOpen)
+                    QuickAccessSection(recentTitle, state.jumpBackIn, playlists, songs, columns, onOpen)
                 }
-                if (favorites.isNotEmpty()) QuickAccessSection(favoriteTitle, favorites, playlists, columns, onOpen)
+                if (favorites.isNotEmpty()) {
+                    QuickAccessSection(favoriteTitle, favorites, playlists, songs, columns, onOpen)
+                }
             }
         }
     }
@@ -320,6 +332,7 @@ private fun QuickAccessSection(
     title: String,
     entries: List<RecentContext>,
     playlists: Map<String, Playlist>,
+    songs: Map<String, Track>,
     columns: Int,
     onOpen: (RecentContext) -> Unit,
     modifier: Modifier = Modifier,
@@ -341,7 +354,7 @@ private fun QuickAccessSection(
         }
         entries.take(6).chunked(columns).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                row.forEach { entry -> QuickAccessTile(entry, playlists, onOpen, Modifier.weight(1f)) }
+                row.forEach { entry -> QuickAccessTile(entry, playlists, songs, onOpen, Modifier.weight(1f)) }
                 repeat(columns - row.size) { Box(Modifier.weight(1f)) }
             }
         }
@@ -356,7 +369,7 @@ private fun QuickAccessSection(
                     verticalArrangement = Arrangement.spacedBy(Spacing.sm),
                 ) {
                     items(entries) { entry ->
-                        QuickAccessTile(entry, playlists, {
+                        QuickAccessTile(entry, playlists, songs, {
                             expanded = false
                             onOpen(it)
                         }, Modifier.fillMaxWidth())
@@ -370,11 +383,15 @@ private fun QuickAccessSection(
     }
 }
 
-/** A recent album, artist or playlist as a 64 dp tile: its cover in a squircle, its name on two lines. */
+/**
+ * A recent album, artist, playlist or song as a 64 dp tile: its cover in a squircle, its name on
+ * two lines (a song's on one, its artist below).
+ */
 @Composable
 private fun QuickAccessTile(
     entry: RecentContext,
     playlists: Map<String, Playlist>,
+    songs: Map<String, Track>,
     onOpen: (RecentContext) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -382,9 +399,11 @@ private fun QuickAccessTile(
     val playlist = if (entry.type == PlaybackContextType.Playlist) playlists[entry.refId] else null
     val title = when (entry.type) {
         PlaybackContextType.Liked -> stringResource(R.string.liked_songs)
-        PlaybackContextType.Songs -> stringResource(R.string.library_songs)
         else -> entry.title.ifEmpty { stringResource(R.string.library_songs) }
     }
+    val artist = songs[entry.refId]
+        ?.displayArtist
+        ?.takeIf { entry.type == PlaybackContextType.Songs && it.isNotBlank() }
     Surface(
         onClick = { onOpen(entry) },
         color = MaterialTheme.colorScheme.surfaceContainer,
@@ -416,12 +435,23 @@ private fun QuickAccessTile(
                 tone = if (entry.type == PlaybackContextType.Liked) ArtworkTone.Primary else ArtworkTone.Neutral,
                 modifier = Modifier.size(48.dp),
             )
-            Text(
-                title,
-                style = MaterialTheme.typography.labelLarge,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Column {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.labelLarge,
+                    maxLines = if (artist == null) 2 else 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (artist != null) {
+                    Text(
+                        artist,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
         }
     }
 }

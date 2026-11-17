@@ -9,9 +9,12 @@ import com.henriquesebastiao.downtify.core.data.session.ConnectionState
 import com.henriquesebastiao.downtify.core.data.session.ServerRepository
 import com.henriquesebastiao.downtify.core.data.sync.SyncCoordinator
 import com.henriquesebastiao.downtify.core.model.Album
+import com.henriquesebastiao.downtify.core.model.PlaybackContext
 import com.henriquesebastiao.downtify.core.model.PlaybackContextType
 import com.henriquesebastiao.downtify.core.model.Playlist
 import com.henriquesebastiao.downtify.core.model.RecentContext
+import com.henriquesebastiao.downtify.core.model.Track
+import com.henriquesebastiao.downtify.core.player.PlayerController
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
@@ -27,6 +30,8 @@ data class HomeUiState(
     val status: ServerStatus = ServerStatus.Streaming,
     /** "Jump back in": recent contexts, or — before anything was played — Liked songs and the newest albums. */
     val jumpBackIn: List<RecentContext> = emptyList(),
+    /** The library's tracks behind the loose songs in [jumpBackIn], by id: their tiles' artist. */
+    val recentSongs: Map<String, Track> = emptyMap(),
     val recentlyAdded: List<Album> = emptyList(),
     val favoritePlaylists: List<Playlist> = emptyList(),
     /** Every playlist by name, for the covers of the ones in [jumpBackIn]: favourite or not. */
@@ -47,10 +52,11 @@ data class HomeUiState(
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    library: LibraryRepository,
+    private val library: LibraryRepository,
     recents: RecentsRepository,
     server: ServerRepository,
     private val sync: SyncCoordinator,
+    private val player: PlayerController,
 ) : ViewModel() {
 
     val uiState: StateFlow<HomeUiState> = combine(
@@ -60,7 +66,11 @@ class HomeViewModel @Inject constructor(
         combine(server.connection, server.session, server.serverInfo, ::Triple),
     ) { (snapshot, likedIds, playlists), recentList, syncStatus, (connection, session, info) ->
         val newest = snapshot?.albums.orEmpty().sortedByDescending { it.added }
-        val jump = recentList.ifEmpty {
+        // A song gone from the library has nothing left to play.
+        val recent = recentList.filter {
+            it.type != PlaybackContextType.Songs || snapshot?.byId?.containsKey(it.refId) != false
+        }
+        val jump = recent.ifEmpty {
             buildList {
                 if (likedIds.isNotEmpty()) add(RecentContext(PlaybackContextType.Liked, "", "", null, 0))
                 newest.take(JUMP_BACK_IN_SIZE - size).forEach {
@@ -78,6 +88,9 @@ class HomeViewModel @Inject constructor(
                 else -> ServerStatus.Streaming
             },
             jumpBackIn = jump.take(RECENT_CONTEXT_LIMIT),
+            recentSongs = jump.filter { it.type == PlaybackContextType.Songs }
+                .mapNotNull { snapshot?.byId?.get(it.refId) }
+                .associateBy { it.id },
             recentlyAdded = newest.take(RECENTLY_ADDED_SIZE),
             favoritePlaylists = playlists.filter { it.favorite && !it.liked }.sortedBy { it.title.lowercase() },
             playlistsByName = playlists.associateBy { it.name },
@@ -87,6 +100,15 @@ class HomeViewModel @Inject constructor(
             showPodcasts = info?.capabilities?.podcasts == true,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), HomeUiState())
+
+    /**
+     * A loose song's tile ([PlaybackContextType.Songs]) plays that song at once: unlike an album's
+     * or a playlist's, there is no page of its own to open.
+     */
+    fun playRecentSong(entry: RecentContext) {
+        val track = library.library.value?.byId?.get(entry.refId) ?: return
+        player.play(listOf(track), 0, PlaybackContext(PlaybackContextType.Songs, "", ""))
+    }
 
     /** Pull to refresh: the server rescans its folder, then the app syncs. */
     fun refresh() = sync.requestSync(refresh = true)

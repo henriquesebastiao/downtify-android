@@ -57,6 +57,7 @@ import com.henriquesebastiao.downtify.core.model.Album
 import com.henriquesebastiao.downtify.core.model.PlaybackContextType
 import com.henriquesebastiao.downtify.core.model.Playlist
 import com.henriquesebastiao.downtify.core.model.RecentContext
+import com.henriquesebastiao.downtify.core.model.Track
 import com.henriquesebastiao.downtify.core.network.ServerUrls
 import com.henriquesebastiao.downtify.feature.home.HomeUiState
 import com.henriquesebastiao.downtify.feature.home.HomeViewModel
@@ -75,7 +76,12 @@ fun TvHomeRoute(
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    TvHomeScreen(state, onOpenRecent, onOpenAlbum, modifier)
+    TvHomeScreen(
+        state = state,
+        onOpenRecent = { if (it.type == PlaybackContextType.Songs) viewModel.playRecentSong(it) else onOpenRecent(it) },
+        onOpenAlbum = onOpenAlbum,
+        modifier = modifier,
+    )
 }
 
 /**
@@ -127,7 +133,12 @@ fun TvHomeScreen(
                     if (state.jumpBackIn.isNotEmpty()) {
                         item(key = "jump") {
                             TvSection(stringResource(R.string.home_jump_back_in)) {
-                                JumpBackIn(state.jumpBackIn.take(JUMP_BACK_IN_TILES), playlists, onOpenRecent)
+                                JumpBackIn(
+                                    entries = state.jumpBackIn.take(JUMP_BACK_IN_TILES),
+                                    playlists = playlists,
+                                    songs = state.recentSongs,
+                                    onOpen = onOpenRecent,
+                                )
                             }
                         }
                     }
@@ -184,11 +195,12 @@ private fun ServerProblem(state: HomeUiState) {
     }
 }
 
-/** Up to eight recent albums, artists and playlists as wide tiles, four to a row. */
+/** Up to eight recent albums, artists, playlists and songs as wide tiles, four to a row. */
 @Composable
 private fun JumpBackIn(
     entries: List<RecentContext>,
     playlists: Map<String, Playlist>,
+    songs: Map<String, Track>,
     onOpen: (RecentContext) -> Unit,
 ) {
     Column(
@@ -197,24 +209,28 @@ private fun JumpBackIn(
     ) {
         entries.chunked(TILES_PER_ROW).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-                row.forEach { entry -> RecentTile(entry, playlists, onOpen, Modifier.weight(1f)) }
+                row.forEach { entry -> RecentTile(entry, playlists, songs, onOpen, Modifier.weight(1f)) }
                 repeat(TILES_PER_ROW - row.size) { Box(Modifier.weight(1f)) }
             }
         }
     }
 }
 
-/** A recent context as a wide tile: its cover on the left, its name beside it. */
+/** A recent context as a wide tile: its cover on the left, its name beside it (a song's artist below). */
 @Composable
 private fun RecentTile(
     entry: RecentContext,
     playlists: Map<String, Playlist>,
+    songs: Map<String, Track>,
     onOpen: (RecentContext) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
     val title = recentTitle(entry)
+    val artist = songs[entry.refId]
+        ?.displayArtist
+        ?.takeIf { entry.type == PlaybackContextType.Songs && it.isNotBlank() }
     Row(
         modifier
             .tvFocusFrame(focused, TileRingShape)
@@ -236,13 +252,23 @@ private fun RecentTile(
             tone = if (entry.type == PlaybackContextType.Liked) ArtworkTone.Primary else ArtworkTone.Neutral,
             modifier = Modifier.size(TileCover),
         )
-        Text(
-            title,
-            style = MaterialTheme.typography.titleSmall,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(end = Spacing.md),
-        )
+        Column(Modifier.padding(end = Spacing.md)) {
+            Text(
+                title,
+                style = MaterialTheme.typography.titleSmall,
+                maxLines = if (artist == null) 2 else 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (artist != null) {
+                Text(
+                    artist,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
     }
 }
 
@@ -298,7 +324,6 @@ internal fun TvCoverRow(content: LazyListScope.() -> Unit) {
 @Composable
 private fun recentTitle(entry: RecentContext): String = when (entry.type) {
     PlaybackContextType.Liked -> stringResource(R.string.liked_songs)
-    PlaybackContextType.Songs -> stringResource(R.string.library_songs)
     else -> entry.title.ifEmpty { stringResource(R.string.library_songs) }
 }
 
