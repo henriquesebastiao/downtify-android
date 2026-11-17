@@ -93,7 +93,11 @@ import com.henriquesebastiao.downtify.ui.common.chooseClientCertificate
 
 /** Settings on a TV: the phone's [SettingsViewModel], drawn for a TV by [TvSettingsScreen]. */
 @Composable
-fun TvSettingsRoute(onOpenAbout: () -> Unit, modifier: Modifier = Modifier, viewModel: SettingsViewModel = hiltViewModel()) {
+fun TvSettingsRoute(
+    onOpenAbout: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: SettingsViewModel = hiltViewModel(),
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     TvSettingsScreen(
@@ -133,7 +137,16 @@ internal enum class TvSettingsSection(@StringRes val title: Int, val icon: Int) 
     About(R.string.settings_about, DowntifyIcons.Info),
 }
 
-private enum class TvSettingsDialog { WifiQuality, NormalizationLevel, ReadAhead, StreamCache, Theme, Font, ClientCertificate, Unpair }
+private enum class TvSettingsDialog {
+    WifiQuality,
+    NormalizationLevel,
+    ReadAhead,
+    StreamCache,
+    Theme,
+    Font,
+    ClientCertificate,
+    Unpair,
+}
 
 /**
  * Settings on a TV, as TV settings screens lay them out: the sections down the left (focus on one
@@ -514,18 +527,33 @@ private fun SettingRow(
                 color = if (destructive) scheme.error else scheme.onSurface,
             )
             if (summary != null) {
-                Text(summary, style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant, maxLines = 2)
+                Text(
+                    summary,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = scheme.onSurfaceVariant,
+                    maxLines = 2,
+                )
             }
         }
         when {
             toggle != null -> Switch(checked = toggle, onCheckedChange = null)
-            chevron -> Icon(painterResource(DowntifyIcons.ChevronRight), contentDescription = null, tint = scheme.onSurfaceVariant)
+
+            chevron -> Icon(
+                painterResource(DowntifyIcons.ChevronRight),
+                contentDescription = null,
+                tint = scheme.onSurfaceVariant,
+            )
         }
     }
 }
 
 @Composable
-private fun SettingsDialogs(dialog: TvSettingsDialog?, state: SettingsUiState, actions: SettingsActions, onDismiss: () -> Unit) {
+private fun SettingsDialogs(
+    dialog: TvSettingsDialog?,
+    state: SettingsUiState,
+    actions: SettingsActions,
+    onDismiss: () -> Unit,
+) {
     val settings = state.settings
     when (dialog) {
         TvSettingsDialog.WifiQuality -> TvChoiceDialog(
@@ -641,7 +669,10 @@ internal fun <T> TvChoiceDialog(
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(start = TvRingSpace, bottom = Spacing.sm).semantics { heading() },
             )
-            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+            Column(
+                Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+            ) {
                 options.forEach { option ->
                     ChoiceRow(
                         label = label(option),
@@ -660,7 +691,13 @@ internal fun <T> TvChoiceDialog(
 }
 
 @Composable
-private fun ChoiceRow(label: String, selected: Boolean, font: FontFamily?, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun ChoiceRow(
+    label: String,
+    selected: Boolean,
+    font: FontFamily?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
     val scheme = MaterialTheme.colorScheme
