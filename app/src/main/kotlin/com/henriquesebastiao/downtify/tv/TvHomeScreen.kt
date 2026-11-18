@@ -78,7 +78,9 @@ fun TvHomeRoute(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     TvHomeScreen(
         state = state,
-        onOpenRecent = { if (it.type == PlaybackContextType.Songs) viewModel.playRecentSong(it) else onOpenRecent(it) },
+        onOpenRecent = {
+            if (it.type == PlaybackContextType.Songs) viewModel.openRecentSong(it, onOpenAlbum) else onOpenRecent(it)
+        },
         onOpenAlbum = onOpenAlbum,
         modifier = modifier,
     )

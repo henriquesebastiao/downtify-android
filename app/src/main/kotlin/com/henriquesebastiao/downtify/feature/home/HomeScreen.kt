@@ -89,7 +89,7 @@ fun HomeRoute(
     HomeScreen(
         state,
         onOpenSettings,
-        { if (it.type == PlaybackContextType.Songs) viewModel.playRecentSong(it) else onOpenRecent(it) },
+        { if (it.type == PlaybackContextType.Songs) viewModel.openRecentSong(it, onOpenAlbum) else onOpenRecent(it) },
         onOpenAlbum,
         onSeeAll,
         viewModel::refresh,

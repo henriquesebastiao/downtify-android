@@ -102,12 +102,18 @@ class HomeViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), HomeUiState())
 
     /**
-     * A loose song's tile ([PlaybackContextType.Songs]) plays that song at once: unlike an album's
-     * or a playlist's, there is no page of its own to open.
+     * A loose song's tile ([PlaybackContextType.Songs]) opens the song's album through [openAlbum].
+     * A song with no album in the library (untagged, so no album id) has no page to open: it plays
+     * at once instead.
      */
-    fun playRecentSong(entry: RecentContext) {
-        val track = library.library.value?.byId?.get(entry.refId) ?: return
-        player.play(listOf(track), 0, PlaybackContext(PlaybackContextType.Songs, "", ""))
+    fun openRecentSong(entry: RecentContext, openAlbum: (String) -> Unit) {
+        val snapshot = library.library.value ?: return
+        val track = snapshot.byId[entry.refId] ?: return
+        if (track.albumId in snapshot.albumsById) {
+            openAlbum(track.albumId)
+        } else {
+            player.play(listOf(track), 0, PlaybackContext(PlaybackContextType.Songs, "", ""))
+        }
     }
 
     /** Pull to refresh: the server rescans its folder, then the app syncs. */
