@@ -52,6 +52,7 @@ class SettingsRepository @Inject constructor(
             // Saved only once the user flips it; until then each sort keeps its own order.
             librarySortDescending = prefs[LIBRARY_SORT_DESCENDING] ?: sort.descendingByDefault,
             zToATabs = prefs[Z_TO_A_TABS] ?: defaults.zToATabs,
+            keepAwake = prefs[KEEP_AWAKE] ?: defaults.keepAwake,
             downloadWifiOnly = prefs[DOWNLOAD_WIFI_ONLY] ?: defaults.downloadWifiOnly,
             offlineLimitBytes = prefs[OFFLINE_LIMIT] ?: defaults.offlineLimitBytes,
             offlineDirectoryUri = prefs[OFFLINE_DIRECTORY_URI],
@@ -122,6 +123,10 @@ class SettingsRepository @Inject constructor(
         }
     }
 
+    suspend fun setKeepAwake(value: Boolean) {
+        store.edit { it[KEEP_AWAKE] = value }
+    }
+
     suspend fun setDownloadWifiOnly(value: Boolean) {
         store.edit { it[DOWNLOAD_WIFI_ONLY] = value }
     }
@@ -173,6 +178,7 @@ class SettingsRepository @Inject constructor(
         val LIBRARY_SORT = stringPreferencesKey("library_sort")
         val LIBRARY_SORT_DESCENDING = booleanPreferencesKey("library_sort_descending")
         val Z_TO_A_TABS = stringSetPreferencesKey("library_z_to_a_tabs")
+        val KEEP_AWAKE = booleanPreferencesKey("keep_awake")
         val CLIENT_ID = stringPreferencesKey("client_id")
         val DOWNLOAD_WIFI_ONLY = booleanPreferencesKey("download_wifi_only")
         val OFFLINE_LIMIT = longPreferencesKey("offline_limit_bytes")

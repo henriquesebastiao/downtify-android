@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -29,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -51,9 +53,11 @@ import com.henriquesebastiao.downtify.ui.navigation.TopLevelDestination
 
 /**
  * The TV's top bar, after the TV music apps: what's playing on the left (it opens the player),
- * the three tabs in the middle, settings on the right. The tabs stay centered whatever the sides
- * hold. [selectedFocus] is the selected tab's, where the remote's focus starts.
+ * the three tabs in the middle, on the right "keep the screen on" ([keepAwake], when
+ * [onKeepAwakeChange] is given) and settings. The tabs stay centered whatever the sides hold.
+ * [selectedFocus] is the selected tab's, where the remote's focus starts.
  */
+@Suppress("LongParameterList")
 @Composable
 fun TvTopBar(
     selected: TopLevelDestination,
@@ -61,6 +65,8 @@ fun TvTopBar(
     onSettings: () -> Unit,
     modifier: Modifier = Modifier,
     selectedFocus: FocusRequester? = null,
+    keepAwake: Boolean = false,
+    onKeepAwakeChange: ((Boolean) -> Unit)? = null,
     nowPlaying: @Composable () -> Unit = {},
 ) {
     Row(
@@ -86,7 +92,12 @@ fun TvTopBar(
                 )
             }
         }
-        Box(Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
+        Row(
+            Modifier.weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.xs, Alignment.End),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (onKeepAwakeChange != null) KeepAwakeToggle(keepAwake, onKeepAwakeChange)
             TvIconButton(
                 DowntifyIcons.Settings,
                 stringResource(R.string.settings_title),
@@ -129,6 +140,32 @@ private fun TvTab(label: String, icon: Int, selected: Boolean, onClick: () -> Un
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
             color = color,
             maxLines = 1,
+        )
+    }
+}
+
+/**
+ * "Keep the screen on", a switch as a round button: a power symbol, bare while off; on, on a disc
+ * in the play button's green (primary) so it reads from the sofa.
+ */
+@Composable
+private fun KeepAwakeToggle(on: Boolean, onChange: (Boolean) -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    val scheme = MaterialTheme.colorScheme
+    Box(
+        Modifier
+            .tvFocusFrame(focused, CircleShape)
+            .toggleable(on, interaction, indication = null, role = Role.Switch, onValueChange = onChange)
+            .size(BarButtonSize)
+            .background(if (on) scheme.primary else Color.Transparent, CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            painterResource(DowntifyIcons.Power),
+            contentDescription = stringResource(R.string.tv_keep_awake),
+            tint = if (on) scheme.onPrimary else scheme.onSurface,
+            modifier = Modifier.size(TabIcon),
         )
     }
 }
@@ -243,6 +280,8 @@ private fun TvTopBarPreview() {
                 selected = TopLevelDestination.Library,
                 onSelect = {},
                 onSettings = {},
+                keepAwake = true,
+                onKeepAwakeChange = {},
                 nowPlaying = {
                     TvNowPlayingCard(PlayerState(track = PreviewData.tracks[1], isPlaying = true), onOpen = {})
                 },

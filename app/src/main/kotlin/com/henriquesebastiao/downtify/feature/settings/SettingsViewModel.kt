@@ -85,6 +85,7 @@ class SettingsViewModel @Inject constructor(
     fun setAmoled(value: Boolean) = launch { settings.setAmoled(value) }
     fun setFont(value: AppFont) = launch { settings.setFont(value) }
     fun setFloatingNavBar(value: Boolean) = launch { settings.setFloatingNavBar(value) }
+    fun setKeepAwake(value: Boolean) = launch { settings.setKeepAwake(value) }
     fun setDownloadWifiOnly(value: Boolean) = launch { settings.setDownloadWifiOnly(value) }
     fun setOfflineLimit(bytes: Long) = launch { settings.setOfflineLimit(bytes) }
     fun setOfflineDirectory(uri: String?) = launch { offline.setDirectory(uri) }

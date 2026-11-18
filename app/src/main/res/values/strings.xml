@@ -580,6 +580,7 @@
     <string name="tv_exit_body">The music stops when it closes.</string>
     <string name="tv_exit_stay">Not now</string>
     <string name="tv_exit_close">Close Downtify</string>
+    <string name="tv_keep_awake">Keep the screen on</string>
     <!-- TV player: a darker screen for a dark room, and the artist under the controls. -->
     <string name="tv_dark_mode">Dark mode</string>
     <string name="tv_dark_mode_on">Dark mode is on</string>

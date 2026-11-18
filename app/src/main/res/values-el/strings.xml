@@ -571,6 +571,7 @@
     <string name="tv_exit_body">Με το κλείσιμο η μουσική σταματά.</string>
     <string name="tv_exit_stay">Όχι τώρα</string>
     <string name="tv_exit_close">Κλείσιμο του Downtify</string>
+    <string name="tv_keep_awake">Η οθόνη να μένει αναμμένη</string>
     <string name="tv_dark_mode">Σκοτεινή λειτουργία</string>
     <string name="tv_dark_mode_on">Η σκοτεινή λειτουργία είναι ενεργή</string>
     <string name="tv_dark_mode_on_body">Πατήστε οποιοδήποτε κουμπί για να φωτίσει ξανά η οθόνη όταν σκοτεινιάσει.</string>

@@ -29,6 +29,7 @@ import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -55,6 +56,7 @@ import com.henriquesebastiao.downtify.feature.player.NowPlayingActions
 import com.henriquesebastiao.downtify.feature.player.PlayerViewModel
 import com.henriquesebastiao.downtify.feature.podcasts.ShowRoute
 import com.henriquesebastiao.downtify.feature.search.SearchNavigation
+import com.henriquesebastiao.downtify.feature.settings.SettingsViewModel
 import com.henriquesebastiao.downtify.feature.similar.SimilarRoute as SimilarScreenRoute
 import com.henriquesebastiao.downtify.feature.trash.MoveToTrashHost
 import com.henriquesebastiao.downtify.ui.navigation.AboutRoute as AboutDestination
@@ -90,6 +92,9 @@ fun TvShell() {
     val destination = backStack?.destination
     val player: PlayerViewModel = hiltViewModel()
     val hasMedia by player.hasMedia.collectAsStateWithLifecycle()
+    val settings: SettingsViewModel = hiltViewModel()
+    val keepAwake = settings.uiState.collectAsStateWithLifecycle().value.settings.keepAwake
+    KeepScreenOn(keepAwake)
     val snackbar = remember { SnackbarHostState() }
     val addedToQueue = stringResource(R.string.track_added_to_queue)
     LaunchedEffect(player) {
@@ -124,6 +129,8 @@ fun TvShell() {
                 onSelect = openTab,
                 onSettings = { navController.navigate(SettingsDestination) { launchSingleTop = true } },
                 selectedFocus = tabFocus,
+                keepAwake = keepAwake,
+                onKeepAwakeChange = settings::setKeepAwake,
                 nowPlaying = {
                     val state by player.state.collectAsStateWithLifecycle()
                     TvNowPlayingCard(
@@ -162,6 +169,19 @@ fun TvShell() {
                 },
             )
         }
+    }
+}
+
+/**
+ * While [on], the screen stays on with the app in front: the TV neither sleeps nor starts its
+ * screensaver. Android drops it on its own when the app leaves the screen.
+ */
+@Composable
+private fun KeepScreenOn(on: Boolean) {
+    val view = LocalView.current
+    DisposableEffect(view, on) {
+        view.keepScreenOn = on
+        onDispose { view.keepScreenOn = false }
     }
 }
 

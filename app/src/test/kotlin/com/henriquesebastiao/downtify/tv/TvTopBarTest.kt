@@ -1,6 +1,11 @@
 package com.henriquesebastiao.downtify.tv
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -12,6 +17,8 @@ import com.henriquesebastiao.downtify.core.player.PlayerState
 import com.henriquesebastiao.downtify.ui.common.PreviewData
 import com.henriquesebastiao.downtify.ui.navigation.TopLevelDestination
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -44,6 +51,39 @@ class TvTopBarTest {
 
         assertEquals(listOf(TopLevelDestination.Library, TopLevelDestination.Search), picked)
         assertEquals(1, settings)
+    }
+
+    @Test
+    fun thePowerButtonKeepsTheScreenOnAndOff() {
+        var awake by mutableStateOf(false)
+        compose.setContent {
+            DowntifyTheme(darkTheme = true) {
+                TvTopBar(
+                    selected = TopLevelDestination.Home,
+                    onSelect = {},
+                    onSettings = {},
+                    keepAwake = awake,
+                    onKeepAwakeChange = { awake = it },
+                )
+            }
+        }
+
+        val toggle = compose.onNodeWithContentDescription("Keep the screen on")
+        toggle.assertIsOff().performClick()
+        assertTrue(awake)
+        toggle.assertIsOn().performClick()
+        assertFalse(awake)
+    }
+
+    @Test
+    fun withoutAHandlerThereIsNoPowerButton() {
+        compose.setContent {
+            DowntifyTheme(darkTheme = true) {
+                TvTopBar(selected = TopLevelDestination.Home, onSelect = {}, onSettings = {})
+            }
+        }
+
+        compose.onNodeWithContentDescription("Keep the screen on").assertDoesNotExist()
     }
 
     @Test

@@ -174,5 +174,8 @@ object DowntifyIcons {
 
     @DrawableRes val Coffee = R.drawable.ic_coffee
 
+    /** The TV's "keep the screen on". */
+    @DrawableRes val Power = R.drawable.ic_power
+
     @DrawableRes val Description = R.drawable.ic_description
 }

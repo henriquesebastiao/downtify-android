@@ -571,6 +571,7 @@
     <string name="tv_exit_body">Kapatınca müzik durur.</string>
     <string name="tv_exit_stay">Şimdi değil</string>
     <string name="tv_exit_close">Downtify’ı kapat</string>
+    <string name="tv_keep_awake">Ekranı açık tut</string>
     <string name="tv_dark_mode">Karanlık mod</string>
     <string name="tv_dark_mode_on">Karanlık mod açık</string>
     <string name="tv_dark_mode_on_body">Ekran karardığında aydınlatmak için herhangi bir düğmeye basın.</string>

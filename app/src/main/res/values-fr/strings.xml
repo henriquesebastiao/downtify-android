@@ -585,6 +585,7 @@
     <string name="tv_exit_body">La musique s’arrête à la fermeture.</string>
     <string name="tv_exit_stay">Pas maintenant</string>
     <string name="tv_exit_close">Fermer Downtify</string>
+    <string name="tv_keep_awake">Garder l’écran allumé</string>
     <string name="tv_dark_mode">Mode sombre</string>
     <string name="tv_dark_mode_on">Le mode sombre est activé</string>
     <string name="tv_dark_mode_on_body">Appuyez sur n’importe quel bouton pour rallumer l’écran quand il s’assombrit.</string>
