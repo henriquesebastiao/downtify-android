@@ -93,6 +93,10 @@
     <string name="library_sort_order">Σειρά</string>
     <string name="library_sort_ascending">Αύξουσα</string>
     <string name="library_sort_descending">Φθίνουσα</string>
+    <string name="library_sort_a_z">Α–Ω</string>
+    <string name="library_sort_z_a">Ω–Α</string>
+    <string name="library_jump_to_letter">Μετάβαση στο %1$s</string>
+    <string name="library_go_to">Μετάβαση</string>
     <string name="library_show_list">Εμφάνιση ως λίστα</string>
     <string name="library_show_grid">Εμφάνιση ως πλέγμα</string>
     <string name="library_empty_albums">Δεν υπάρχουν άλμπουμ ακόμα</string>

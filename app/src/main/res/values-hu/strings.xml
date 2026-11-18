@@ -93,6 +93,10 @@
     <string name="library_sort_order">Sorrend</string>
     <string name="library_sort_ascending">Növekvő</string>
     <string name="library_sort_descending">Csökkenő</string>
+    <string name="library_sort_a_z">A–Z</string>
+    <string name="library_sort_z_a">Z–A</string>
+    <string name="library_jump_to_letter">Ugrás ide: %1$s</string>
+    <string name="library_go_to">Ugrás</string>
     <string name="library_show_list">Megjelenítés listaként</string>
     <string name="library_show_grid">Megjelenítés rácsként</string>
     <string name="library_empty_albums">Még nincs album</string>

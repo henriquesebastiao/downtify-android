@@ -1,11 +1,18 @@
 package com.henriquesebastiao.downtify.tv
 
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyTheme
+import com.henriquesebastiao.downtify.core.model.NameIndex
+import com.henriquesebastiao.downtify.core.model.NameSection
 import com.henriquesebastiao.downtify.feature.library.LibraryNavigation
 import com.henriquesebastiao.downtify.feature.library.LibraryTab
 import com.henriquesebastiao.downtify.feature.library.LibraryUiState
@@ -28,12 +35,27 @@ class TvLibraryScreenTest {
         state: LibraryUiState,
         navigation: LibraryNavigation = LibraryNavigation(),
         onSelectTab: (LibraryTab) -> Unit = {},
-        onPlaySong: (Int) -> Unit = {},
+        onPlaySong: (String) -> Unit = {},
+        onZtoA: (LibraryTab, Boolean) -> Unit = { _, _ -> },
     ) = compose.setContent {
         DowntifyTheme(darkTheme = true) {
-            TvLibraryScreen(state, navigation, onSelectTab = onSelectTab, onPlaySong = onPlaySong)
+            TvLibraryScreen(
+                state,
+                navigation,
+                onSelectTab = onSelectTab,
+                onPlaySong = onPlaySong,
+                onZtoA = onZtoA,
+            )
         }
     }
+
+    private fun artistsState(zToA: Boolean = false) = LibraryUiState(
+        loading = false,
+        tab = LibraryTab.Artists,
+        artists = PreviewData.artists,
+        artistSections = NameIndex.sections(PreviewData.artists, zToA) { it.name },
+        zToATabs = if (zToA) setOf(LibraryTab.Artists) else emptySet(),
+    )
 
     @Test
     fun theSectionsAreThePhonesWithTheSelectedOneMarked() {
@@ -52,7 +74,12 @@ class TvLibraryScreenTest {
         val album = PreviewData.albums.first()
         val opened = mutableListOf<String>()
         show(
-            LibraryUiState(loading = false, tab = LibraryTab.Albums, albums = PreviewData.albums),
+            LibraryUiState(
+                loading = false,
+                tab = LibraryTab.Albums,
+                albums = PreviewData.albums,
+                albumSections = NameIndex.sections(PreviewData.albums) { it.title },
+            ),
             navigation = LibraryNavigation(onAlbum = { opened += it }),
         )
 
@@ -65,10 +92,7 @@ class TvLibraryScreenTest {
     fun anArtistOpensItsPage() {
         val artist = PreviewData.artists.first()
         val opened = mutableListOf<String>()
-        show(
-            LibraryUiState(loading = false, tab = LibraryTab.Artists, artists = PreviewData.artists),
-            navigation = LibraryNavigation(onArtist = { opened += it }),
-        )
+        show(artistsState(), navigation = LibraryNavigation(onArtist = { opened += it }))
 
         compose.onNodeWithText(artist.name).performClick()
 
@@ -76,31 +100,86 @@ class TvLibraryScreenTest {
     }
 
     @Test
-    fun aSongPlaysFromItsPlaceInTheList() {
+    fun anArtistSitsBesideItsInitial() {
+        show(artistsState())
+
+        // Dani Rivera, Kenji Aoki, Nora Vale, Orsa: D, first, beside Dani; not a key, a label.
+        compose.onNodeWithText("D").assertIsDisplayed().assert(hasClickAction().not())
+        compose.onNodeWithText("Dani Rivera").assertIsDisplayed()
+    }
+
+    @Test
+    fun goToListsTheLettersAndJumpsToOne() {
+        show(artistsState())
+
+        compose.onNodeWithText("Go to").performClick()
+        listOf("D", "K", "N", "O").forEach { compose.onNode(letterKey(it)).assertExists() }
+        compose.onNode(letterKey("O")).performClick()
+
+        // The letters close and O's first artist is there, focused.
+        compose.onNode(letterKey("K")).assertDoesNotExist()
+        compose.onNodeWithText("Orsa").assertIsDisplayed().assertIsFocused()
+    }
+
+    private fun letterKey(initial: String) = hasText(initial) and hasClickAction()
+
+    @Test
+    fun thePillFlipsThatSectionsOrder() {
+        val flipped = mutableListOf<Pair<LibraryTab, Boolean>>()
+        show(artistsState(), onZtoA = { tab, zToA -> flipped += tab to zToA })
+
+        compose.onNodeWithText("A–Z").performClick()
+
+        assertEquals(listOf(LibraryTab.Artists to true), flipped)
+    }
+
+    @Test
+    fun zToAIsSaidOnThePill() {
+        show(artistsState(zToA = true))
+
+        compose.onNodeWithText("Z–A").assertExists()
+    }
+
+    @Test
+    fun aSongPlaysFromItself() {
         val songs = PreviewData.tracks
-        val played = mutableListOf<Int>()
-        show(LibraryUiState(loading = false, tab = LibraryTab.Songs, songs = songs), onPlaySong = { played += it })
+        val played = mutableListOf<String>()
+        show(
+            LibraryUiState(
+                loading = false,
+                tab = LibraryTab.Songs,
+                songs = songs,
+                songSections = NameIndex.sections(songs) { it.displayTitle },
+            ),
+            onPlaySong = { played += it },
+        )
 
-        compose.onNodeWithText(songs[1].displayTitle).performClick()
+        // Afterglow, Cassette Weather, Harbor Lights…: A heads the songs, by name.
+        compose.onNodeWithText("A").assertIsDisplayed()
+        compose.onNodeWithText("Cassette Weather").performClick()
 
-        assertEquals(listOf(1), played)
+        assertEquals(listOf("t7"), played)
     }
 
     @Test
     fun likedSongsLeadsThePlaylists() {
-        var liked = 0
+        val liked = PlaylistItem(null, "", 3, null)
+        val deepFocus = PreviewData.playlists.first().let { PlaylistItem(it, it.title, 3, null) }
+        var likedOpened = 0
         show(
             LibraryUiState(
                 loading = false,
                 tab = LibraryTab.Playlists,
-                playlists = listOf(PlaylistItem(null, "", 3, null)),
+                playlists = listOf(liked, deepFocus),
+                playlistSections = listOf(NameSection("♥", listOf(liked)), NameSection("D", listOf(deepFocus))),
             ),
-            navigation = LibraryNavigation(onLiked = { liked++ }),
+            navigation = LibraryNavigation(onLiked = { likedOpened++ }),
         )
 
+        compose.onNodeWithText("♥").assertIsDisplayed()
         compose.onNodeWithText("Liked songs").performClick()
 
-        assertEquals(1, liked)
+        assertEquals(1, likedOpened)
     }
 
     @Test

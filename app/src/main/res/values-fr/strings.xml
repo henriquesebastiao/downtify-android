@@ -93,6 +93,10 @@
     <string name="library_sort_order">Ordre</string>
     <string name="library_sort_ascending">Croissant</string>
     <string name="library_sort_descending">Décroissant</string>
+    <string name="library_sort_a_z">A–Z</string>
+    <string name="library_sort_z_a">Z–A</string>
+    <string name="library_jump_to_letter">Aller à %1$s</string>
+    <string name="library_go_to">Aller à</string>
     <string name="library_show_list">Afficher en liste</string>
     <string name="library_show_grid">Afficher en grille</string>
     <string name="library_empty_albums">Aucun album pour l’instant</string>

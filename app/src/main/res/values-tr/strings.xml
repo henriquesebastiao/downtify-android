@@ -93,6 +93,10 @@
     <string name="library_sort_order">Sıra</string>
     <string name="library_sort_ascending">Artan</string>
     <string name="library_sort_descending">Azalan</string>
+    <string name="library_sort_a_z">A–Z</string>
+    <string name="library_sort_z_a">Z–A</string>
+    <string name="library_jump_to_letter">%1$s harfine git</string>
+    <string name="library_go_to">Git</string>
     <string name="library_show_list">Liste olarak göster</string>
     <string name="library_show_grid">Izgara olarak göster</string>
     <string name="library_empty_albums">Henüz albüm yok</string>

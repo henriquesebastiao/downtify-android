@@ -93,6 +93,10 @@
     <string name="library_sort_order">Ред</string>
     <string name="library_sort_ascending">Възходящо</string>
     <string name="library_sort_descending">Низходящо</string>
+    <string name="library_sort_a_z">А–Я</string>
+    <string name="library_sort_z_a">Я–А</string>
+    <string name="library_jump_to_letter">Към %1$s</string>
+    <string name="library_go_to">Към</string>
     <string name="library_show_list">Покажи като списък</string>
     <string name="library_show_grid">Покажи като мрежа</string>
     <string name="library_empty_albums">Още няма албуми</string>
