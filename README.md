@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/images/readme-banner.png" alt="Downtify for Android: the official app for your self-hosted music server. Now Playing, the library and synced lyrics on three phones." width="100%">
+</p>
+
 # Downtify for Android
 
 The official Android client for [Downtify](https://github.com/henriquesebastiao/downtify), the self-hosted music server. It finds your server on the home network (or takes an address you type), signs in with your Downtify account, syncs the library and streams it — original quality on Wi-Fi, transcoded on mobile data — with the system media notification, lock screen and Bluetooth controls.
