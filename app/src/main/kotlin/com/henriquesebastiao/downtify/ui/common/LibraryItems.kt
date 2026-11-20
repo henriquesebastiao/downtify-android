@@ -3,8 +3,11 @@ package com.henriquesebastiao.downtify.ui.common
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,6 +53,7 @@ import com.henriquesebastiao.downtify.core.designsystem.component.CircleButton
 import com.henriquesebastiao.downtify.core.designsystem.component.DowntifyIcons
 import com.henriquesebastiao.downtify.core.designsystem.component.MediaListItem
 import com.henriquesebastiao.downtify.core.designsystem.component.PlayingBars
+import com.henriquesebastiao.downtify.core.designsystem.component.focusRing
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyShape
 import com.henriquesebastiao.downtify.core.designsystem.theme.ListStyle
 import com.henriquesebastiao.downtify.core.designsystem.theme.Spacing
@@ -85,9 +89,19 @@ fun CoverCard(
     placeholderIcon: Int = DowntifyIcons.Album,
     titleColor: Color = Color.Unspecified,
     centered: Boolean = false,
+    fallbackUrl: String? = null,
 ) {
+    // A TV remote's focus rings the cover, the card's face, rather than the whole column.
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
     Column(
-        modifier = modifier.clickable(onClickLabel = title, role = Role.Button, onClick = onClick),
+        modifier = modifier.clickable(
+            interactionSource = interaction,
+            indication = LocalIndication.current,
+            onClickLabel = title,
+            role = Role.Button,
+            onClick = onClick,
+        ),
         verticalArrangement = Arrangement.spacedBy(Spacing.sm),
         horizontalAlignment = if (centered) Alignment.CenterHorizontally else Alignment.Start,
     ) {
@@ -96,7 +110,11 @@ fun CoverCard(
             contentDescription = null,
             shape = shape,
             placeholderIcon = placeholderIcon,
-            modifier = Modifier.fillMaxWidth().aspectRatio(1f),
+            fallbackUrl = fallbackUrl,
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .focusRing(focused, shape, MaterialTheme.colorScheme.onSurface),
         )
         Column(horizontalAlignment = if (centered) Alignment.CenterHorizontally else Alignment.Start) {
             Text(
@@ -243,6 +261,7 @@ fun CoverItem(
     subtitleLines: Int = 1,
     shape: Shape = ListStyle.Separated.shapeOf(0, 1),
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainer,
+    fallbackUrl: String? = null,
     trailing: (@Composable RowScope.() -> Unit)? = null,
 ) {
     MediaListItem(
@@ -261,6 +280,7 @@ fun CoverItem(
                 contentDescription = null,
                 shape = if (round) CircleShape else DowntifyShape.ArtworkThumb,
                 placeholderIcon = placeholderIcon,
+                fallbackUrl = fallbackUrl,
                 modifier = Modifier.size(ITEM_COVER),
             )
         },
@@ -378,13 +398,21 @@ private fun TrackMenu(track: Track, isLiked: Boolean, actions: TrackActions, col
     }
 }
 
-/** A round artist avatar with the name under it. */
+/** A round artist avatar with the name under it; [fallbackUrl] (a cover of theirs) when [coverUrl] fails. */
 @Composable
-fun ArtistCard(name: String, coverUrl: String?, onClick: () -> Unit, modifier: Modifier = Modifier, size: Dp = 88.dp) {
+fun ArtistCard(
+    name: String,
+    coverUrl: String?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    size: Dp = 88.dp,
+    fallbackUrl: String? = null,
+) {
     CoverCard(
         title = name,
         subtitle = null,
         coverUrl = coverUrl,
+        fallbackUrl = fallbackUrl,
         onClick = onClick,
         shape = CircleShape,
         placeholderIcon = DowntifyIcons.Artist,

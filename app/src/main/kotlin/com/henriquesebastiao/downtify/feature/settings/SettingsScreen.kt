@@ -685,13 +685,13 @@ private fun appearanceRows(
 
 /** The name of the language the app shows now, in that language. */
 @Composable
-private fun currentLanguageName(): String {
+internal fun currentLanguageName(): String {
     val locale = LocalLocale.current.platformLocale
     return locale.getDisplayName(locale).replaceFirstChar { it.titlecase(locale) }
 }
 
 /** Android 13+ keeps a language per app; its screen is where the user picks it. */
-private fun openAppLanguageSettings(context: Context) {
+internal fun openAppLanguageSettings(context: Context) {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
     val intent = Intent(Settings.ACTION_APP_LOCALE_SETTINGS, Uri.fromParts("package", context.packageName, null))
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -742,14 +742,14 @@ private fun <T> ChoiceDialog(
 }
 
 @Composable
-private fun qualitySummary(quality: StreamQuality): String = if (quality.isOriginal) {
+internal fun qualitySummary(quality: StreamQuality): String = if (quality.isOriginal) {
     stringResource(R.string.settings_quality_original)
 } else {
     stringResource(R.string.settings_quality_transcoded, quality.format.displayName, quality.bitrate)
 }
 
 @Composable
-private fun qualityLabel(quality: StreamQuality): String = if (quality.isOriginal) {
+internal fun qualityLabel(quality: StreamQuality): String = if (quality.isOriginal) {
     stringResource(R.string.settings_quality_original)
 } else {
     stringResource(R.string.settings_quality_label, quality.format.displayName, quality.bitrate)
@@ -757,11 +757,11 @@ private fun qualityLabel(quality: StreamQuality): String = if (quality.isOrigina
 
 /** A transcoded quality's format and bitrate, in tabular figures; the " · " between them isn't. */
 @Composable
-private fun qualityValues(quality: StreamQuality): List<String> =
+internal fun qualityValues(quality: StreamQuality): List<String> =
     if (quality.isOriginal) emptyList() else qualityLabel(quality).split(" · ")
 
 @Composable
-private fun readAheadLabel(tracks: Int): String = if (tracks == 0) {
+internal fun readAheadLabel(tracks: Int): String = if (tracks == 0) {
     stringResource(R.string.settings_read_ahead_off)
 } else {
     stringResource(R.string.settings_read_ahead_count, tracks)
@@ -775,7 +775,7 @@ private val StreamFormat.displayName: String
         StreamFormat.Mp3 -> "MP3"
     }
 
-private val AppFont.label: Int
+internal val AppFont.label: Int
     get() = when (this) {
         AppFont.Downtify -> R.string.settings_font_downtify
         AppFont.System -> R.string.settings_font_system
@@ -783,14 +783,14 @@ private val AppFont.label: Int
     }
 
 /** Each option in its own typeface, so the list is its own preview. */
-private val AppFont.previewFamily: FontFamily
+internal val AppFont.previewFamily: FontFamily
     get() = when (this) {
         AppFont.Downtify -> DmSans
         AppFont.System -> FontFamily.Default
         AppFont.GoogleSansFlex -> GoogleSansFlex
     }
 
-private val ThemeMode.label: Int
+internal val ThemeMode.label: Int
     get() = when (this) {
         ThemeMode.System -> R.string.settings_theme_system
         ThemeMode.Dark -> R.string.settings_theme_dark

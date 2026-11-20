@@ -23,6 +23,7 @@ import com.henriquesebastiao.downtify.core.model.PodcastEpisode
 import com.henriquesebastiao.downtify.core.model.PodcastShow
 import com.henriquesebastiao.downtify.core.model.RemoteSong
 import com.henriquesebastiao.downtify.core.model.Track
+import com.henriquesebastiao.downtify.core.model.recentFor
 import com.henriquesebastiao.downtify.core.network.session.SessionStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -169,7 +170,12 @@ class PlayerController @Inject constructor(
             player.prepare()
             player.play()
             mutableState.update { it.copy(error = null) }
-            recents.record(from, tracks[start].takeIf { it.hasCover }?.id ?: tracks.firstOrNull { it.hasCover }?.id)
+            val started = tracks[start]
+            val recent = from.recentFor(started)
+            val ownCover = started.id.takeIf { started.hasCover }
+            // A loose song's tile shows its own cover or none, never a neighbour's.
+            val cover = if (recent != from) ownCover else ownCover ?: tracks.firstOrNull { it.hasCover }?.id
+            recents.record(recent, cover)
         }
     }
 
@@ -269,6 +275,22 @@ class PlayerController @Inject constructor(
             val args = Bundle().apply { putString(PlaybackService.EXTRA_TRACK_ID, track.id) }
             connect().sendCustomCommand(SessionCommand(PlaybackService.ACTION_ADD_TO_QUEUE, Bundle.EMPTY), args)
             mutableEvents.tryEmit(PlayerEvent.AddedToQueue(track.displayTitle))
+        }
+    }
+
+    /**
+     * Queues [tracks] in their order, after what's already queued (each goes after the last one
+     * queued), with one "added" event named [label] (an album's title) rather than one a song.
+     */
+    fun addAllToQueue(tracks: List<Track>, label: String) {
+        if (tracks.isEmpty()) return
+        main.launch {
+            val controller = connect()
+            tracks.forEach { track ->
+                val args = Bundle().apply { putString(PlaybackService.EXTRA_TRACK_ID, track.id) }
+                controller.sendCustomCommand(SessionCommand(PlaybackService.ACTION_ADD_TO_QUEUE, Bundle.EMPTY), args)
+            }
+            mutableEvents.tryEmit(PlayerEvent.AddedToQueue(label))
         }
     }
 

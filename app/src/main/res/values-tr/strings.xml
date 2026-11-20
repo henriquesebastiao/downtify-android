@@ -93,6 +93,10 @@
     <string name="library_sort_order">Sıra</string>
     <string name="library_sort_ascending">Artan</string>
     <string name="library_sort_descending">Azalan</string>
+    <string name="library_sort_a_z">A–Z</string>
+    <string name="library_sort_z_a">Z–A</string>
+    <string name="library_jump_to_letter">%1$s harfine git</string>
+    <string name="library_go_to">Git</string>
     <string name="library_show_list">Liste olarak göster</string>
     <string name="library_show_grid">Izgara olarak göster</string>
     <string name="library_empty_albums">Henüz albüm yok</string>
@@ -563,4 +567,13 @@
     <string name="settings_client_certificate_active">Sunucu bir istemci sertifikası istediğinde Android kimlik bilgisi deposundan “%1$s” sunuluyor.</string>
     <string name="settings_client_certificate_change">Değiştir</string>
     <string name="settings_client_certificate_remove">Kaldır</string>
+    <string name="tv_exit_title">Downtify kapatılsın mı?</string>
+    <string name="tv_exit_body">Kapatınca müzik durur.</string>
+    <string name="tv_exit_stay">Şimdi değil</string>
+    <string name="tv_exit_close">Downtify’ı kapat</string>
+    <string name="tv_keep_awake">Ekranı açık tut</string>
+    <string name="tv_dark_mode">Karanlık mod</string>
+    <string name="tv_dark_mode_on">Karanlık mod açık</string>
+    <string name="tv_dark_mode_on_body">Ekran karardığında aydınlatmak için herhangi bir düğmeye basın.</string>
+    <string name="tv_about_artist">Sanatçı hakkında</string>
 </resources>

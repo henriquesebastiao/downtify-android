@@ -162,6 +162,12 @@ class CollectionViewModel @Inject constructor(
 
     fun addToQueue(track: Track) = player.addToQueue(track)
 
+    /** Queues the whole album or playlist, in its order, after what's already queued. */
+    fun addAllToQueue() {
+        val state = uiState.value
+        player.addAllToQueue(state.tracks, state.title)
+    }
+
     fun toggleLike(track: Track) {
         viewModelScope.launch { library.setLiked(track.id, track.id !in uiState.value.likedIds) }
     }

@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,6 +34,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.IconButtonShapes
 import androidx.compose.material3.LinearWavyProgressIndicator
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
@@ -115,6 +117,8 @@ fun MiniPlayerCard(
             Row(
                 Modifier
                     .weight(1f)
+                    // A pill around the round cover and the text: the part that opens Now Playing.
+                    .focusRing(CircleShape, scheme.onPrimaryContainer)
                     .clickable(onClickLabel = openLabel, role = Role.Button, onClick = onOpen)
                     .padding(vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -168,17 +172,16 @@ fun MiniPlayerButton(
         MaterialTheme.motionScheme.fastSpatialSpec(),
         label = "miniButtonCorner",
     )
+    val shape = RoundedCornerShape(percent = corner.coerceIn(0f, PILL_PERCENT).roundToInt())
+    val content = if (main) scheme.onPrimary else scheme.onPrimaryContainer
     FilledIconButton(
         onClick = onClick,
-        shapes = IconButtonShapes(
-            shape = RoundedCornerShape(percent = corner.coerceIn(0f, PILL_PERCENT).roundToInt()),
-            pressedShape = RoundedCornerShape(16.dp),
-        ),
+        shapes = IconButtonShapes(shape = shape, pressedShape = RoundedCornerShape(16.dp)),
         colors = IconButtonDefaults.filledIconButtonColors(
             containerColor = if (main) scheme.primary else scheme.onPrimary,
-            contentColor = if (main) scheme.onPrimary else scheme.onPrimaryContainer,
+            contentColor = content,
         ),
-        modifier = modifier.size(48.dp),
+        modifier = modifier.size(48.dp).focusRing(shape, content),
     ) {
         if (buffering) {
             val progressColor = if (main) scheme.onPrimary else scheme.onPrimaryContainer
@@ -204,6 +207,7 @@ data class PlaybackLabels(val play: String, val pause: String, val previous: Str
  * play/pause, which is a circle while paused and a 28 dp squircle while playing. The pressed
  * button widens and its neighbours make room. [compact] is 56 dp tall instead of 76. An episode
  * swaps previous/next for its skips with [previousIcon] and [nextIcon] (and their [labels]).
+ * [playModifier] goes on play/pause alone: where a TV remote's focus lands when Now Playing opens.
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -218,6 +222,7 @@ fun PlaybackControls(
     previousIcon: Int = DowntifyIcons.Previous,
     nextIcon: Int = DowntifyIcons.Next,
     buffering: Boolean = false,
+    playModifier: Modifier = Modifier,
 ) {
     val height = if (compact) 56.dp else 76.dp
     val scheme = MaterialTheme.colorScheme
@@ -264,7 +269,7 @@ fun PlaybackControls(
                     playShapes,
                     playColors,
                     interaction,
-                    Modifier.weight(PLAY_WEIGHT).animateWidth(interaction).height(height),
+                    Modifier.weight(PLAY_WEIGHT).animateWidth(interaction).height(height).then(playModifier),
                     PLAY_ICON,
                     filled = true,
                     buffering = buffering,
@@ -324,6 +329,8 @@ private fun TransportButton(
             Icon(painterResource(icon), contentDescription = label, modifier = Modifier.size(iconSize))
         }
     }
+    // The ring in the button's own content color: it shows on the button's fill.
+    val ringed = modifier.focusRing(shapes.shape, colors.contentColor)
     if (filled) {
         Button(
             onClick = onClick,
@@ -331,7 +338,7 @@ private fun TransportButton(
             colors = colors,
             contentPadding = PaddingValues(0.dp),
             interactionSource = interaction,
-            modifier = modifier,
+            modifier = ringed,
             content = content,
         )
     } else {
@@ -341,7 +348,7 @@ private fun TransportButton(
             colors = colors,
             contentPadding = PaddingValues(0.dp),
             interactionSource = interaction,
-            modifier = modifier,
+            modifier = ringed,
             content = content,
         )
     }
@@ -513,6 +520,10 @@ private fun WavySlider(
     val stroke = with(LocalDensity.current) { Stroke(width = SEEK_STROKE.toPx(), cap = StrokeCap.Round) }
     val state = rememberSliderState()
     LaunchedEffect(value) { state.value = value }
+    // With a TV remote the slider takes focus and its arrows seek: the thumb wears a ring then.
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    val ring = LocalContentColor.current
     Slider(
         state = state,
         enabled = enabled,
@@ -521,8 +532,14 @@ private fun WavySlider(
             onDrag(it)
         },
         onValueChangeFinished = onRelease,
+        interactionSource = interaction,
         thumb = {
-            Box(Modifier.size(thumbSize).background(scheme.primary, CircleShape))
+            Box(
+                Modifier
+                    .size(thumbSize)
+                    .background(scheme.primary, CircleShape)
+                    .focusRing(focused, CircleShape, ring),
+            )
         },
         track = {
             LinearWavyProgressIndicator(

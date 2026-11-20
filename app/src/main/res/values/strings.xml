@@ -94,6 +94,10 @@
     <string name="library_sort_order">Order</string>
     <string name="library_sort_ascending">Ascending</string>
     <string name="library_sort_descending">Descending</string>
+    <string name="library_sort_a_z">A–Z</string>
+    <string name="library_sort_z_a">Z–A</string>
+    <string name="library_jump_to_letter">Go to %1$s</string>
+    <string name="library_go_to">Go to</string>
     <string name="library_show_list">Show as list</string>
     <string name="library_show_grid">Show as grid</string>
     <string name="library_empty_albums">No albums yet</string>
@@ -571,4 +575,15 @@
     <string name="settings_client_certificate_active">Presenting “%1$s” from Android’s credential storage when the server asks for a client certificate.</string>
     <string name="settings_client_certificate_change">Change</string>
     <string name="settings_client_certificate_remove">Remove</string>
+    <!-- TV: Back on Home while music plays asks first, as the TV music apps do. -->
+    <string name="tv_exit_title">Close Downtify?</string>
+    <string name="tv_exit_body">The music stops when it closes.</string>
+    <string name="tv_exit_stay">Not now</string>
+    <string name="tv_exit_close">Close Downtify</string>
+    <string name="tv_keep_awake">Keep the screen on</string>
+    <!-- TV player: a darker screen for a dark room, and the artist under the controls. -->
+    <string name="tv_dark_mode">Dark mode</string>
+    <string name="tv_dark_mode_on">Dark mode is on</string>
+    <string name="tv_dark_mode_on_body">Press any button to light the screen up when it dims.</string>
+    <string name="tv_about_artist">About the artist</string>
 </resources>

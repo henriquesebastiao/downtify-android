@@ -93,6 +93,10 @@
     <string name="library_sort_order">Ред</string>
     <string name="library_sort_ascending">Възходящо</string>
     <string name="library_sort_descending">Низходящо</string>
+    <string name="library_sort_a_z">А–Я</string>
+    <string name="library_sort_z_a">Я–А</string>
+    <string name="library_jump_to_letter">Към %1$s</string>
+    <string name="library_go_to">Към</string>
     <string name="library_show_list">Покажи като списък</string>
     <string name="library_show_grid">Покажи като мрежа</string>
     <string name="library_empty_albums">Още няма албуми</string>
@@ -563,4 +567,13 @@
     <string name="settings_client_certificate_active">Представя „%1$s“ от хранилището за идентификационни данни на Android, когато сървърът поиска клиентски сертификат.</string>
     <string name="settings_client_certificate_change">Промени</string>
     <string name="settings_client_certificate_remove">Премахни</string>
+    <string name="tv_exit_title">Да се затвори ли Downtify?</string>
+    <string name="tv_exit_body">При затваряне музиката спира.</string>
+    <string name="tv_exit_stay">Не сега</string>
+    <string name="tv_exit_close">Затвори Downtify</string>
+    <string name="tv_keep_awake">Екранът да остане включен</string>
+    <string name="tv_dark_mode">Тъмен режим</string>
+    <string name="tv_dark_mode_on">Тъмният режим е включен</string>
+    <string name="tv_dark_mode_on_body">Натиснете който и да е бутон, за да светне екранът, когато потъмнее.</string>
+    <string name="tv_about_artist">За изпълнителя</string>
 </resources>

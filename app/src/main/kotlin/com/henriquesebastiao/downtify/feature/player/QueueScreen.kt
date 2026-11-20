@@ -1,5 +1,7 @@
 package com.henriquesebastiao.downtify.feature.player
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
@@ -20,9 +22,13 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -36,13 +42,23 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -62,6 +78,8 @@ import com.henriquesebastiao.downtify.core.designsystem.component.DowntifyIcons
 import com.henriquesebastiao.downtify.core.designsystem.component.MediaListItem
 import com.henriquesebastiao.downtify.core.designsystem.component.PhonePreviews
 import com.henriquesebastiao.downtify.core.designsystem.component.PlayingBars
+import com.henriquesebastiao.downtify.core.designsystem.component.focusRing
+import com.henriquesebastiao.downtify.core.designsystem.component.requestFocusWhenPlaced
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyTheme
 import com.henriquesebastiao.downtify.core.designsystem.theme.ListStyle
 import com.henriquesebastiao.downtify.core.designsystem.theme.Spacing
@@ -92,6 +110,8 @@ data class QueueActions(
  * The queue, as Spotify shows it: what's playing, the songs the user queued
  * ("Next in queue"), then the rest of the album or playlist. Tap a row to play
  * it; remove it with its ✕ (or a swipe left); drag its handle to reorder.
+ * With a TV remote the handle lifts its row instead: OK picks it up, up and
+ * down carry it, OK puts it down and back puts it where it was.
  * The playback controls stay at the bottom.
  */
 @Composable
@@ -107,6 +127,8 @@ fun QueueScreen(
     val entries = reorder.entries
     val queued = entries.takeWhile { it.queued }
     val rest = entries.drop(queued.size)
+    // Back while a remote carries a row puts it back, before back closes the queue.
+    BackHandler(enabled = reorder.pickedKey != null) { reorder.cancel() }
 
     CoverTheme(now.artworkUrl) {
         val scheme = MaterialTheme.colorScheme
@@ -182,7 +204,7 @@ private fun LazyListScope.entries(
 ) {
     items(entries, key = ::entryKey) { entry ->
         val key = entryKey(entry)
-        val dragging = reorder.draggingKey == key
+        val dragging = reorder.draggingKey == key || reorder.pickedKey == key
         val moveUp = stringResource(R.string.player_queue_move_up)
         val moveDown = stringResource(R.string.player_queue_move_down)
         val shape = ListStyle.Separated.shapeOf(0, 1)
@@ -229,9 +251,32 @@ private fun LazyItemScope.reorderableModifier(dragging: Boolean, reorder: QueueR
 
 @Composable
 private fun DragHandle(key: String, reorder: QueueReorder) {
+    val focus = remember { FocusRequester() }
+    val bringIntoView = remember { BringIntoViewRequester() }
+    val picked = reorder.pickedKey == key
+    // The row put down by a remote comes back under a new key once the player has moved it: focus follows.
+    LaunchedEffect(reorder.focusKey) {
+        if (reorder.focusKey == key) {
+            focus.requestFocusWhenPlaced()
+            reorder.focusTaken(key)
+        }
+    }
+    // The carried row stays in view as it goes past the list's edge.
+    LaunchedEffect(picked, reorder.entries) {
+        if (picked) {
+            withFrameNanos { }
+            bringIntoView.bringIntoView()
+        }
+    }
     Box(
         Modifier
             .size(48.dp)
+            .focusRequester(focus)
+            .bringIntoViewRequester(bringIntoView)
+            .onFocusChanged { if (!it.isFocused && reorder.pickedKey == key) reorder.drop() }
+            .onKeyEvent { reorder.onHandleKey(key, it) }
+            .focusRing(CircleShape, LocalContentColor.current)
+            .focusable()
             .pointerInput(key) {
                 detectDragGestures(
                     onDragStart = { reorder.start(key) },
@@ -255,6 +300,29 @@ private fun DragHandle(key: String, reorder: QueueReorder) {
 private fun entryKey(entry: QueueEntry): String = "entry:${entry.index}:${entry.trackId}"
 
 /**
+ * A remote's keys on a row's handle: OK (centre, enter) picks the row up or puts it down; while it
+ * is carried, up and down move it and left and right are held back, so focus stays with it.
+ */
+private fun QueueReorder.onHandleKey(key: String, event: KeyEvent): Boolean {
+    val carried = pickedKey == key
+    val down = event.type == KeyEventType.KeyDown
+    return when (event.key) {
+        Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
+            if (event.type == KeyEventType.KeyUp) if (carried) drop() else pick(key)
+            true
+        }
+
+        Key.DirectionUp -> carried.also { if (it && down) nudge(key, -1) }
+
+        Key.DirectionDown -> carried.also { if (it && down) nudge(key, 1) }
+
+        Key.DirectionLeft, Key.DirectionRight -> carried
+
+        else -> false
+    }
+}
+
+/**
  * Drag-to-reorder over the queue: a local copy of the rows follows the finger,
  * and the move goes to the player once, when the finger lifts. The copy starts
  * over whenever the player's queue changes.
@@ -272,12 +340,58 @@ private class QueueReorder(
         private set
     var dragOffset by mutableFloatStateOf(0f)
         private set
+
+    /** The row a remote has picked up (OK on its handle), until it's put down. */
+    var pickedKey by mutableStateOf<String?>(null)
+        private set
+
+    /** The row whose handle should take focus: the one a remote put down, under its new key. */
+    var focusKey by mutableStateOf<String?>(null)
+        private set
     private var original: List<QueueEntry> = initial
 
+    // Where the row a remote put down landed, until the player's queue comes back with it.
+    private var landedAt: Int? = null
+
     fun reset(upNext: List<QueueEntry>) {
-        if (draggingKey != null) return
+        if (draggingKey != null || pickedKey != null) return
         entries = upNext
         original = upNext
+        landedAt?.let { position ->
+            focusKey = upNext.getOrNull(position)?.let(::entryKey)
+            landedAt = null
+        }
+    }
+
+    fun pick(key: String) {
+        pickedKey = key
+    }
+
+    /** Moves the picked row one place up ([delta] -1) or down (+1); the player hears of it on [drop]. */
+    fun nudge(key: String, delta: Int) {
+        val from = entries.indexOfFirst { entryKey(it) == key }
+        val to = from + delta
+        if (from < 0 || to !in entries.indices) return
+        entries = moved(entries, from, to)
+    }
+
+    /** Puts the picked row down where it is now. */
+    fun drop() {
+        val key = pickedKey ?: return
+        pickedKey = null
+        val position = entries.indexOfFirst { entryKey(it) == key }
+        if (commit(key)) landedAt = position
+    }
+
+    /** Puts the picked row back where it was. */
+    fun cancel() {
+        if (pickedKey == null) return
+        pickedKey = null
+        entries = original
+    }
+
+    fun focusTaken(key: String) {
+        if (focusKey == key) focusKey = null
     }
 
     fun start(key: String) {
@@ -343,14 +457,16 @@ private class QueueReorder(
         dragOffset -= target.offset - dragged.offset
     }
 
-    private fun commit(key: String) {
+    /** Tells the player where the row with [key] is now; false when that's where it already was. */
+    private fun commit(key: String): Boolean {
         val position = entries.indexOfFirst { entryKey(it) == key }
-        val entry = entries.getOrNull(position) ?: return
+        val entry = entries.getOrNull(position) ?: return false
         val before = original.indexOfFirst { entryKey(it) == key }
-        if (position == before && entry.queued == original.getOrNull(before)?.queued) return
+        if (position == before && entry.queued == original.getOrNull(before)?.queued) return false
         val after = if (position == 0) currentIndex() else entries[position - 1].index
         original = entries
         onMove()(entry.index, after, entry.queued)
+        return true
     }
 
     private companion object {
@@ -413,14 +529,14 @@ private fun nowPlayingRow(state: PlayerState): NowRow? {
  * stream the address its search result gave: neither has a server cover.
  */
 @Composable
-private fun artworkOf(entry: QueueEntry): String? {
+internal fun artworkOf(entry: QueueEntry): String? {
     if (entry.artworkUrl == null) return null
     if (EpisodeIds.isEpisode(entry.trackId) || StreamIds.isStream(entry.trackId)) return entry.artworkUrl
     return LocalCoverUrls.current.track(entry.trackId, ServerUrls.COVER_SMALL)
 }
 
 @Composable
-private fun nextFromLabel(context: PlaybackContext?): String {
+internal fun nextFromLabel(context: PlaybackContext?): String {
     val title = context?.title.orEmpty()
     return when {
         context?.type == PlaybackContextType.Liked -> stringResource(

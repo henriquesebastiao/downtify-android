@@ -55,6 +55,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -63,8 +64,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -135,6 +143,8 @@ fun ConnectRoute(
             ContextCompat.checkSelfPermission(context, ACCESS_LOCAL_NETWORK) != PackageManager.PERMISSION_GRANTED
         if (needed) localNetwork.launch(ACCESS_LOCAL_NETWORK) else viewModel.startDiscovery()
     }
+    // A TV (Fire TV, Android TV) has no camera: there the code is typed, and the scan button goes.
+    val canScan = remember { context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY) }
     val cameraPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         permissionDenied = !granted
         if (granted) viewModel.startScan()
@@ -155,6 +165,7 @@ fun ConnectRoute(
 
     ConnectScreen(
         state = state,
+        canScan = canScan,
         permissionDenied = permissionDenied,
         localNetworkDenied = localNetworkDenied,
         onAddressChange = viewModel::onAddressChange,
@@ -195,7 +206,8 @@ fun ConnectRoute(
  * as onboarding: a big title, a picture of the step, the form, and a footer whose 96 dp button
  * connects, signs in or pairs. Each step fits the screen without scrolling: the picture takes the
  * room the rest leaves and goes when there's too little, and while typing the other ways in step
- * aside. It rises with the keyboard, so the action is in reach while typing.
+ * aside. It rises with the keyboard, so the action is in reach while typing. Without a camera
+ * ([canScan] false: a TV) there is no QR code to scan, only the typed code.
  */
 @Composable
 fun ConnectScreen(
@@ -213,6 +225,7 @@ fun ConnectScreen(
     onBackToAddress: () -> Unit,
     onScan: () -> Unit,
     modifier: Modifier = Modifier,
+    canScan: Boolean = true,
     permissionDenied: Boolean = false,
     localNetworkDenied: Boolean = false,
     onSelectClientCertificate: () -> Unit = {},
@@ -244,7 +257,7 @@ fun ConnectScreen(
                                 onAddressChange = onAddressChange,
                                 onPickDiscovered = onPickDiscovered,
                                 onConnect = onConnect,
-                                onScan = onScan,
+                                onScan = onScan.takeIf { canScan },
                                 permissionDenied = permissionDenied,
                                 localNetworkDenied = localNetworkDenied,
                                 onSelectClientCertificate = onSelectClientCertificate,
@@ -270,7 +283,7 @@ fun ConnectScreen(
                                 onPair,
                                 onUsePassword,
                                 onBackToAddress,
-                                onScan,
+                                onScan.takeIf { canScan },
                                 permissionDenied,
                             )
                     }
@@ -311,13 +324,16 @@ private fun AddressStep(
     onAddressChange: (String) -> Unit,
     onPickDiscovered: (DiscoveredServer) -> Unit,
     onConnect: () -> Unit,
-    onScan: () -> Unit,
+    onScan: (() -> Unit)?,
     permissionDenied: Boolean,
     localNetworkDenied: Boolean,
     onSelectClientCertificate: () -> Unit,
     onClearClientCertificate: () -> Unit,
 ) {
     val typing = WindowInsets.isImeVisible
+    // The keyboard's action key ends the step: put the keyboard away too (Fire TV's stays up otherwise).
+    val keyboard = LocalSoftwareKeyboardController.current
+    val addressGate = rememberKeyboardGate()
     StepColumn {
         HeroHeader(
             title = stringResource(R.string.connect_title_line1),
@@ -371,8 +387,13 @@ private fun AddressStep(
                     imeAction = ImeAction.Go,
                     autoCorrectEnabled = false,
                 ),
-                keyboardActions = KeyboardActions(onGo = { if (state.canConnect) onConnect() }),
-                modifier = Modifier.fillMaxWidth(),
+                keyboardActions = KeyboardActions(onGo = {
+                    keyboard?.hide()
+                    addressGate.close()
+                    if (state.canConnect) onConnect()
+                }),
+                readOnly = addressGate.readOnly,
+                modifier = Modifier.fillMaxWidth().keyboardGate(addressGate),
             )
             ClientCertificateOption(
                 certificateAlias = state.clientCertificate,
@@ -384,7 +405,7 @@ private fun AddressStep(
             }
             // While typing an address, scanning isn't what's wanted: the room goes to the field.
             if (!typing) {
-                ScanButton(stringResource(R.string.connect_scan), onScan, state.busy)
+                if (onScan != null) ScanButton(stringResource(R.string.connect_scan), onScan, state.busy)
                 if (permissionDenied) Notice(stringResource(R.string.scan_permission_denied), DowntifyIcons.Warning)
                 if (state.error == ConnectError.NotAPairingCode || state.error == ConnectError.OtherServer) {
                     Notice(errorText(state.error).orEmpty(), DowntifyIcons.Error, error = true)
@@ -463,6 +484,9 @@ private fun SignInStep(
 ) {
     BackHandler(onBack = onBack)
     val typing = WindowInsets.isImeVisible
+    val keyboard = LocalSoftwareKeyboardController.current
+    val usernameGate = rememberKeyboardGate()
+    val passwordGate = rememberKeyboardGate()
     var showPassword by rememberSaveable { mutableStateOf(false) }
     StepColumn {
         StepHeader(
@@ -500,7 +524,17 @@ private fun SignInStep(
                     keyboardType = KeyboardType.Text,
                     imeAction = ImeAction.Next,
                 ),
-                modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.Username },
+                // By keys, Next puts the keyboard away and moves on; OK on the password opens it again.
+                keyboardActions = KeyboardActions(onNext = {
+                    if (usernameGate.byKeys) keyboard?.hide()
+                    usernameGate.close()
+                    defaultKeyboardAction(ImeAction.Next)
+                }),
+                readOnly = usernameGate.readOnly,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .keyboardGate(usernameGate)
+                    .semantics { contentType = ContentType.Username },
             )
             OutlinedTextField(
                 value = state.password,
@@ -528,8 +562,16 @@ private fun SignInStep(
                     keyboardType = KeyboardType.Password,
                     imeAction = ImeAction.Done,
                 ),
-                keyboardActions = KeyboardActions(onDone = { if (state.canSignIn) onSignIn() }),
-                modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.Password },
+                keyboardActions = KeyboardActions(onDone = {
+                    keyboard?.hide()
+                    passwordGate.close()
+                    if (state.canSignIn) onSignIn()
+                }),
+                readOnly = passwordGate.readOnly,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .keyboardGate(passwordGate)
+                    .semantics { contentType = ContentType.Password },
             )
             // The other ways stay out of the keyboard's way while the form is being filled in.
             if (!typing) {
@@ -552,12 +594,14 @@ private fun PairStep(
     onPair: () -> Unit,
     onUsePassword: () -> Unit,
     onBackToAddress: () -> Unit,
-    onScan: () -> Unit,
+    onScan: (() -> Unit)?,
     permissionDenied: Boolean,
 ) {
     val canUsePassword = step.info.capabilities.passwordSignIn
     BackHandler(onBack = if (canUsePassword) onUsePassword else onBackToAddress)
     val typing = WindowInsets.isImeVisible
+    val keyboard = LocalSoftwareKeyboardController.current
+    val codeGate = rememberKeyboardGate()
     StepColumn {
         StepHeader(
             title = stringResource(R.string.pair_title, step.info.name.ifBlank { step.baseUrl }),
@@ -595,11 +639,16 @@ private fun PairStep(
                     imeAction = ImeAction.Done,
                     autoCorrectEnabled = false,
                 ),
-                keyboardActions = KeyboardActions(onDone = { if (state.canPair) onPair() }),
-                modifier = Modifier.fillMaxWidth(),
+                keyboardActions = KeyboardActions(onDone = {
+                    keyboard?.hide()
+                    codeGate.close()
+                    if (state.canPair) onPair()
+                }),
+                readOnly = codeGate.readOnly,
+                modifier = Modifier.fillMaxWidth().keyboardGate(codeGate),
             )
             if (!typing) {
-                ScanButton(stringResource(R.string.pair_scan), onScan, state.busy)
+                if (onScan != null) ScanButton(stringResource(R.string.pair_scan), onScan, state.busy)
                 if (permissionDenied) Notice(stringResource(R.string.scan_permission_denied), DowntifyIcons.Warning)
                 // Two text buttons, one under the other: their 48 dp touch targets are the gap.
                 Column {
@@ -970,4 +1019,46 @@ private fun ClientCertificateOption(
             }
         }
     }
+}
+
+/**
+ * On a device used with keys only (no touchscreen: a TV and its remote's D-pad), a text field opens
+ * the keyboard on OK, not as soon as focus lands on it: after a step, focus comes back to the
+ * next step's first field and Fire TV's keyboard would pop straight up again. Until OK the field is
+ * read-only (a read-only field starts no keyboard; `showKeyboardOnFocus` doesn't stop Compose
+ * there); it goes back to that when focus leaves it or the keyboard's action key is pressed.
+ * With a touchscreen nothing changes.
+ */
+@Stable
+private class KeyboardGate(val byKeys: Boolean) {
+    var editing by mutableStateOf(false)
+    val readOnly: Boolean get() = byKeys && !editing
+
+    fun close() {
+        editing = false
+    }
+}
+
+@Composable
+private fun rememberKeyboardGate(): KeyboardGate {
+    val context = LocalContext.current
+    return remember(context) {
+        KeyboardGate(byKeys = !context.packageManager.hasSystemFeature(PackageManager.FEATURE_TOUCHSCREEN))
+    }
+}
+
+@Composable
+private fun Modifier.keyboardGate(gate: KeyboardGate): Modifier {
+    if (!gate.byKeys) return this
+    val keyboard = LocalSoftwareKeyboardController.current
+    // Once editable, the field starts its keyboard session; then show the keyboard.
+    LaunchedEffect(gate.editing) { if (gate.editing) keyboard?.show() }
+    return this
+        .onFocusChanged { if (!it.isFocused) gate.close() }
+        .onPreviewKeyEvent { event ->
+            val ok = event.key == Key.DirectionCenter || event.key == Key.Enter || event.key == Key.NumPadEnter
+            if (!ok || gate.editing) return@onPreviewKeyEvent false
+            if (event.type == KeyEventType.KeyUp) gate.editing = true
+            true
+        }
 }

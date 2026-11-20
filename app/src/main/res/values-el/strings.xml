@@ -93,6 +93,10 @@
     <string name="library_sort_order">Σειρά</string>
     <string name="library_sort_ascending">Αύξουσα</string>
     <string name="library_sort_descending">Φθίνουσα</string>
+    <string name="library_sort_a_z">Α–Ω</string>
+    <string name="library_sort_z_a">Ω–Α</string>
+    <string name="library_jump_to_letter">Μετάβαση στο %1$s</string>
+    <string name="library_go_to">Μετάβαση</string>
     <string name="library_show_list">Εμφάνιση ως λίστα</string>
     <string name="library_show_grid">Εμφάνιση ως πλέγμα</string>
     <string name="library_empty_albums">Δεν υπάρχουν άλμπουμ ακόμα</string>
@@ -563,4 +567,13 @@
     <string name="settings_client_certificate_active">Παρουσίαση του «%1$s» από τον χώρο αποθήκευσης διαπιστευτηρίων του Android όταν ο διακομιστής ζητά πιστοποιητικό πελάτη.</string>
     <string name="settings_client_certificate_change">Αλλαγή</string>
     <string name="settings_client_certificate_remove">Αφαίρεση</string>
+    <string name="tv_exit_title">Κλείσιμο του Downtify;</string>
+    <string name="tv_exit_body">Με το κλείσιμο η μουσική σταματά.</string>
+    <string name="tv_exit_stay">Όχι τώρα</string>
+    <string name="tv_exit_close">Κλείσιμο του Downtify</string>
+    <string name="tv_keep_awake">Η οθόνη να μένει αναμμένη</string>
+    <string name="tv_dark_mode">Σκοτεινή λειτουργία</string>
+    <string name="tv_dark_mode_on">Η σκοτεινή λειτουργία είναι ενεργή</string>
+    <string name="tv_dark_mode_on_body">Πατήστε οποιοδήποτε κουμπί για να φωτίσει ξανά η οθόνη όταν σκοτεινιάσει.</string>
+    <string name="tv_about_artist">Σχετικά με τον καλλιτέχνη</string>
 </resources>

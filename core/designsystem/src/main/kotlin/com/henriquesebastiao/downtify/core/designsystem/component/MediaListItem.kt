@@ -124,7 +124,8 @@ fun MediaListItem(
                 )
             }
         },
-        modifier = modifier,
+        // A remote's focus rings the row in its text's color; its "more" button rings on its own.
+        modifier = modifier.focusRing(shape, titleColor.takeOrElse { scheme.onSurface }),
     ) {
         Text(
             title,

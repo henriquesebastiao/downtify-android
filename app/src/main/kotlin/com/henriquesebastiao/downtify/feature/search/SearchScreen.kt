@@ -1,5 +1,6 @@
 package com.henriquesebastiao.downtify.feature.search
 
+import android.content.res.Resources
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -37,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -91,28 +93,7 @@ fun SearchRoute(
     val snackbar = remember { SnackbarHostState() }
     val resources = LocalContext.current.resources
     LaunchedEffect(viewModel) {
-        viewModel.messages.collect { message ->
-            snackbar.showSnackbar(
-                when (message) {
-                    is SearchMessage.Queued -> if (message.count > 1) {
-                        resources.getQuantityString(
-                            R.plurals.search_queued_many,
-                            message.count,
-                            message.title,
-                            message.count,
-                        )
-                    } else {
-                        resources.getString(R.string.search_queued_one, message.title)
-                    }
-
-                    SearchMessage.NoStream -> resources.getString(R.string.search_no_stream)
-
-                    SearchMessage.RequestFailed -> resources.getString(R.string.search_request_failed)
-
-                    SearchMessage.Unreachable -> resources.getString(R.string.search_unreachable)
-                },
-            )
-        }
+        viewModel.messages.collect { message -> snackbar.showSnackbar(message.text(resources)) }
     }
     SearchScreen(
         query = query,
@@ -139,6 +120,21 @@ fun SearchRoute(
     lyrics?.let {
         LyricsSheet(lyrics = it, onDismiss = viewModel::hideLyrics)
     }
+}
+
+/** What the snackbar says for [this] (also on the TV's search). */
+internal fun SearchMessage.text(resources: Resources): String = when (this) {
+    is SearchMessage.Queued -> if (count > 1) {
+        resources.getQuantityString(R.plurals.search_queued_many, count, title, count)
+    } else {
+        resources.getString(R.string.search_queued_one, title)
+    }
+
+    SearchMessage.NoStream -> resources.getString(R.string.search_no_stream)
+
+    SearchMessage.RequestFailed -> resources.getString(R.string.search_request_failed)
+
+    SearchMessage.Unreachable -> resources.getString(R.string.search_unreachable)
 }
 
 /** What the server's results can do. */
@@ -168,6 +164,8 @@ fun SearchScreen(
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    // Results follow the typing, so the keyboard's search key (Fire TV's "Next") only puts it away.
+    val keyboard = LocalSoftwareKeyboardController.current
     Scaffold(
         modifier = modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
         contentWindowInsets = WindowInsets(0),
@@ -187,7 +185,7 @@ fun SearchScreen(
                     SearchBarDefaults.InputField(
                         query = query,
                         onQueryChange = onQueryChange,
-                        onSearch = {},
+                        onSearch = { keyboard?.hide() },
                         expanded = false,
                         onExpandedChange = {},
                         placeholder = {
@@ -300,7 +298,8 @@ private fun Results(
                         stringResource(R.string.search_kind_artist),
                         artistSubtitle(artist),
                     ),
-                    coverUrl = covers.track(artist.coverTrackId, ServerUrls.COVER_SMALL),
+                    coverUrl = covers.artist(artist.name),
+                    fallbackUrl = covers.track(artist.coverTrackId, ServerUrls.COVER_SMALL),
                     onClick = { navigation.onArtist(artist.id) },
                     round = true,
                     placeholderIcon = DowntifyIcons.Artist,
@@ -525,7 +524,7 @@ private fun StatusLine(text: String, onRetry: (() -> Unit)? = null, loading: Boo
 private const val HTTP_BAD_REQUEST = 400
 private const val HTTP_NOT_FOUND = 404
 
-private val SearchFilter.label: Int
+internal val SearchFilter.label: Int
     get() = when (this) {
         SearchFilter.All -> R.string.search_all
         SearchFilter.Songs -> R.string.library_songs

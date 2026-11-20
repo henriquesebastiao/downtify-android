@@ -48,7 +48,8 @@ enum class ArtworkTone { Neutral, Primary, Secondary, Tertiary }
  * [onReady] says whether what shows is final — the image, or the placeholder for good (no cover,
  * or it failed) — and not while it loads. Without [crossfade] the image shows at once, even the
  * first time it's drawn (a crossfade starts then): for a cover standing in for one already on
- * screen, such as Now Playing's flying cover.
+ * screen, such as Now Playing's flying cover. When [url] fails, [fallbackUrl] is loaded instead:
+ * an artist's photo, falling back to one of their covers when the server has none.
  */
 @Composable
 fun Artwork(
@@ -60,23 +61,30 @@ fun Artwork(
     tone: ArtworkTone = ArtworkTone.Neutral,
     onReady: ((Boolean) -> Unit)? = null,
     crossfade: Boolean = true,
+    fallbackUrl: String? = null,
 ) {
     val (container, content) = tone.colors()
     val context = LocalPlatformContext.current
-    val model = remember(url, crossfade, context) {
-        if (crossfade || url == null) url else ImageRequest.Builder(context).data(url).crossfade(false).build()
+    var failedOver by remember(url, fallbackUrl) { mutableStateOf(false) }
+    val shown = if (url == null || failedOver) fallbackUrl else url
+    val model = remember(shown, crossfade, context) {
+        if (crossfade || shown == null) shown else ImageRequest.Builder(context).data(shown).crossfade(false).build()
     }
-    var loaded by remember(url) { mutableStateOf(false) }
-    if (url == null && onReady != null) SideEffect { onReady(true) }
+    var loaded by remember(shown) { mutableStateOf(false) }
+    if (shown == null && onReady != null) SideEffect { onReady(true) }
     Box(modifier.clip(shape).background(container)) {
         // Under the image, not instead of it: gone once the image is in (a cover may be transparent in places).
         if (!loaded) ArtworkPlaceholder(placeholderIcon, content)
-        if (url != null) {
+        if (shown != null) {
             AsyncImage(
                 model = model,
                 contentDescription = contentDescription,
                 contentScale = ContentScale.Crop,
                 onState = {
+                    if (it is AsyncImagePainter.State.Error && shown == url && fallbackUrl != null) {
+                        failedOver = true
+                        return@AsyncImage
+                    }
                     loaded = it is AsyncImagePainter.State.Success
                     onReady?.invoke(loaded || it is AsyncImagePainter.State.Error)
                 },

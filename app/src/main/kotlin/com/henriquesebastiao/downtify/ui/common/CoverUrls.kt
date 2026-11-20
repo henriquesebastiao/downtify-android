@@ -19,6 +19,13 @@ class CoverUrls(private val baseUrl: String?) {
         else -> track(fallbackTrackId, size)
     }
 
+    /**
+     * An artist's photo: the one saved for them on the server, else their Deezer picture. When
+     * there's neither the request fails, so draw it with one of their covers as `fallbackUrl`.
+     */
+    fun artist(name: String?): String? =
+        if (baseUrl == null || name.isNullOrBlank()) null else ServerUrls.artistPhoto(baseUrl, name)
+
     companion object {
         val None = CoverUrls(null)
     }

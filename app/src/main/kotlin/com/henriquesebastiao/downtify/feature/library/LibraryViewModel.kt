@@ -12,6 +12,8 @@ import com.henriquesebastiao.downtify.core.data.settings.SettingsRepository
 import com.henriquesebastiao.downtify.core.data.sync.SyncCoordinator
 import com.henriquesebastiao.downtify.core.model.Album
 import com.henriquesebastiao.downtify.core.model.Artist
+import com.henriquesebastiao.downtify.core.model.NameIndex
+import com.henriquesebastiao.downtify.core.model.NameSection
 import com.henriquesebastiao.downtify.core.model.PlaybackContext
 import com.henriquesebastiao.downtify.core.model.PlaybackContextType
 import com.henriquesebastiao.downtify.core.model.Playlist
@@ -49,6 +51,15 @@ data class LibraryUiState(
     val sortDescending: Boolean = sort.descendingByDefault,
     val albums: List<Album> = emptyList(),
     val artists: List<Artist> = emptyList(),
+    /*
+     * Each tab by name, under a letter per initial: the TV's library, whatever [sort] says. A tab in
+     * [zToATabs] runs Z to A. Liked songs leads the playlists, under its own heart.
+     */
+    val songSections: List<NameSection<Track>> = emptyList(),
+    val albumSections: List<NameSection<Album>> = emptyList(),
+    val artistSections: List<NameSection<Artist>> = emptyList(),
+    val playlistSections: List<NameSection<PlaylistItem>> = emptyList(),
+    val zToATabs: Set<LibraryTab> = emptySet(),
     val playlists: List<PlaylistItem> = emptyList(),
     val songs: List<Track> = emptyList(),
     val refreshing: Boolean = false,
@@ -103,15 +114,24 @@ class LibraryViewModel @Inject constructor(
     /** Only the catalog and sort order can change these sorted lists. */
     private val sorted = combine(
         library.library,
-        settings.settings.map { it.librarySort to it.librarySortDescending }.distinctUntilChanged(),
-    ) { snapshot, (sort, descending) ->
+        settings.settings
+            .map { Triple(it.librarySort, it.librarySortDescending, zToATabs(it.zToATabs)) }
+            .distinctUntilChanged(),
+    ) { snapshot, (sort, descending, zToA) ->
+        val albums = snapshot?.albums.orEmpty()
+        val artists = snapshot?.artists.orEmpty()
+        val tracks = snapshot?.tracks.orEmpty()
         snapshot to LibraryUiState(
             loading = snapshot == null,
             sort = sort,
             sortDescending = descending,
-            albums = snapshot?.albums.orEmpty().sortedWith(albumOrder(sort, descending)),
-            artists = snapshot?.artists.orEmpty().sortedWith(artistOrder(sort, descending)),
-            songs = snapshot?.tracks.orEmpty().sortedWith(songOrder(sort, descending)),
+            albums = albums.sortedWith(albumOrder(sort, descending)),
+            artists = artists.sortedWith(artistOrder(sort, descending)),
+            songs = tracks.sortedWith(songOrder(sort, descending)),
+            songSections = NameIndex.sections(tracks, LibraryTab.Songs in zToA) { it.displayTitle },
+            albumSections = NameIndex.sections(albums, LibraryTab.Albums in zToA) { it.title },
+            artistSections = NameIndex.sections(artists, LibraryTab.Artists in zToA) { it.name },
+            zToATabs = zToA,
         )
     }.flowOn(Dispatchers.Default)
 
@@ -121,9 +141,13 @@ class LibraryViewModel @Inject constructor(
         library.likedIds,
         settings.settings.map { it.libraryLayout }.distinctUntilChanged(),
     ) { (snapshot, lists), playlists, liked, layout ->
+        val items = playlistItems(snapshot, playlists, liked)
+        val (likedItem, others) = items.partition { it.playlist == null }
         lists.copy(
             layout = layout,
-            playlists = playlistItems(snapshot, playlists, liked),
+            playlists = items,
+            playlistSections = likedItem.map { NameSection(LIKED_INITIAL, listOf(it)) } +
+                NameIndex.sections(others, LibraryTab.Playlists in lists.zToATabs) { it.title },
             likedIds = liked.toSet(),
         )
     }.flowOn(Dispatchers.Default)
@@ -155,12 +179,24 @@ class LibraryViewModel @Inject constructor(
         viewModelScope.launch { settings.setLibrarySortDescending(value) }
     }
 
+    /** A tab's names Z to A ([value]) or A to Z: the TV's order pill. */
+    fun setZtoA(tab: LibraryTab, value: Boolean) {
+        viewModelScope.launch { settings.setZtoA(tab.name, value) }
+    }
+
     fun toggleLayout() {
         val next = if (uiState.value.layout == LibraryLayout.Grid) LibraryLayout.List else LibraryLayout.Grid
         viewModelScope.launch { settings.setLibraryLayout(next) }
     }
 
     fun refresh() = sync.requestSync(refresh = true)
+
+    /** Plays the songs in the TV's order, by name ([LibraryUiState.songSections]), from [trackId]. */
+    fun playSongByName(trackId: String) {
+        val songs = uiState.value.songSections.flatMap { it.items }
+        val index = songs.indexOfFirst { it.id == trackId }
+        if (index >= 0) player.play(songs, index, PlaybackContext(PlaybackContextType.Songs, "", ""))
+    }
 
     fun playSong(index: Int) {
         player.play(uiState.value.songs, index, PlaybackContext(PlaybackContextType.Songs, "", ""))
@@ -224,7 +260,12 @@ class LibraryViewModel @Inject constructor(
         return (listOf(likedItem) + others).sortedByDescending { it.playlist?.favorite == true }
     }
 
+    private fun zToATabs(names: Set<String>): Set<LibraryTab> =
+        LibraryTab.entries.filterTo(mutableSetOf()) { it.name in names }
+
     private companion object {
+        /** Liked songs' section among the playlists: first, whichever way they run. */
+        const val LIKED_INITIAL = "♥"
         const val KEY_TAB = "tab"
         const val STOP_TIMEOUT_MS = 5_000L
     }

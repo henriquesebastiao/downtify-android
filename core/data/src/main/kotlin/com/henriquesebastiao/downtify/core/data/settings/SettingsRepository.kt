@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import com.henriquesebastiao.downtify.core.model.AppFont
 import com.henriquesebastiao.downtify.core.model.NormalizationLevel
 import com.henriquesebastiao.downtify.core.model.ReadAheadPolicy
@@ -18,16 +19,29 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
+/**
+ * What a setting is until the user changes it, where that depends on the device: on a TV the font
+ * is Downtify classic (Sora and DM Sans, which the APK carries; a TV has no Play services to fetch
+ * Google Sans Flex) and the theme dark (Fire TV says it's day, which made the first screens white
+ * in a dark room). The app provides it.
+ */
+data class DeviceDefaults(val font: AppFont = AppFont.Default, val theme: ThemeMode = ThemeMode.System)
+
+// One setter per setting: the count follows the settings list.
+@Suppress("TooManyFunctions")
 @Singleton
-class SettingsRepository @Inject constructor(private val store: DataStore<Preferences>) {
+class SettingsRepository @Inject constructor(
+    private val store: DataStore<Preferences>,
+    private val deviceDefaults: DeviceDefaults = DeviceDefaults(),
+) {
     val settings: Flow<UserSettings> = store.data.map { prefs ->
         val defaults = UserSettings()
         val sort = enumOr(prefs[LIBRARY_SORT], defaults.librarySort)
         UserSettings(
-            theme = enumOr(prefs[THEME], defaults.theme),
+            theme = enumOr(prefs[THEME], deviceDefaults.theme),
             dynamicColor = prefs[DYNAMIC_COLOR] ?: defaults.dynamicColor,
             amoled = prefs[AMOLED] ?: defaults.amoled,
-            font = AppFont.of(prefs[FONT]),
+            font = AppFont.of(prefs[FONT], deviceDefaults.font),
             floatingNavBar = prefs[FLOATING_NAV_BAR] ?: defaults.floatingNavBar,
             wifiQuality = StreamQuality.decode(prefs[WIFI_QUALITY]) ?: defaults.wifiQuality,
             mobileQuality = StreamQuality.decode(prefs[MOBILE_QUALITY]) ?: defaults.mobileQuality,
@@ -37,6 +51,8 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
             librarySort = sort,
             // Saved only once the user flips it; until then each sort keeps its own order.
             librarySortDescending = prefs[LIBRARY_SORT_DESCENDING] ?: sort.descendingByDefault,
+            zToATabs = prefs[Z_TO_A_TABS] ?: defaults.zToATabs,
+            keepAwake = prefs[KEEP_AWAKE] ?: defaults.keepAwake,
             downloadWifiOnly = prefs[DOWNLOAD_WIFI_ONLY] ?: defaults.downloadWifiOnly,
             offlineLimitBytes = prefs[OFFLINE_LIMIT] ?: defaults.offlineLimitBytes,
             offlineDirectoryUri = prefs[OFFLINE_DIRECTORY_URI],
@@ -100,6 +116,17 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
         store.edit { it[LIBRARY_SORT_DESCENDING] = value }
     }
 
+    suspend fun setZtoA(tab: String, value: Boolean) {
+        store.edit { prefs ->
+            val tabs = prefs[Z_TO_A_TABS].orEmpty()
+            prefs[Z_TO_A_TABS] = if (value) tabs + tab else tabs - tab
+        }
+    }
+
+    suspend fun setKeepAwake(value: Boolean) {
+        store.edit { it[KEEP_AWAKE] = value }
+    }
+
     suspend fun setDownloadWifiOnly(value: Boolean) {
         store.edit { it[DOWNLOAD_WIFI_ONLY] = value }
     }
@@ -150,6 +177,8 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
         val LIBRARY_LAYOUT = stringPreferencesKey("library_layout")
         val LIBRARY_SORT = stringPreferencesKey("library_sort")
         val LIBRARY_SORT_DESCENDING = booleanPreferencesKey("library_sort_descending")
+        val Z_TO_A_TABS = stringSetPreferencesKey("library_z_to_a_tabs")
+        val KEEP_AWAKE = booleanPreferencesKey("keep_awake")
         val CLIENT_ID = stringPreferencesKey("client_id")
         val DOWNLOAD_WIFI_ONLY = booleanPreferencesKey("download_wifi_only")
         val OFFLINE_LIMIT = longPreferencesKey("offline_limit_bytes")

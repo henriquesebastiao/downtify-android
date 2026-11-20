@@ -9,10 +9,18 @@
     <uses-feature
         android:name="android.hardware.camera"
         android:required="false" />
+    <!-- TVs (Android TV, Fire TV): no touch screen, a remote's D-pad instead; the phone app runs there too. -->
+    <uses-feature
+        android:name="android.hardware.touchscreen"
+        android:required="false" />
+    <uses-feature
+        android:name="android.software.leanback"
+        android:required="false" />
 
     <application
         android:name=".DowntifyApplication"
         android:allowBackup="false"
+        android:banner="@drawable/tv_banner"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:enableOnBackInvokedCallback="true"
         android:icon="@mipmap/ic_launcher"
@@ -37,6 +45,8 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+                <!-- Listed in a TV's launcher too. -->
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
             <!-- The QR code on the web page's Settings › Apps: downtify://pair?url=&sid=&code= -->
             <intent-filter>

@@ -9,6 +9,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.Font as LocalFont
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontVariation
@@ -24,8 +25,10 @@ import com.henriquesebastiao.downtify.core.model.AppFont
 //  - Google Sans Flex (the default): its rounded cut for everything.
 //  - Downtify classic: Sora for display, headline and titleLarge; DM Sans for everything else.
 //  - System: the phone's own font (FontFamily.Default).
-// Google downloadable fonts are fetched by Play services and shared between apps. Without
-// Play services (de-Googled phones) Compose falls back to the system font.
+// Google downloadable fonts are fetched by Play services and shared between apps. Sora and DM Sans
+// also ship in the APK (res/font, SIL Open Font License, see core/designsystem/fonts): without Play
+// services (Fire TV, de-Googled phones) Downtify classic still looks as on the web. Google Sans
+// Flex has no bundled copy: there it falls back to the system font.
 
 private val provider = GoogleFont.Provider(
     providerAuthority = "com.google.android.gms.fonts",
@@ -41,11 +44,28 @@ private val weights = listOf(
     FontWeight.ExtraBold,
 )
 
-private fun family(name: String) =
-    FontFamily(weights.map { Font(googleFont = GoogleFont(name), fontProvider = provider, weight = it) })
+/**
+ * A Google font with its copy in the APK behind it: Play services' when it has the font, the
+ * bundled variable font ([bundled], at the same weight, with [axes]) when it doesn't or the
+ * download fails. Compose tries a weight's fonts in order.
+ */
+private fun family(name: String, bundled: Int, vararg axes: FontVariation.Setting) = FontFamily(
+    weights.map { Font(googleFont = GoogleFont(name), fontProvider = provider, weight = it) } +
+        weights.map { weight ->
+            LocalFont(
+                bundled,
+                weight,
+                variationSettings = FontVariation.Settings(FontVariation.weight(weight.weight), *axes),
+            )
+        },
+)
 
-val Sora = family("Sora")
-val DmSans = family("DM Sans")
+val Sora = family("Sora", R.font.sora)
+
+// DM Sans's optical size at the size of the app's text, as Google Fonts serves it (the file's own
+// default, 9, is drawn for captions).
+val DmSans = family("DM Sans", R.font.dm_sans, FontVariation.Setting("opsz", DM_SANS_OPTICAL_SIZE))
+private const val DM_SANS_OPTICAL_SIZE = 14f
 
 /** Google Sans Flex's roundness axis, 0 (square ends) to 100 (fully rounded). */
 private const val ROUNDNESS_AXIS = "ROND"

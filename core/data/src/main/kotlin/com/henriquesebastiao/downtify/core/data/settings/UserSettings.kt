@@ -37,6 +37,16 @@ data class UserSettings(
     val librarySort: LibrarySort = LibrarySort.RecentlyAdded,
     /** Z to A, oldest first: the reverse of the sort's own order is up to the user. */
     val librarySortDescending: Boolean = librarySort.descendingByDefault,
+    /**
+     * The TV's library sections (songs, albums, artists, playlists, by name) that run Z to A
+     * instead of A to Z, each its own.
+     */
+    val zToATabs: Set<String> = emptySet(),
+    /**
+     * On a TV: the screen stays on while the app is in front, so the TV neither sleeps nor starts
+     * its screensaver over the music. Off by default; the top bar's power button flips it.
+     */
+    val keepAwake: Boolean = false,
     /** Offline copies wait for an unmetered network. */
     val downloadWifiOnly: Boolean = true,
     /** Most bytes offline copies may take; [OfflinePlanner.UNLIMITED] for no limit. */

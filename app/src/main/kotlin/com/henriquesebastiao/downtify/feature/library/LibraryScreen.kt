@@ -533,9 +533,13 @@ private fun Artists(state: LibraryUiState, navigation: LibraryNavigation) {
                 modifier = Modifier.fillMaxSize(),
             ) {
                 items(state.artists, key = { it.id }) { artist ->
-                    ArtistCard(artist.name, covers.track(artist.coverTrackId), {
-                        navigation.onArtist(artist.id)
-                    }, size = 104.dp)
+                    ArtistCard(
+                        artist.name,
+                        covers.artist(artist.name),
+                        { navigation.onArtist(artist.id) },
+                        size = 104.dp,
+                        fallbackUrl = covers.track(artist.coverTrackId),
+                    )
                 }
             }
             Scrollbar(grid)
@@ -546,10 +550,11 @@ private fun Artists(state: LibraryUiState, navigation: LibraryNavigation) {
                     CoverItem(
                         artist.name,
                         artistSubtitle(artist),
-                        covers.track(artist.coverTrackId, ServerUrls.COVER_SMALL),
+                        covers.artist(artist.name),
                         { navigation.onArtist(artist.id) },
                         round = true,
                         placeholderIcon = DowntifyIcons.Artist,
+                        fallbackUrl = covers.track(artist.coverTrackId, ServerUrls.COVER_SMALL),
                     )
                 }
             }

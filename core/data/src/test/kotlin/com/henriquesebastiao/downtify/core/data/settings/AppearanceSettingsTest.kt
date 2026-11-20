@@ -34,6 +34,33 @@ class AppearanceSettingsTest {
     }
 
     @Test
+    fun `a fresh install on a TV gets Downtify classic`() = runTest {
+        val tv = DeviceDefaults(font = AppFont.Downtify)
+        assertEquals(AppFont.Downtify, SettingsRepository(store, tv).settings.first().font)
+    }
+
+    @Test
+    fun `a font picked on a TV wins over the TV's default`() = runTest {
+        val tv = DeviceDefaults(font = AppFont.Downtify)
+        SettingsRepository(store, tv).setFont(AppFont.System)
+        assertEquals(AppFont.System, SettingsRepository(store, tv).settings.first().font)
+    }
+
+    @Test
+    fun `a fresh install follows the system theme, on a TV it is dark`() = runTest {
+        assertEquals(ThemeMode.System, SettingsRepository(store).settings.first().theme)
+        val tv = DeviceDefaults(font = AppFont.Downtify, theme = ThemeMode.Dark)
+        assertEquals(ThemeMode.Dark, SettingsRepository(store, tv).settings.first().theme)
+    }
+
+    @Test
+    fun `a theme picked on a TV wins over the TV's dark default`() = runTest {
+        val tv = DeviceDefaults(font = AppFont.Downtify, theme = ThemeMode.Dark)
+        SettingsRepository(store, tv).setTheme(ThemeMode.Light)
+        assertEquals(ThemeMode.Light, SettingsRepository(store, tv).settings.first().theme)
+    }
+
+    @Test
     fun `someone who picked the Downtify font before keeps the classic look`() = runTest {
         store.data.value = store.data.value.toMutablePreferences().apply {
             this[stringPreferencesKey("font")] = "Downtify"
