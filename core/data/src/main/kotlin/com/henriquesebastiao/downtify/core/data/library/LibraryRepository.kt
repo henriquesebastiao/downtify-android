@@ -181,7 +181,10 @@ class LibraryRepository @Inject constructor(
     suspend fun resetLyricsOffset(trackId: String) = db.lyricsOffsets().delete(trackId)
 
     private suspend fun refreshPlaylists(api: DowntifyApi) {
-        val remote = api.playlists()
+        // Two M3U files with one name (a playlist downloaded again in another folder) come back as two
+        // playlists, but the name is the key here and on the server, which opens the first by that name:
+        // keep the first, or the second would overwrite it.
+        val remote = api.playlists().distinctBy { it.name }
         db.withTransaction {
             db.playlists().deleteAll()
             db.playlists().upsert(
