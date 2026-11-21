@@ -94,6 +94,9 @@ sealed interface OfflineLocationChange {
     data class Failed(val cause: Throwable) : OfflineLocationChange
 }
 
+/** Whether the free space can take one more track — [Full] stops the run, [SkipTrack] passes one over. */
+internal enum class SpaceCheck { Enough, SkipTrack, Full }
+
 @Singleton
 class OfflineRepository @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -148,7 +151,6 @@ class OfflineRepository @Inject constructor(
         }
         .distinctUntilChanged()
 
-    private var scheduledIds: Set<String> = emptySet()
     private var scheduledWifiOnly: Boolean? = null
 
     @Suppress("TooGenericExceptionCaught")
@@ -213,7 +215,6 @@ class OfflineRepository @Inject constructor(
             }
             settings.setOfflineDirectory(treeUri)
             if (previous != null && previous != treeUri) releaseDirectoryPermission(previous)
-            scheduledIds = emptySet()
             scheduledWifiOnly = null
             state.value?.let { schedule(it.plan.toDownload.mapTo(mutableSetOf()) { track -> track.id }, it.wifiOnly) }
             mutableLocationChange.value = OfflineLocationChange.Idle
@@ -247,8 +248,14 @@ class OfflineRepository @Inject constructor(
     internal suspend fun downloadNext(handled: Set<String>): Step {
         val plan = state.filterNotNull().first().plan
         val track = plan.toDownload.firstOrNull { it.id !in handled } ?: return Step.Done
+        // As the planner does with the storage limit: a track too big for the free
+        // space is passed over, not the whole queue — a smaller one after it may fit.
+        when (spaceCheck(storage.freeBytes(), track.size)) {
+            SpaceCheck.Full -> return Step.OutOfSpace
+            SpaceCheck.SkipTrack -> return Step.Handled(track.id)
+            SpaceCheck.Enough -> Unit
+        }
         val session = sessions.current ?: return Step.Done
-        if (storage.freeBytes() < track.size + FREE_SPACE_MARGIN) return Step.OutOfSpace
         val part = storage.part(track.id)
         val url = ServerUrls.stream(session.baseUrl, track.id, StreamQuality.Original)
         mutableProgress.value = DownloadProgress(track.id, part.length(), track.size)
@@ -280,6 +287,7 @@ class OfflineRepository @Inject constructor(
     }
 
     internal sealed interface Step {
+        /** Downloaded, gone from the server, or passed over: don't ask for it again in this run. */
         data class Handled(val trackId: String) : Step
         data object Done : Step
         data object Retry : Step
@@ -329,7 +337,7 @@ class OfflineRepository @Inject constructor(
             withContext(Dispatchers.IO) {
                 plan.toDelete.forEach { id -> state.files[id]?.let { storage.delete(it.fileName) } }
             }
-            dao.deleteFiles(plan.toDelete.toList())
+            deleteFiles(plan.toDelete)
             syncPlaylists(state)
             return
         }
@@ -363,17 +371,17 @@ class OfflineRepository @Inject constructor(
         storage.syncPlaylists(playlists)
     }
 
+    /**
+     * Hands the missing tracks to [OfflineSyncWorker] unless that work is already
+     * waiting. `KEEP` and not "I queued this id set before": a job that ended —
+     * failed, out of space, killed with the app — must let the next request
+     * through, or a track added to a kept playlist after a failed download waits
+     * for the next app start. A changed network constraint has to replace the
+     * queued work, since constraints can't be edited in place.
+     */
     private fun schedule(ids: Set<String>, wifiOnly: Boolean) {
-        if (ids.isEmpty()) {
-            scheduledIds = emptySet()
-            return
-        }
-        val policy = when {
-            wifiOnly != scheduledWifiOnly -> ExistingWorkPolicy.REPLACE
-            !scheduledIds.containsAll(ids) -> ExistingWorkPolicy.APPEND_OR_REPLACE
-            else -> return
-        }
-        scheduledIds = ids
+        if (ids.isEmpty()) return
+        val policy = existingWorkPolicy(wifiOnly, scheduledWifiOnly)
         scheduledWifiOnly = wifiOnly
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(if (wifiOnly) NetworkType.UNMETERED else NetworkType.CONNECTED)
@@ -390,15 +398,38 @@ class OfflineRepository @Inject constructor(
         val missing = withContext(Dispatchers.IO) {
             dao.files().filterNot { storage.usable(it.fileName, it.bytes) }
         }
-        if (missing.isNotEmpty()) dao.deleteFiles(missing.map { it.trackId })
+        deleteFiles(missing.map { it.trackId })
+    }
+
+    /**
+     * Deletes the rows of [ids] in chunks: SQLite's variable limit is 999 on older
+     * Androids, and a kept Liked songs or a big playlist is often past it — one
+     * oversized `IN (...)` throws and would stop reconciliation for good.
+     */
+    private suspend fun deleteFiles(ids: Collection<String>) {
+        ids.toList().chunked(DB_CHUNK).forEach { dao.deleteFiles(it) }
     }
 
     companion object {
         internal const val WORK_NAME = "offline-downloads"
+
+        /** Kept free on the phone so a full disk doesn't stop the app writing elsewhere. */
+        internal const val FREE_SPACE_MARGIN = 200_000_000L
+        private const val DB_CHUNK = 500
         private const val TAG = "Offline"
         private const val BACKOFF_SECONDS = 30L
-        private const val FREE_SPACE_MARGIN = 200_000_000L
         private const val LIKED_PLAYLIST_TITLE = "Liked Songs"
+
+        /** `KEEP` unless the network constraint changed, which needs a fresh request. */
+        internal fun existingWorkPolicy(wifiOnly: Boolean, previousWifiOnly: Boolean?): ExistingWorkPolicy =
+            if (wifiOnly != previousWifiOnly) ExistingWorkPolicy.REPLACE else ExistingWorkPolicy.KEEP
+
+        /** [trackSize] plus the margin, against what the disk has left. */
+        internal fun spaceCheck(freeBytes: Long, trackSize: Long): SpaceCheck = when {
+            freeBytes < FREE_SPACE_MARGIN -> SpaceCheck.Full
+            freeBytes < trackSize + FREE_SPACE_MARGIN -> SpaceCheck.SkipTrack
+            else -> SpaceCheck.Enough
+        }
 
         @Suppress("LongParameterList")
         internal fun buildState(
@@ -434,9 +465,9 @@ class OfflineRepository @Inject constructor(
             PlaybackContextType.Album -> snapshot.albumsById[c.refId]
                 .let { (it?.title ?: "") to (it?.tracks ?: emptyList()) }
 
-            PlaybackContextType.Playlist ->
-                c.refId to
-                    (playlists.firstOrNull { it.name == c.refId }?.let { snapshot.tracks(it.trackIds) } ?: emptyList())
+            PlaybackContextType.Playlist -> playlists.firstOrNull { it.name == c.refId }
+                ?.let { it.title to snapshot.tracks(it.trackIds) }
+                ?: (c.refId to emptyList())
 
             PlaybackContextType.Liked -> "" to snapshot.tracks(liked)
 

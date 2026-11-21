@@ -28,7 +28,9 @@ class OfflineStateTest {
         files: Map<String, OfflineFile> = emptyMap(),
         liked: List<String> = emptyList(),
         playlists: List<Playlist> = emptyList(),
-    ) = OfflineRepository.buildState(snapshot, playlists, liked, collections, files, OfflinePlanner.UNLIMITED, true)
+        limitBytes: Long = OfflinePlanner.UNLIMITED,
+        snapshot: LibrarySnapshot = this.snapshot,
+    ) = OfflineRepository.buildState(snapshot, playlists, liked, collections, files, limitBytes, true)
 
     @Test
     fun keptCollectionsResolveToTheirTracksInOrder() {
@@ -63,5 +65,85 @@ class OfflineStateTest {
         val s = state(listOf(OfflineCollection(PlaybackContextType.Album, "gone", 1)))
         assertTrue(s.collections.single().tracks.isEmpty())
         assertTrue(s.plan.toDownload.isEmpty())
+    }
+
+    /** The rule the kept playlist relies on: a song added to it on the server is queued. */
+    @Test
+    fun aTrackAddedToAKeptPlaylistIsQueuedForDownload() {
+        val before = state(
+            collections = listOf(OfflineCollection(PlaybackContextType.Playlist, "Mix", addedAt = 1)),
+            playlists = listOf(Playlist("Mix", false, "", listOf("a2"))),
+        )
+        val after = state(
+            collections = listOf(OfflineCollection(PlaybackContextType.Playlist, "Mix", addedAt = 1)),
+            playlists = listOf(Playlist("Mix", false, "", listOf("a2", "b1"))),
+        )
+        assertEquals(listOf("a2"), before.plan.toDownload.map { it.id })
+        assertEquals(listOf("a2", "b1"), after.plan.toDownload.map { it.id })
+    }
+
+    @Test
+    fun aTrackGoneFromTheLibraryLeavesItsKeptPlaylistAndThePhone() {
+        val s = state(
+            collections = listOf(OfflineCollection(PlaybackContextType.Playlist, "Mix", addedAt = 1)),
+            files = mapOf("b1" to OfflineFile("b1", "b1.flac", 100)),
+            playlists = listOf(Playlist("Mix", false, "", listOf("a1", "b1"))),
+            snapshot = LibrarySnapshot(listOf(track("a1", "alb1"))),
+        )
+        assertEquals(listOf("a1"), s.collections.single().tracks.map { it.id })
+        assertEquals(setOf("b1"), s.plan.toDelete)
+    }
+
+    @Test
+    fun aTrackTwoKeptCollectionsShareStaysWhileEitherOfThemWantsIt() {
+        val files = mapOf(
+            "a1" to OfflineFile("a1", "a1.flac", 100),
+            "a2" to OfflineFile("a2", "a2.flac", 100),
+            "b1" to OfflineFile("b1", "b1.flac", 100),
+        )
+        val mix = Playlist("Mix", false, "", listOf("a2", "b1"))
+        val both = state(
+            collections = listOf(
+                OfflineCollection(PlaybackContextType.Album, "alb1", addedAt = 1),
+                OfflineCollection(PlaybackContextType.Playlist, "Mix", addedAt = 2),
+            ),
+            files = files,
+            playlists = listOf(mix),
+        )
+        assertTrue(both.plan.toDelete.isEmpty())
+        assertEquals(2, both.collections.first().progress.downloaded)
+        assertEquals(2, both.collections.last().progress.downloaded)
+
+        // The playlist goes: its songs the album also keeps stay on the phone.
+        val albumOnly = state(
+            collections = listOf(OfflineCollection(PlaybackContextType.Album, "alb1", addedAt = 1)),
+            files = files,
+            playlists = listOf(mix),
+        )
+        assertEquals(setOf("b1"), albumOnly.plan.toDelete)
+    }
+
+    @Test
+    fun aKeptPlaylistFillsTheLimitInTheOrderItsCollectionWasKept() {
+        val s = state(
+            collections = listOf(
+                OfflineCollection(PlaybackContextType.Playlist, "Mix", addedAt = 1),
+                OfflineCollection(PlaybackContextType.Album, "alb2", addedAt = 2),
+            ),
+            playlists = listOf(Playlist("Mix", false, "", listOf("a1", "a2"))),
+            limitBytes = 200,
+        )
+        assertEquals(setOf("a1", "a2"), s.plan.keep)
+        assertEquals(setOf("b1"), s.plan.overLimit)
+        assertEquals(1, s.collections.last().progress.overLimit)
+    }
+
+    @Test
+    fun aKeptPlaylistIsNamedByItsDisplayTitle() {
+        val s = state(
+            collections = listOf(OfflineCollection(PlaybackContextType.Playlist, "mix-id", addedAt = 1)),
+            playlists = listOf(Playlist("mix-id", false, "", listOf("a1"), displayName = "Friday Mix")),
+        )
+        assertEquals("Friday Mix", s.collections.single().title)
     }
 }
