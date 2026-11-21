@@ -2,6 +2,43 @@
 <resources>
 
     <!-- Navigation -->
+    <string name="pl_new">Nueva lista</string>
+    <string name="pl_name_label">Nombre de la lista</string>
+    <string name="pl_create">Crear</string>
+    <string name="pl_rename">Renombrar</string>
+    <string name="pl_add_songs">Añadir canciones</string>
+    <string name="pl_add_to_playlist">Añadir a una lista</string>
+    <string name="pl_edit_songs">Editar canciones</string>
+    <string name="pl_done">Listo</string>
+    <string name="pl_more">Opciones de la lista</string>
+    <string name="pl_select_song">Seleccionar canción</string>
+    <string name="pl_select_all">Seleccionar todo</string>
+    <string name="pl_clear_selection">Quitar selección</string>
+    <string name="pl_close_selection">Cerrar selección</string>
+    <string name="pl_reorder_handle">Mover canción</string>
+    <string name="pl_remove_from_playlist">Quitar de la lista</string>
+    <string name="pl_edit_hint">Mantén pulsado el tirador de una fila para mover una canción o deslízala para quitarla.</string>
+    <string name="pl_error_unsupported">Este servidor no puede editar listas. Si lo actualizas, podrás añadir canciones aquí.</string>
+    <string name="pl_error_forbidden">Puedes cambiar las canciones de esta lista, pero no su nombre.</string>
+    <string name="pl_error_limit">Una lista admite como máximo 10.000 canciones.</string>
+    <string name="pl_error_index">El servidor aún está indexando la biblioteca. Inténtalo de nuevo en un momento.</string>
+    <string name="pl_error_not_found">Esa lista o canción ya no está en el servidor.</string>
+    <string name="pl_error_stale">La lista ha cambiado mientras tanto. Vuelve a abrirla e inténtalo de nuevo.</string>
+    <string name="pl_error_offline">No se puede acceder al servidor.</string>
+    <string name="pl_error_generic">No se pudo cambiar la lista.</string>
+    <string name="playlist_play">Reproducir</string>
+    <string name="playlist_shuffle">Aleatorio</string>
+    <string name="playlist_open">Abrir lista</string>
+    <plurals name="pl_add_n_to_playlist">
+        <item quantity="one">Añadir %1$d canción a la lista</item>
+        <item quantity="many">Añadir %1$d de canciones a la lista</item>
+        <item quantity="other">Añadir %1$d canciones a la lista</item>
+    </plurals>
+    <plurals name="pl_selected_count">
+        <item quantity="one">%1$d seleccionada</item>
+        <item quantity="many">%1$d de seleccionadas</item>
+        <item quantity="other">%1$d seleccionadas</item>
+    </plurals>
     <string name="nav_home">Inicio</string>
     <string name="nav_search">Buscar</string>
     <string name="nav_library">Biblioteca</string>

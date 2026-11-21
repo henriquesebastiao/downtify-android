@@ -2,6 +2,41 @@
 <resources>
 
     <!-- Navigation -->
+    <string name="pl_new">Нов плейлист</string>
+    <string name="pl_name_label">Име на плейлиста</string>
+    <string name="pl_create">Създай</string>
+    <string name="pl_rename">Преименувай</string>
+    <string name="pl_add_songs">Добави песни</string>
+    <string name="pl_add_to_playlist">Добави към плейлист</string>
+    <string name="pl_edit_songs">Редактирай песните</string>
+    <string name="pl_done">Готово</string>
+    <string name="pl_more">Опции за плейлиста</string>
+    <string name="pl_select_song">Избери песен</string>
+    <string name="pl_select_all">Избери всички</string>
+    <string name="pl_clear_selection">Изчисти избора</string>
+    <string name="pl_close_selection">Затвори избора</string>
+    <string name="pl_reorder_handle">Премести песен</string>
+    <string name="pl_remove_from_playlist">Премахни от плейлиста</string>
+    <string name="pl_edit_hint">Задръж дръжката на ред, за да преместиш песен, или плъзни, за да я извадиш.</string>
+    <string name="pl_error_unsupported">Този сървър не може да редактира плейлисти. След обновяването му ще можеш да добавяш песни тук.</string>
+    <string name="pl_error_forbidden">Можеш да променяш песните на този плейлист, но не и името му.</string>
+    <string name="pl_error_limit">Един плейлист побира най-много 10 000 песни.</string>
+    <string name="pl_error_index">Сървърът още индексира библиотеката. Опитай отново след малко.</string>
+    <string name="pl_error_not_found">Този плейлист или песен вече не е на сървъра.</string>
+    <string name="pl_error_stale">Плейлистът се промени междувременно. Отвори го отново и опитай пак.</string>
+    <string name="pl_error_offline">Няма достъп до сървъра.</string>
+    <string name="pl_error_generic">Плейлистът не можа да се промени.</string>
+    <string name="playlist_play">Пусни</string>
+    <string name="playlist_shuffle">Разбъркай</string>
+    <string name="playlist_open">Отвори плейлиста</string>
+    <plurals name="pl_add_n_to_playlist">
+        <item quantity="one">Добави %1$d песен към плейлист</item>
+        <item quantity="other">Добави %1$d песни към плейлист</item>
+    </plurals>
+    <plurals name="pl_selected_count">
+        <item quantity="one">%1$d избрана</item>
+        <item quantity="other">%1$d избрани</item>
+    </plurals>
     <string name="nav_home">Начало</string>
     <string name="nav_search">Търсене</string>
     <string name="nav_library">Библиотека</string>

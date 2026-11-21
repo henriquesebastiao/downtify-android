@@ -2,6 +2,43 @@
 <resources>
 
     <!-- Navigation -->
+    <string name="pl_new">Nova playlist</string>
+    <string name="pl_name_label">Nome da playlist</string>
+    <string name="pl_create">Criar</string>
+    <string name="pl_rename">Renomear</string>
+    <string name="pl_add_songs">Adicionar músicas</string>
+    <string name="pl_add_to_playlist">Adicionar à playlist</string>
+    <string name="pl_edit_songs">Editar músicas</string>
+    <string name="pl_done">Concluir</string>
+    <string name="pl_more">Opções da playlist</string>
+    <string name="pl_select_song">Selecionar música</string>
+    <string name="pl_select_all">Selecionar tudo</string>
+    <string name="pl_clear_selection">Limpar seleção</string>
+    <string name="pl_close_selection">Fechar seleção</string>
+    <string name="pl_reorder_handle">Mover música</string>
+    <string name="pl_remove_from_playlist">Remover da playlist</string>
+    <string name="pl_edit_hint">Mantenha pressionada a alça de uma linha para mover uma música, ou deslize para tirá-la.</string>
+    <string name="pl_error_unsupported">Este servidor não consegue editar playlists. Atualizá-lo permite adicionar músicas aqui.</string>
+    <string name="pl_error_forbidden">Você pode mudar as músicas desta playlist, mas não o nome dela.</string>
+    <string name="pl_error_limit">Uma playlist comporta no máximo 10.000 músicas.</string>
+    <string name="pl_error_index">O servidor ainda está indexando a biblioteca. Tente de novo em instantes.</string>
+    <string name="pl_error_not_found">Essa playlist ou música não está mais no servidor.</string>
+    <string name="pl_error_stale">A playlist mudou nesse meio-tempo. Abra de novo e tente outra vez.</string>
+    <string name="pl_error_offline">Não foi possível alcançar o servidor.</string>
+    <string name="pl_error_generic">Não foi possível alterar a playlist.</string>
+    <string name="playlist_play">Reproduzir</string>
+    <string name="playlist_shuffle">Aleatório</string>
+    <string name="playlist_open">Abrir playlist</string>
+    <plurals name="pl_add_n_to_playlist">
+        <item quantity="one">Adicionar %1$d música à playlist</item>
+        <item quantity="many">Adicionar %1$d de músicas à playlist</item>
+        <item quantity="other">Adicionar %1$d músicas à playlist</item>
+    </plurals>
+    <plurals name="pl_selected_count">
+        <item quantity="one">%1$d selecionada</item>
+        <item quantity="many">%1$d de selecionadas</item>
+        <item quantity="other">%1$d selecionadas</item>
+    </plurals>
     <string name="nav_home">Início</string>
     <string name="nav_search">Buscar</string>
     <string name="nav_library">Biblioteca</string>
