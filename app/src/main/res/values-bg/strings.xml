@@ -293,6 +293,11 @@
     <string name="collection_remove_title">Да се премахне ли от този телефон?</string>
     <string name="collection_remove_message">%1$s остава в библиотеката ти и се възпроизвежда от сървъра.</string>
     <string name="collection_remove_confirm">Премахни</string>
+    <string name="sleep_chip_remaining">%1$s до края</string>
+    <string name="sleep_timer">Таймер за сън</string>
+    <string name="sleep_end_of_track">Край на песента</string>
+    <string name="sleep_end_of_episode">Край на епизода</string>
+    <string name="sleep_cancel">Изключи таймера</string>
     <string name="settings_downloads">Изтегляния</string>
     <string name="settings_signed_in_as">Влязъл като %1$s</string>
     <string name="settings_download_wifi_only">Изтегляне само по Wi-Fi</string>

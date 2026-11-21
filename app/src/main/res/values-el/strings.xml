@@ -293,6 +293,11 @@
     <string name="collection_remove_title">Αφαίρεση από αυτό το τηλέφωνο;</string>
     <string name="collection_remove_message">Το %1$s παραμένει στη βιβλιοθήκη σου και αναπαράγεται από τον διακομιστή.</string>
     <string name="collection_remove_confirm">Αφαίρεση</string>
+    <string name="sleep_chip_remaining">απομένουν %1$s</string>
+    <string name="sleep_timer">Χρονοδιακόπτης ύπνου</string>
+    <string name="sleep_end_of_track">Τέλος κομματιού</string>
+    <string name="sleep_end_of_episode">Τέλος επεισοδίου</string>
+    <string name="sleep_cancel">Απενεργοποίηση χρονοδιακόπτη</string>
     <string name="settings_downloads">Λήψεις</string>
     <string name="settings_signed_in_as">Συνδεδεμένος ως %1$s</string>
     <string name="settings_download_wifi_only">Λήψη μόνο μέσω Wi-Fi</string>

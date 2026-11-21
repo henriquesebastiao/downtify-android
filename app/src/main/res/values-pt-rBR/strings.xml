@@ -302,6 +302,11 @@
     <string name="collection_remove_title">Remover deste celular?</string>
     <string name="collection_remove_message">%1$s continua na sua biblioteca e é transmitido do servidor.</string>
     <string name="collection_remove_confirm">Remover</string>
+    <string name="sleep_chip_remaining">faltam %1$s</string>
+    <string name="sleep_timer">Timer de desligamento</string>
+    <string name="sleep_end_of_track">Fim da faixa</string>
+    <string name="sleep_end_of_episode">Fim do episódio</string>
+    <string name="sleep_cancel">Desligar o timer</string>
     <string name="settings_downloads">Downloads</string>
     <string name="settings_signed_in_as">Conectado como %1$s</string>
     <string name="settings_download_wifi_only">Baixar só no Wi-Fi</string>

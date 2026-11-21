@@ -293,6 +293,11 @@
     <string name="collection_remove_title">Eltávolítod erről a telefonról?</string>
     <string name="collection_remove_message">A(z) %1$s a könyvtáradban marad, és a szerverről streamel.</string>
     <string name="collection_remove_confirm">Eltávolítás</string>
+    <string name="sleep_chip_remaining">%1$s van hátra</string>
+    <string name="sleep_timer">Elalvási időzítő</string>
+    <string name="sleep_end_of_track">Szám vége</string>
+    <string name="sleep_end_of_episode">Az epizód vége</string>
+    <string name="sleep_cancel">Időzítő kikapcsolása</string>
     <string name="settings_downloads">Letöltések</string>
     <string name="settings_signed_in_as">Bejelentkezve mint %1$s</string>
     <string name="settings_download_wifi_only">Letöltés csak Wi-Fi-n</string>

@@ -293,6 +293,11 @@
     <string name="collection_remove_title">Bu telefondan kaldırılsın mı?</string>
     <string name="collection_remove_message">%1$s kitaplığında kalır ve sunucudan akar.</string>
     <string name="collection_remove_confirm">Kaldır</string>
+    <string name="sleep_chip_remaining">%1$s kaldı</string>
+    <string name="sleep_timer">Uyku zamanlayıcısı</string>
+    <string name="sleep_end_of_track">Parça sonu</string>
+    <string name="sleep_end_of_episode">Bölümün sonu</string>
+    <string name="sleep_cancel">Zamanlayıcıyı kapat</string>
     <string name="settings_downloads">İndirmeler</string>
     <string name="settings_signed_in_as">%1$s olarak giriş yapıldı</string>
     <string name="settings_download_wifi_only">Yalnızca Wi-Fi\'de indir</string>

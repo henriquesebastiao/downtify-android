@@ -302,6 +302,11 @@
     <string name="collection_remove_title">¿Quitar de este teléfono?</string>
     <string name="collection_remove_message">%1$s sigue en tu biblioteca y se reproduce desde el servidor.</string>
     <string name="collection_remove_confirm">Quitar</string>
+    <string name="sleep_chip_remaining">quedan %1$s</string>
+    <string name="sleep_timer">Temporizador</string>
+    <string name="sleep_end_of_track">Fin de canción</string>
+    <string name="sleep_end_of_episode">Fin del episodio</string>
+    <string name="sleep_cancel">Desactivar temporizador</string>
     <string name="settings_downloads">Descargas</string>
     <string name="settings_signed_in_as">Sesión iniciada como %1$s</string>
     <string name="settings_download_wifi_only">Descargar solo con Wi-Fi</string>
