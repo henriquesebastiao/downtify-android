@@ -2,6 +2,15 @@
 <resources>
 
     <!-- Navigation -->
+    <string name="s_filters">Filtros</string>
+    <string name="s_filters_any">Cualquiera</string>
+    <string name="s_filters_clear">Quitar filtros</string>
+    <string name="s_filter_nothing">Nada en la página del servidor coincide con estos filtros.</string>
+    <string name="s_filter_year">Año</string>
+    <string name="s_sort">Ordenar por: %1$s</string>
+    <string name="s_sort_relevance">Relevancia</string>
+    <string name="s_sort_title">Título</string>
+    <string name="s_sort_duration">Duración</string>
     <string name="nav_home">Inicio</string>
     <string name="nav_search">Buscar</string>
     <string name="nav_library">Biblioteca</string>

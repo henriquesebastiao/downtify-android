@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="s_filters">Filters</string>
+    <string name="s_filters_any">Any</string>
+    <string name="s_filters_clear">Clear filters</string>
+    <string name="s_filter_nothing">Nothing on the server\'s page matches these filters.</string>
+    <string name="s_filter_year">Year</string>
+    <string name="s_sort">Sort: %1$s</string>
+    <string name="s_sort_relevance">Relevance</string>
+    <string name="s_sort_title">Title</string>
+    <string name="s_sort_duration">Length</string>
     <string name="app_name" translatable="false">Downtify</string>
 
     <!-- Navigation -->
