@@ -348,6 +348,7 @@ class CollectionViewModel @Inject constructor(
     /** A refused edit puts the server's order back and rebuilds the rows. */
     private fun CollectionEdit.rolledBack(outcome: PlaylistWriteResult): CollectionEdit = when (outcome) {
         is PlaylistWriteResult.Ok -> copy(order = null, saving = false)
+
         is PlaylistWriteResult.Failed -> copy(
             order = null,
             saving = false,
@@ -371,8 +372,4 @@ class CollectionViewModel @Inject constructor(
 }
 
 /** The playlists this page can draw: the server's (fresher, with what may be edited) and the library's. */
-private data class PlaylistSources(
-    val local: List<Playlist>,
-    val server: List<Playlist>,
-    val supported: Boolean,
-)
+private data class PlaylistSources(val local: List<Playlist>, val server: List<Playlist>, val supported: Boolean)

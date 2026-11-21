@@ -123,7 +123,7 @@ class PlaylistEditorRepository @Inject constructor(
     suspend fun create(name: String): PlaylistWriteResult {
         val wanted = name.trim()
         if (wanted.isEmpty()) return PlaylistWriteResult.Failed(PlaylistEditError.InvalidName)
-        return write { it.createPlaylist(CreatePlaylistRequest(wanted)) }
+        return result(write { it.createPlaylist(CreatePlaylistRequest(wanted)) })
     }
 
     /** `POST /api/v1/playlists/rename`: the owner or an admin, never just an editor. */
@@ -131,7 +131,7 @@ class PlaylistEditorRepository @Inject constructor(
         val wanted = newName.trim()
         if (wanted.isEmpty()) return PlaylistWriteResult.Failed(PlaylistEditError.InvalidName)
         if (wanted == name) return PlaylistWriteResult.Ok(PlaylistEditResult(name = name))
-        return write { it.renamePlaylist(RenamePlaylistRequest(name, wanted)) }
+        return result(write { it.renamePlaylist(RenamePlaylistRequest(name, wanted)) })
     }
 
     /**
@@ -147,11 +147,17 @@ class PlaylistEditorRepository @Inject constructor(
         val ids = playlistTrackIds(trackIds)
         if (ids.isEmpty()) return PlaylistWriteResult.Failed(PlaylistEditError.NoTracks)
         if (ids.size > MAX_REFERENCES) return PlaylistWriteResult.Failed(PlaylistEditError.TooManyTracks)
-        return write {
-            it.editPlaylistTracks(
-                PlaylistTracksRequest(name = name, add = ids, allowDuplicates = if (allowDuplicates) true else null),
-            )
-        }
+        return result(
+            write {
+                it.editPlaylistTracks(
+                    PlaylistTracksRequest(
+                        name = name,
+                        add = ids,
+                        allowDuplicates = if (allowDuplicates) true else null,
+                    ),
+                )
+            },
+        )
     }
 
     /** `POST /api/v1/playlists/tracks` with `remove`: every copy of each id goes. */
@@ -159,7 +165,7 @@ class PlaylistEditorRepository @Inject constructor(
         val ids = playlistTrackIds(trackIds)
         if (ids.isEmpty()) return PlaylistWriteResult.Failed(PlaylistEditError.NoTracks)
         if (ids.size > MAX_REFERENCES) return PlaylistWriteResult.Failed(PlaylistEditError.TooManyTracks)
-        return write { it.editPlaylistTracks(PlaylistTracksRequest(name = name, remove = ids)) }
+        return result(write { it.editPlaylistTracks(PlaylistTracksRequest(name = name, remove = ids)) })
     }
 
     /**
@@ -170,11 +176,13 @@ class PlaylistEditorRepository @Inject constructor(
         if (playlistTrackIds(listOf(trackId)).isEmpty() || occurrence < 0) {
             return PlaylistWriteResult.Failed(PlaylistEditError.NoTracks)
         }
-        return write {
-            it.editPlaylistTracks(
-                PlaylistTracksRequest(name = name, removeEntries = listOf(TrackEntryDto(trackId, occurrence))),
-            )
-        }
+        return result(
+            write {
+                it.editPlaylistTracks(
+                    PlaylistTracksRequest(name = name, removeEntries = listOf(TrackEntryDto(trackId, occurrence))),
+                )
+            },
+        )
     }
 
     /**
