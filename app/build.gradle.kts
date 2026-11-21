@@ -49,7 +49,7 @@ android {
     androidResources {
         // The languages of the Downtify web app. Keep this and the values-* folders in step; the list also
         // feeds the per-app language picker in Android 13+ (res/resources.properties names the default).
-        localeFilters += listOf("bg", "el", "en", "es", "fr", "hu", "pt-rBR", "tr")
+        localeFilters += listOf("bg", "el", "en", "es", "fr", "hu", "pt-rBR", "ru", "tr")
         generateLocaleConfig = true
     }
 
