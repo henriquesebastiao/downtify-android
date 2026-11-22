@@ -60,24 +60,33 @@ object PlayerModule {
         http: OkHttpDataSource.Factory,
         resolver: StreamResolver,
         store: AudioCacheStore,
-    ): DataSource.Factory = ResolvingDataSource.Factory(
-        // file:// (offline copies) is read straight from disk; http(s) goes through the streaming cache.
-        DefaultDataSource.Factory(
-            context,
-            CacheDataSource.Factory()
-                .setCache(cache)
-                .setUpstreamDataSourceFactory(http)
-                .setCacheKeyFactory { it.key ?: store.uriKey(it.uri.toString()) }
-                .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR),
-        ),
-        resolver,
-    )
+        dj: DjAudioCacheStore,
+    ): DataSource.Factory {
+        val regular = ResolvingDataSource.Factory(
+            // file:// (offline copies) is read straight from disk; http(s) goes through the streaming cache.
+            DefaultDataSource.Factory(
+                context,
+                CacheDataSource.Factory()
+                    .setCache(cache)
+                    .setUpstreamDataSourceFactory(http)
+                    .setCacheKeyFactory { it.key ?: store.uriKey(it.uri.toString()) }
+                    .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR),
+            ),
+            resolver,
+        )
+        val direct = ResolvingDataSource.Factory(http, resolver)
+        val live = ResolvingDataSource.Factory(dj.factory, resolver)
+        return DataSource.Factory { DjDataSource(regular, direct, live, resolver::isDjHlsResource) }
+    }
 
     @Provides
     @Singleton
     @ArtworkDataSource
-    fun artworkDataSource(@ApplicationContext context: Context, http: OkHttpDataSource.Factory): DataSource.Factory =
-        DefaultDataSource.Factory(context, http)
+    fun artworkDataSource(
+        @ApplicationContext context: Context,
+        @com.henriquesebastiao.downtify.core.network.di.ArtworkClient client: OkHttpClient,
+    ): DataSource.Factory =
+        DefaultDataSource.Factory(context, OkHttpDataSource.Factory(client).setUserAgent(USER_AGENT))
 
     private const val USER_AGENT = "Downtify-Android"
 }

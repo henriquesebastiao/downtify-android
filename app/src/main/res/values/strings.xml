@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="nav_music_ai">Your music</string>
     <string name="app_name" translatable="false">Downtify</string>
 
     <!-- Navigation -->
@@ -563,6 +564,14 @@
     <string name="settings_normalization_louder">Louder</string>
     <string name="settings_normalization_maximum">Maximum</string>
     <string name="settings_normalization_level_hint">Raises playback volume within each track’s safe limit. Your audio files stay unchanged.</string>
+    <string name="music_dj_server">Server</string>
+    <string name="music_dj_device_beta">This device · Beta</string>
+    <string name="music_dj_local_description">Rhythmic plans use verified server analyses; mixing runs on this device. No Android model is downloaded. Opt-in beta, not yet qualified on Pixel.</string>
+    <string name="music_dj_server_description">The server prepares transitions. Your phone plays the authenticated audio stream.</string>
+    <plurals name="player_queue_item_count">
+        <item quantity="one">%1$d item</item>
+        <item quantity="other">%1$d items</item>
+    </plurals>
     <string name="connect_client_certificate">Client certificate</string>
     <string name="connect_client_certificate_selected">Client certificate: %1$s</string>
     <string name="connect_client_certificate_clear">Remove client certificate</string>
@@ -571,4 +580,17 @@
     <string name="settings_client_certificate_active">Presenting “%1$s” from Android’s credential storage when the server asks for a client certificate.</string>
     <string name="settings_client_certificate_change">Change</string>
     <string name="settings_client_certificate_remove">Remove</string>
+    <string name="music_dj_engine_label">Rhythmic DJ engine</string>
+    <string name="music_dj_modes_description">Transitions: local fades with your chosen duration. DJ beta: beat-aligned plans from verified server analyses; no on-device beat model yet.</string>
+    <string name="music_dj_profiles_preparing">Checking rhythmic plans. Your current track keeps playing.</string>
+    <string name="music_dj_profiles_ready">Device DJ beta ready · verified server analyses.</string>
+    <string name="music_dj_profiles_unsupported">This server does not support verified device DJ plans. Use the server engine.</string>
+    <string name="music_dj_profiles_disabled">Device DJ is disabled in AI settings.</string>
+    <string name="music_dj_profiles_network">Plans unavailable over the network. Normal playback continues; cached valid transitions remain available.</string>
+    <string name="music_dj_profiles_invalid">The server returned an incompatible DJ plan. Normal playback continues.</string>
+    <string name="music_dj_profiles_speed">Device DJ requires normal playback speed and pitch.</string>
+    <string name="music_dj_profiles_missing">Verified rhythmic analyses are missing or unsuitable. Normal playback continues; try the server engine.</string>
+    <string name="music_dj_profiles_retry">Check again</string>
+    <string name="music_dj_profiles_server">Use server DJ</string>
+    <string name="music_dj_profiles_queue">Device DJ beta requires at least two local tracks, with shuffle and repeat-one off. Normal playback continues; use server DJ or change the queue.</string>
 </resources>

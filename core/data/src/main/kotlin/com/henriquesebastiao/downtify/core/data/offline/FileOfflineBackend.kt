@@ -5,7 +5,6 @@ import android.os.StatFs
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
-import java.io.FilterOutputStream
 import java.io.InputStream
 import java.io.OutputStream
 
@@ -88,11 +87,8 @@ internal class FileOfflineBackend(private val root: File, private val onChanged:
         override fun inputStream(): InputStream = FileInputStream(file)
         override fun outputStream(append: Boolean): OutputStream {
             file.parentFile?.mkdirs()
-            return object : FilterOutputStream(FileOutputStream(file, append)) {
-                override fun close() {
-                    super.close()
-                    if (!path.startsWith("${OfflinePaths.PARTS}/")) onChanged(file)
-                }
+            return NotifyingOutputStream(FileOutputStream(file, append)) {
+                if (!path.startsWith("${OfflinePaths.PARTS}/")) onChanged(file)
             }
         }
     }

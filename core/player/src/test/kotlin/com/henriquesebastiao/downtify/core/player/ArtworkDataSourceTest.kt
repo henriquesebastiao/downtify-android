@@ -10,7 +10,6 @@ import android.os.ParcelFileDescriptor
 import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSpec
-import androidx.media3.datasource.okhttp.OkHttpDataSource
 import java.io.File
 import okhttp3.OkHttpClient
 import org.junit.Assert.assertArrayEquals
@@ -70,11 +69,9 @@ class ArtworkDataSourceTest {
 
     private fun read(uri: Uri): ByteArray {
         val context = RuntimeEnvironment.getApplication()
-        val http = OkHttpDataSource.Factory(
-            OkHttpClient.Builder().addInterceptor {
-                error("Local artwork must not use HTTP")
-            }.build(),
-        )
+        val http = OkHttpClient.Builder().addInterceptor {
+            error("Local artwork must not use HTTP")
+        }.build()
         val source = PlayerModule.artworkDataSource(context, http).createDataSource()
         return try {
             source.open(DataSpec.Builder().setUri(uri).build())

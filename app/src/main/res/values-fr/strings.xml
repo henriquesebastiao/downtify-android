@@ -569,6 +569,16 @@
     <string name="settings_normalization_louder">Plus fort</string>
     <string name="settings_normalization_maximum">Maximum</string>
     <string name="settings_normalization_level_hint">Le volume augmente dans la limite propre à chaque titre. Vos fichiers restent inchangés.</string>
+    <string name="nav_music_ai">Votre musique</string>
+    <string name="music_dj_server">Serveur</string>
+    <string name="music_dj_device_beta">Cet appareil · Bêta</string>
+    <string name="music_dj_local_description">Plans rythmiques calculés à partir des analyses serveur vérifiées ; mixage sur cet appareil. Aucun modèle Android téléchargé. Bêta volontaire, non qualifiée sur Pixel.</string>
+    <string name="music_dj_server_description">Le serveur prépare les transitions. Le téléphone lit le flux audio authentifié.</string>
+    <plurals name="player_queue_item_count">
+        <item quantity="one">%1$d élément</item>
+        <item quantity="many">%1$d éléments</item>
+        <item quantity="other">%1$d éléments</item>
+    </plurals>
     <string name="connect_client_certificate">Certificat client</string>
     <string name="connect_client_certificate_selected">Certificat client : %1$s</string>
     <string name="connect_client_certificate_clear">Retirer le certificat client</string>
@@ -577,4 +587,17 @@
     <string name="settings_client_certificate_active">Présentation de «\u00A0%1$s\u00A0» depuis le stockage des identifiants d’Android lorsque le serveur demande un certificat client.</string>
     <string name="settings_client_certificate_change">Changer</string>
     <string name="settings_client_certificate_remove">Retirer</string>
+    <string name="music_dj_engine_label">Moteur du DJ rythmique</string>
+    <string name="music_dj_modes_description">Transitions : fondus locaux avec la durée choisie. DJ bêta : calage sur les analyses serveur vérifiées ; aucun modèle de temps exécuté sur cet appareil pour le moment.</string>
+    <string name="music_dj_profiles_preparing">Vérification des plans rythmiques. Le titre en cours continue.</string>
+    <string name="music_dj_profiles_ready">DJ sur cet appareil prêt · analyses serveur vérifiées.</string>
+    <string name="music_dj_profiles_unsupported">Ce serveur ne propose pas les plans DJ vérifiés pour cet appareil. Utilisez le moteur serveur.</string>
+    <string name="music_dj_profiles_disabled">Le DJ sur cet appareil est désactivé dans les paramètres IA.</string>
+    <string name="music_dj_profiles_network">Plans injoignables. La lecture continue ; les transitions en cache encore valides restent disponibles.</string>
+    <string name="music_dj_profiles_invalid">Le serveur a renvoyé un plan DJ incompatible. La lecture normale continue.</string>
+    <string name="music_dj_profiles_speed">Le DJ sur cet appareil exige une vitesse et une hauteur normales.</string>
+    <string name="music_dj_profiles_missing">Analyses rythmiques vérifiées manquantes ou inadaptées. La lecture continue ; essayez le moteur serveur.</string>
+    <string name="music_dj_profiles_retry">Vérifier à nouveau</string>
+    <string name="music_dj_profiles_server">Utiliser le DJ serveur</string>
+    <string name="music_dj_profiles_queue">Le DJ sur cet appareil exige au moins deux titres locaux, sans aléatoire ni répétition du titre. La lecture continue ; utilisez le DJ serveur ou adaptez la file.</string>
 </resources>

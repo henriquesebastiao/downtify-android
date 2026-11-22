@@ -9,6 +9,9 @@ import io.mockk.mockk
 import io.mockk.mockkStatic
 import io.mockk.unmockkAll
 import java.io.File
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -24,6 +27,34 @@ import org.robolectric.annotation.Config
 @Config(sdk = [34])
 class OfflineStorageMigrationTest {
     @get:Rule val temporary = TemporaryFolder()
+
+    @Test fun `location metadata stays readable while migration owns the storage monitor`() {
+        val context = mockk<Context> {
+            every { filesDir } returns temporary.root
+            every { getExternalMediaDirs() } returns arrayOf()
+            every { packageName } returns "com.henriquesebastiao.downtify"
+        }
+        val storage = OfflineStorage(context, File(temporary.root, "media"))
+        val held = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val workers = Executors.newFixedThreadPool(2)
+        try {
+            val migration = workers.submit {
+                synchronized(storage) {
+                    held.countDown()
+                    check(release.await(10, TimeUnit.SECONDS))
+                }
+            }
+            assertTrue(held.await(2, TimeUnit.SECONDS))
+            val label = workers.submit<String> { storage.locationLabel() }
+            assertEquals("Android/media/com.henriquesebastiao.downtify", label.get(2, TimeUnit.SECONDS))
+            release.countDown()
+            migration.get(2, TimeUnit.SECONDS)
+        } finally {
+            release.countDown()
+            workers.shutdownNow()
+        }
+    }
 
     @Test
     fun `legacy id named audio is imported to its readable path`() {

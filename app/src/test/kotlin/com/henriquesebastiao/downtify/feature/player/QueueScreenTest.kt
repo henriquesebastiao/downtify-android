@@ -128,4 +128,62 @@ class QueueScreenTest {
         }
         compose.onNodeWithText("Nothing plays after this song.").assertExists()
     }
+
+    @Test
+    fun unavailableDjCanBeRecheckedAndExplainsWhy() {
+        var checked = 0
+        compose.setContent {
+            DowntifyTheme {
+                QueueScreen(
+                    state = state(0),
+                    actions = QueueActions(onToggleDj = { checked++ }),
+                    controls = NowPlayingActions(),
+                    dj = QueueDjState(available = false, reason = "Activez l’essai bêta dans Paramètres → IA."),
+                )
+            }
+        }
+        compose.onNodeWithText("Activez l’essai bêta dans Paramètres → IA.").assertExists()
+        compose.onNodeWithText("Vérifier le DJ").performClick()
+        assertEquals(1, checked)
+    }
+
+    @Test
+    fun preparingDjCanBeCancelledEvenWhileChecking() {
+        var cancelled = 0
+        compose.setContent {
+            DowntifyTheme {
+                QueueScreen(
+                    state = state(0),
+                    actions = QueueActions(onToggleDj = { cancelled++ }),
+                    controls = NowPlayingActions(),
+                    dj = QueueDjState(available = true, active = true, preparing = true, checking = true),
+                )
+            }
+        }
+        compose.onNodeWithText("Annuler la préparation DJ").performClick()
+        assertEquals(1, cancelled)
+    }
+
+    @Test
+    fun readyRelayDoesNotPretendAudioIsAlreadyDj() {
+        compose.setContent {
+            DowntifyTheme {
+                QueueScreen(
+                    state = state(0),
+                    actions = QueueActions(),
+                    controls = NowPlayingActions(),
+                    dj = QueueDjState(
+                        available = true,
+                        ready = true,
+                        active = true,
+                        waiting = true,
+                        message = "Le DJ prendra le relais à la fin du titre en cours.",
+                    ),
+                )
+            }
+        }
+        compose.onNodeWithText("Annuler le relais DJ").assertExists()
+        compose.onNodeWithText("Le DJ prendra le relais à la fin du titre en cours.").assertExists()
+        compose.onNodeWithText("Désactiver le mode DJ").assertDoesNotExist()
+    }
 }

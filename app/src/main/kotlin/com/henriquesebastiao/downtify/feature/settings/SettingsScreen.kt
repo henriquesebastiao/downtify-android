@@ -83,6 +83,9 @@ import com.henriquesebastiao.downtify.core.model.StreamFormat
 import com.henriquesebastiao.downtify.core.model.StreamQuality
 import com.henriquesebastiao.downtify.core.model.Transcoding
 import com.henriquesebastiao.downtify.core.model.formatBytes
+import com.henriquesebastiao.downtify.feature.player.PlaybackMixMode
+import com.henriquesebastiao.downtify.feature.player.PlaybackMixSelector
+import com.henriquesebastiao.downtify.feature.player.QueueDjViewModel
 import com.henriquesebastiao.downtify.ui.common.GroupTitle
 import com.henriquesebastiao.downtify.ui.common.GroupedList
 import com.henriquesebastiao.downtify.ui.common.GroupedRow
@@ -96,13 +99,30 @@ fun SettingsRoute(
     onOpenAbout: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SettingsViewModel = hiltViewModel(),
+    onOpenAi: () -> Unit = {},
+    playback: QueueDjViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val device by playback.localDevice.collectAsStateWithLifecycle()
+    val mode by playback.mixMode.collectAsStateWithLifecycle()
+    val readiness by playback.localReadiness.collectAsStateWithLifecycle()
+    val seconds by playback.transitionSeconds.collectAsStateWithLifecycle()
+    val message by playback.message.collectAsStateWithLifecycle()
     val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         uri?.let { viewModel.setOfflineDirectory(it.toString()) }
     }
     SettingsScreen(
+        playbackMode = mode,
+        playbackDevice = device,
+        localReadiness = readiness,
+        onPlaybackDevice = playback::chooseDevice,
+        onLocalRetry = playback::retryLocalPlans,
+        onServerFallback = playback::useServerFallback,
+        transitionSeconds = seconds,
+        playbackMessage = message,
+        onPlaybackMode = playback::selectMode,
+        onTransitionSeconds = playback::setTransitionSeconds,
         state = state,
         actions = SettingsActions(
             onBack = onBack,
@@ -116,6 +136,7 @@ fun SettingsRoute(
             onFont = viewModel::setFont,
             onFloatingNavBar = viewModel::setFloatingNavBar,
             onOpenAbout = onOpenAbout,
+            onOpenAi = onOpenAi,
             onOpenLanguage = { openAppLanguageSettings(context) },
             onDownloadWifiOnly = viewModel::setDownloadWifiOnly,
             onOfflineLimit = viewModel::setOfflineLimit,
@@ -154,6 +175,7 @@ data class SettingsActions(
     val onFont: (AppFont) -> Unit = {},
     val onFloatingNavBar: (Boolean) -> Unit = {},
     val onOpenAbout: () -> Unit = {},
+    val onOpenAi: () -> Unit = {},
     val onOpenLanguage: () -> Unit = {},
     val onDownloadWifiOnly: (Boolean) -> Unit = {},
     val onOfflineLimit: (Long) -> Unit = {},
@@ -181,7 +203,22 @@ private enum class SettingsDialog {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: Modifier = Modifier) {
+fun SettingsScreen(
+    state: SettingsUiState,
+    actions: SettingsActions,
+    modifier: Modifier = Modifier,
+    playbackMode: PlaybackMixMode = PlaybackMixMode.Disabled,
+    transitionSeconds: Int = 5,
+    playbackMessage: String = "",
+    onPlaybackMode: (PlaybackMixMode) -> Unit = {},
+    onTransitionSeconds: (Int) -> Unit = {},
+    playbackDevice: Boolean = false,
+    localReadiness: com.henriquesebastiao.downtify.core.player.LocalDjReadiness =
+        com.henriquesebastiao.downtify.core.player.LocalDjReadiness(),
+    onPlaybackDevice: (Boolean) -> Unit = {},
+    onLocalRetry: () -> Unit = {},
+    onServerFallback: () -> Unit = {},
+) {
     var dialog by rememberSaveable { mutableStateOf<SettingsDialog?>(null) }
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     Scaffold(
@@ -203,8 +240,48 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
         ) {
             ServerCard(state, onChangeServer = { dialog = SettingsDialog.Unpair }, onOpenWeb = actions.onOpenWeb)
 
+            SectionCard(
+                icon = DowntifyIcons.Graphic,
+                title = "IA",
+                onClick = actions.onOpenAi,
+                trailing = { Tag("Expérimental", tone = TagTone.Secondary) },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.screen, vertical = Spacing.sm),
+            ) { Text("Playlists personnalisées et DJ en temps réel") }
+
             GroupTitle(stringResource(R.string.settings_playback))
             GroupedList(playbackRows(state, actions) { dialog = it })
+            Column(
+                Modifier.fillMaxWidth().padding(horizontal = Spacing.screen, vertical = Spacing.sm),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text("Transitions et DJ", style = MaterialTheme.typography.titleMedium)
+                PlaybackMixSelector(playbackMode, onPlaybackMode)
+                com.henriquesebastiao.downtify.feature.player.RhythmicDjEngine(playbackDevice, onPlaybackDevice)
+                if (playbackDevice && playbackMode == PlaybackMixMode.Dj) {
+                    com.henriquesebastiao.downtify.feature.player.LocalDjFeedback(
+                        localReadiness,
+                        onLocalRetry,
+                        onServerFallback,
+                    )
+                }
+                Text("Durée du fondu local : $transitionSeconds s", style = MaterialTheme.typography.bodyMedium)
+                var sliding by androidx.compose.runtime.remember(transitionSeconds) {
+                    mutableStateOf(transitionSeconds.toFloat())
+                }
+                Slider(
+                    value = sliding,
+                    onValueChange = { sliding = it },
+                    onValueChangeFinished = { onTransitionSeconds(sliding.roundToInt()) },
+                    valueRange = 1f..12f,
+                    steps = 10,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(
+                    stringResource(R.string.music_dj_modes_description),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                if (playbackMessage.isNotBlank()) Text(playbackMessage, style = MaterialTheme.typography.bodySmall)
+            }
             Spacer(Modifier.height(Spacing.lg))
             GroupedList(bufferRows(state, actions) { dialog = it })
 

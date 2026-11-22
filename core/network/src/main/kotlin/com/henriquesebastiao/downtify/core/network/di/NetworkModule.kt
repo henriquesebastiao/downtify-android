@@ -26,6 +26,10 @@ annotation class DefaultClient
 @Retention(AnnotationRetention.BINARY)
 annotation class StreamingClient
 
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class ArtworkClient
+
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
@@ -53,8 +57,16 @@ object NetworkModule {
 
     @Provides
     @Singleton
+    @ArtworkClient
+    fun artworkClient(@DefaultClient base: OkHttpClient): OkHttpClient = base.newBuilder()
+        .dispatcher(okhttp3.Dispatcher().apply { maxRequestsPerHost = 6 })
+        .callTimeout(10, TimeUnit.SECONDS).build()
+
+    @Provides
+    @Singleton
     @StreamingClient
     fun streamingClient(@DefaultClient base: OkHttpClient): OkHttpClient = base.newBuilder()
+        .dispatcher(okhttp3.Dispatcher().apply { maxRequestsPerHost = 3 })
         .readTimeout(STREAM_READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
         .addNetworkInterceptor { chain ->
             val response = chain.proceed(chain.request())

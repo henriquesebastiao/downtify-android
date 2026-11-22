@@ -10,6 +10,7 @@ import com.henriquesebastiao.downtify.core.model.PlaybackSnapshot
 import com.henriquesebastiao.downtify.core.model.Playlist
 import com.henriquesebastiao.downtify.core.model.SavedPlaybackItem
 import com.henriquesebastiao.downtify.core.model.Track
+import com.henriquesebastiao.downtify.core.network.dto.MusicAiCapabilitiesDto
 import com.henriquesebastiao.downtify.core.network.session.Session
 import com.henriquesebastiao.downtify.core.player.PlaybackService
 import io.mockk.coEvery
@@ -24,6 +25,7 @@ internal class CarServiceFixture {
     var restorationGate: kotlinx.coroutines.CompletableDeferred<Unit>? = null
     val association = MutableStateFlow<Session?>(Session("https://fixture.test", "server", "Car", "device", "fixture"))
     val source = mockk<DataSource.Factory>()
+    val libraryPlaylists = MutableStateFlow(listOf(Playlist("Car", false, "", listOf("b", "a"))))
     val saved = PlaybackSnapshot(
         listOf(SavedPlaybackItem("a", "One", "Artist"), SavedPlaybackItem("b", "Two", "Artist")),
         1,
@@ -42,13 +44,26 @@ internal class CarServiceFixture {
         service.library = mockk(relaxed = true) {
             every { library } returns
                 MutableStateFlow<LibrarySnapshot?>(LibrarySnapshot(listOf(track("a"), track("b"))))
-            every { playlists } returns MutableStateFlow(listOf(Playlist("Car", false, "", listOf("b", "a"))))
+            every { playlists } returns libraryPlaylists
             every { likedIds } returns MutableStateFlow(listOf("a"))
             every { successfulSync } returns MutableStateFlow(0)
         }
+        service.sleepTimer = com.henriquesebastiao.downtify.core.player.PlaybackSleepTimer()
+        service.localDj = com.henriquesebastiao.downtify.core.player.LocalDjSettings(
+            org.robolectric.RuntimeEnvironment.getApplication(),
+        )
         service.sessions = mockk(relaxed = true) {
             every { current } answers { association.value }
             every { session } returns association
+        }
+        service.carHistory = com.henriquesebastiao.downtify.core.player.CarRecommendationHistory(
+            org.robolectric.RuntimeEnvironment.getApplication(),
+            service.sessions,
+        )
+        service.localPlans = mockk(relaxed = true)
+        service.musicAi = mockk(relaxed = true) {
+            every { session } returns association
+            every { capabilities } returns MutableStateFlow(MusicAiCapabilitiesDto())
         }
         service.playback = mockk(relaxed = true) {
             coEvery { load(any()) } coAnswers {

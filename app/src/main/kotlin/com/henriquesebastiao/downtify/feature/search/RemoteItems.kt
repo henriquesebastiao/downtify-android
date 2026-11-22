@@ -59,6 +59,7 @@ import com.henriquesebastiao.downtify.core.model.ServerJob
 import com.henriquesebastiao.downtify.core.model.ServerJobStatus
 import com.henriquesebastiao.downtify.core.model.Track
 import com.henriquesebastiao.downtify.core.model.formatDuration
+import com.henriquesebastiao.downtify.ui.common.LocalMusicAiCapabilities
 
 /**
  * A song the server can download, as a card of a separated list: tapping anywhere plays it in
@@ -151,14 +152,18 @@ private fun RemoteSongMenu(
     Box {
         CircleButton(DowntifyIcons.MoreVert, stringResource(R.string.track_more, song.title), { open = true })
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.search_similar, song.title)) },
-                leadingIcon = { Icon(painterResource(DowntifyIcons.Explore), contentDescription = null) },
-                onClick = {
-                    open = false
-                    onSimilar()
-                },
-            )
+            val caps = LocalMusicAiCapabilities.current
+            val localAvailable = libraryTrack != null && caps.enabled("similarity")
+            if (caps.version != 1 || caps.enabled("external_beta") || localAvailable) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.search_similar, song.title)) },
+                    leadingIcon = { Icon(painterResource(DowntifyIcons.Explore), contentDescription = null) },
+                    onClick = {
+                        open = false
+                        onSimilar()
+                    },
+                )
+            }
             if (job == null && libraryTrack == null) {
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.search_download_to_server, song.title)) },

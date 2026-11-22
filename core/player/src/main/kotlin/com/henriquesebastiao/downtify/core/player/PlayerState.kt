@@ -6,6 +6,28 @@ import com.henriquesebastiao.downtify.core.model.Track
 
 enum class RepeatMode { Off, All, One }
 
+/** Fences delayed queue actions across local tracks, streams, podcasts and DJ. */
+val PlayerState.mediaKey: String?
+    get() = track?.id?.let { "track:$it" }
+        ?: stream?.videoId?.let { "stream:$it" }
+        ?: episode?.episodeId?.let { "episode:$it" }
+        ?: dj?.id?.let { "dj:$it" }
+data class PlayingDj(
+    val id: String,
+    val title: String,
+    val mode: String = "prepared",
+    val artist: String = "Mix DJ local",
+    val trackId: String? = null,
+    val nextTitle: String = "",
+    val nextArtist: String = "",
+    val nextTrackId: String? = null,
+    val start: Long = 0,
+    val end: Long = 0,
+    val nextStart: Long = Long.MAX_VALUE,
+    val origin: Long = 0,
+    val transition: Float? = null,
+)
+
 /**
  * One queue row. [index] is its place in the player's list (what skipping to
  * it or removing it takes); [queued] marks a song the user added to the queue.
@@ -47,6 +69,7 @@ data class PlayingStream(
 
 /** What the mini player and Now Playing show. */
 data class PlayerState(
+    val dj: PlayingDj? = null,
     /** The track playing, from the library (null when nothing is loaded, or an episode or stream is). */
     val track: Track? = null,
     /** The podcast episode playing, when it isn't a song. */
@@ -66,6 +89,8 @@ data class PlayerState(
     /** What plays after the current item, in the order it will play (shuffled or not). */
     val upNext: List<QueueEntry> = emptyList(),
     val currentIndex: Int = -1,
+    /** Total internal occurrences, including those already played and any DJ render. */
+    val queueSize: Int = 0,
     val context: PlaybackContext? = null,
     /** The quality the current track streams in, once it started. */
     val quality: StreamQuality? = null,
@@ -74,7 +99,7 @@ data class PlayerState(
     /** The last playback error, for a message; cleared by the next track. */
     val error: PlaybackError? = null,
 ) {
-    val hasMedia: Boolean get() = track != null || episode != null || stream != null
+    val hasMedia: Boolean get() = track != null || episode != null || stream != null || dj != null
     val progress: Float get() = if (durationMs > 0) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
 }
 
@@ -91,6 +116,7 @@ enum class PlaybackError {
 /** One-off things the UI tells the user about (a snackbar). */
 sealed interface PlayerEvent {
     data class AddedToQueue(val title: String) : PlayerEvent
+    data class DjControlFailed(val id: String, val message: String) : PlayerEvent
 }
 
 /** Just what lists need to mark the playing row — changes far less often than [PlayerState]. */

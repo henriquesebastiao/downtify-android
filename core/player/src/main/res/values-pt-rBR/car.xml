@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="car_for_you">Para você</string>
+    <string name="car_daily_mix">Seleção do dia</string>
+    <string name="car_most_played_playlist">Playlist mais ouvida</string>
+    <string name="car_playlist_pick">Sua playlist</string>
     <string name="car_library">Biblioteca</string>
     <string name="car_playlists">Playlists</string>
     <string name="car_favorites">Favoritos</string>
@@ -14,5 +18,10 @@
     <string name="car_choose_result">Vários resultados: escolha uma faixa na pesquisa.</string>
     <string name="player_like">Adicionar às músicas curtidas</string>
     <string name="player_unlike">Remover das músicas curtidas</string>
+    <string name="player_shuffle_on">Aleatório ativado</string>
+    <string name="player_shuffle_off">Aleatório desativado</string>
+    <string name="player_repeat_off">Repetição desativada</string>
+    <string name="player_repeat_all">Repetir tudo</string>
+    <string name="player_repeat_one">Repetir uma música</string>
     <string name="car_refine_search">Muitos resultados. Refine sua pesquisa.</string>
 </resources>

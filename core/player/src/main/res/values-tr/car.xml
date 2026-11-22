@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="car_for_you">Sizin için</string>
+    <string name="car_daily_mix">Günün seçkisi</string>
+    <string name="car_most_played_playlist">En çok dinlenen çalma listesi</string>
+    <string name="car_playlist_pick">Çalma listeniz</string>
     <string name="car_library">Kitaplık</string>
     <string name="car_playlists">Çalma listeleri</string>
     <string name="car_favorites">Favoriler</string>
@@ -14,5 +18,10 @@
     <string name="car_choose_result">Birden çok sonuç: arama sonuçlarından bir parça seçin.</string>
     <string name="player_like">Beğenilen parçalara ekle</string>
     <string name="player_unlike">Beğenilen parçalardan kaldır</string>
+    <string name="player_shuffle_on">Karışık açık</string>
+    <string name="player_shuffle_off">Karışık kapalı</string>
+    <string name="player_repeat_off">Tekrar kapalı</string>
+    <string name="player_repeat_all">Tümünü tekrarla</string>
+    <string name="player_repeat_one">Bir şarkıyı tekrarla</string>
     <string name="car_refine_search">Çok fazla sonuç. Aramanızı daraltın.</string>
 </resources>
