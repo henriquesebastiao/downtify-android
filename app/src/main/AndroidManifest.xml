@@ -49,6 +49,11 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".feature.diagnostics.DiagnosticsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Downtify" />
+
         <!-- WorkManager is initialised by the Application (Hilt workers). -->
         <provider
             android:name="androidx.startup.InitializationProvider"

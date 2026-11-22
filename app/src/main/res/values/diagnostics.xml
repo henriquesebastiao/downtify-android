@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
+    <string name="diagnostics_title">Diagnostics</string>
+    <string name="diagnostics_description">Quick responsiveness, temporary storage and server checks. Playback and the queue are preserved.</string>
+    <string name="diagnostics_run">Run quick checks</string>
+    <string name="diagnostics_running">Checks running…</string>
+    <string name="diagnostics_export">Export diagnostic report</string>
+    <string name="diagnostics_ui">Interface responsiveness</string>
+    <string name="diagnostics_storage">Temporary storage (1 MiB)</string>
+    <string name="diagnostics_server">Server availability</string>
+    <string name="diagnostics_failed">The diagnostic or export could not complete. Try again when the app is responsive.</string>
+    <string name="diagnostics_saved">Report saved to the selected destination.</string>
+    <string name="diagnostics_privacy">Export is manual. The report includes technical measurements and available app exit traces, excluding accounts, tokens, server addresses and track titles. Quick checks do not qualify audio playback.</string>
+</resources>

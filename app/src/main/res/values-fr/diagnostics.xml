@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="diagnostics_title">Diagnostic</string>
+    <string name="diagnostics_description">Tests courts de réactivité, stockage temporaire et connexion au serveur. La lecture et la file sont préservées.</string>
+    <string name="diagnostics_run">Lancer les tests rapides</string>
+    <string name="diagnostics_running">Tests en cours…</string>
+    <string name="diagnostics_export">Exporter le rapport diagnostic</string>
+    <string name="diagnostics_ui">Réactivité de l’interface</string>
+    <string name="diagnostics_storage">Stockage temporaire (1 Mio)</string>
+    <string name="diagnostics_server">Disponibilité du serveur</string>
+    <string name="diagnostics_failed">Le diagnostic ou l’export n’a pas pu terminer. Réessaie lorsque l’application répond.</string>
+    <string name="diagnostics_saved">Rapport enregistré à l’emplacement choisi.</string>
+    <string name="diagnostics_privacy">L’export est manuel. Le rapport contient les mesures techniques et les traces de fermeture disponibles, sans comptes, jetons, adresses de serveur ou titres de morceaux. Ces tests ne qualifient pas la lecture audio.</string>
+</resources>

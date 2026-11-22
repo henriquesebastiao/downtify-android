@@ -83,6 +83,7 @@ import com.henriquesebastiao.downtify.core.model.StreamFormat
 import com.henriquesebastiao.downtify.core.model.StreamQuality
 import com.henriquesebastiao.downtify.core.model.Transcoding
 import com.henriquesebastiao.downtify.core.model.formatBytes
+import com.henriquesebastiao.downtify.feature.diagnostics.DiagnosticsActivity
 import com.henriquesebastiao.downtify.ui.common.GroupTitle
 import com.henriquesebastiao.downtify.ui.common.GroupedList
 import com.henriquesebastiao.downtify.ui.common.GroupedRow
@@ -183,6 +184,7 @@ private enum class SettingsDialog {
 @Composable
 fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: Modifier = Modifier) {
     var dialog by rememberSaveable { mutableStateOf<SettingsDialog?>(null) }
+    val diagnosticContext = LocalContext.current
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -217,6 +219,14 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, modifier: M
             GroupTitle(stringResource(R.string.settings_about))
             GroupedList(
                 listOf(
+                    GroupedRow(
+                        title = stringResource(R.string.diagnostics_title),
+                        summary = stringResource(R.string.diagnostics_description),
+                        icon = DowntifyIcons.Info,
+                        action = RowAction.Click({
+                            diagnosticContext.startActivity(Intent(diagnosticContext, DiagnosticsActivity::class.java))
+                        }, DowntifyIcons.ChevronRight),
+                    ),
                     GroupedRow(
                         title = stringResource(R.string.settings_about_entry),
                         summary = stringResource(R.string.settings_app_version, BuildConfig.VERSION_NAME),
