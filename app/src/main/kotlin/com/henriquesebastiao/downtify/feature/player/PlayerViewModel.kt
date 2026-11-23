@@ -43,6 +43,9 @@ sealed interface LyricsState {
 }
 
 /** Shared by the mini player and Now Playing (activity scope). */
+// The player's actions (transport, queue, likes, playback level, sleep timer) are all one
+// command surface; detekt's 20-function class budget is a style guide, not a boundary here.
+@Suppress("TooManyFunctions")
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     private val player: PlayerController,

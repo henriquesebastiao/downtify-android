@@ -182,8 +182,15 @@ class SleepTimerTest {
 
     @Test
     fun anyNumberOfMinutesIsKeptWithinTheTimersOwnBounds() {
-        assertEquals(60 * MINUTE, SleepTimerState.afterMinutes(0, nowMs = 0).remainingMs)
-        assertEquals(600 * MINUTE, SleepTimerState.afterMinutes(1_000, nowMs = 0).remainingMs)
+        // A value outside the timer's own bounds is pulled back into them; one inside is kept.
+        assertEquals(
+            SleepTimerState.MIN_MINUTES * MINUTE,
+            SleepTimerState.afterMinutes(0, nowMs = 0).remainingMs,
+        )
+        assertEquals(
+            SleepTimerState.MAX_MINUTES * MINUTE,
+            SleepTimerState.afterMinutes(1_000, nowMs = 0).remainingMs,
+        )
         assertEquals(7 * MINUTE, SleepTimerState.afterMinutes(7, nowMs = 0).remainingMs)
     }
 

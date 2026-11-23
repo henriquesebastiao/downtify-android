@@ -20,6 +20,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
+// One setter per preference, plus the sleep timer's deadline; same reason as PlayerController.
+@Suppress("TooManyFunctions")
 @Singleton
 class SettingsRepository @Inject constructor(private val store: DataStore<Preferences>) {
     val settings: Flow<UserSettings> = store.data.map { prefs ->
@@ -149,6 +151,7 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
                     }
 
                     SleepTimerMode.EndOfTrack -> MODE_END_OF_TRACK
+
                     SleepTimerMode.EndOfEpisode -> MODE_END_OF_EPISODE
                 }
                 if (mode !is SleepTimerMode.AfterMinutes) prefs.remove(SLEEP_TIMER_MINUTES)
@@ -172,7 +175,9 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
                 .takeIf { it.minutes > 0 } ?: return null
 
             MODE_END_OF_TRACK -> SleepTimerMode.EndOfTrack
+
             MODE_END_OF_EPISODE -> SleepTimerMode.EndOfEpisode
+
             else -> return null
         }
         return SavedSleepTimer(mode, (prefs[SLEEP_TIMER_REMAINING] ?: 0L).coerceAtLeast(0))

@@ -72,7 +72,9 @@ data class SleepTimerState(
     val remainingMs: Long?
         get() = when (val running = mode) {
             null -> null
+
             is SleepTimerMode.AfterMinutes -> (running.minutes * MINUTE_MS - countedMs).coerceAtLeast(0)
+
             SleepTimerMode.EndOfTrack, SleepTimerMode.EndOfEpisode -> {
                 (durationMs - positionMs).takeIf { durationMs > 0 }?.coerceAtLeast(0)
             }
@@ -126,6 +128,7 @@ data class SleepTimerState(
         val add = minutes.coerceIn(MIN_MINUTES, MAX_MINUTES)
         return when (val running = mode) {
             null -> this
+
             is SleepTimerMode.AfterMinutes -> copy(
                 mode = SleepTimerMode.AfterMinutes((running.minutes + add).coerceIn(MIN_MINUTES, MAX_MINUTES)),
             )
@@ -188,13 +191,12 @@ data class SleepTimerState(
             )
         }
 
-        private fun endOfItem(mode: SleepTimerMode, positionMs: Long, durationMs: Long, nowMs: Long) =
-            SleepTimerState(
-                mode = mode,
-                anchorMs = nowMs,
-                positionMs = positionMs.coerceAtLeast(0),
-                durationMs = durationMs.coerceAtLeast(0),
-            )
+        private fun endOfItem(mode: SleepTimerMode, positionMs: Long, durationMs: Long, nowMs: Long) = SleepTimerState(
+            mode = mode,
+            anchorMs = nowMs,
+            positionMs = positionMs.coerceAtLeast(0),
+            durationMs = durationMs.coerceAtLeast(0),
+        )
 
         private const val MINUTE_MS = 60_000L
     }
