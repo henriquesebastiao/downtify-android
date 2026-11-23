@@ -8,6 +8,7 @@ import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.lerp
 import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
@@ -114,6 +115,27 @@ fun morphShape(start: Shape, stop: Shape, fraction: Float): Shape = when {
     fraction >= 1f -> stop
     else -> MorphedShape(start, stop, fraction)
 }
+
+/**
+ * A rounded rectangle whose corners are in pixels, or a plain one when a corner is not a usable
+ * length. Layer shapes here are built from animated geometry — a radius divided by a scale that is
+ * zero on a zero-width frame — so the value can arrive as NaN or infinite. A rounded shape resolved
+ * from NaN throws in `CornerBasedShape.createOutline` while the frame draws, which crashes the app;
+ * losing the rounding on that one frame costs nothing visible.
+ */
+fun pxRoundedShape(topStart: Float, topEnd: Float, bottomEnd: Float, bottomStart: Float): Shape {
+    // Two pairs rather than one four-part condition: detekt counts four as too complex.
+    if (!topStart.isUsableCorner() || !topEnd.isUsableCorner()) {
+        return RectangleShape
+    }
+    if (!bottomEnd.isUsableCorner() || !bottomStart.isUsableCorner()) {
+        return RectangleShape
+    }
+    return RoundedCornerShape(topStart, topEnd, bottomEnd, bottomStart)
+}
+
+/** A corner is usable when it resolves to a finite, non-negative radius. */
+private fun Float.isUsableCorner() = isFinite() && this >= 0f
 
 private class MorphedShape(val start: Shape, val stop: Shape, val fraction: Float) : Shape {
     override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
