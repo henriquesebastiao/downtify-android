@@ -27,26 +27,20 @@ class ResultFiltersTest {
     @get:Rule
     val compose = createComposeRule()
 
-    private fun song(
-        id: String,
-        title: String,
-        artists: List<String>,
-        album: String,
-        year: String,
-        duration: Int,
-    ) = RemoteSong(
-        id = id,
-        title = title,
-        artists = artists,
-        album = album,
-        coverUrl = "",
-        durationSeconds = duration,
-        url = "https://music.youtube.com/watch?v=$id",
-        source = CatalogSource.YouTube,
-        previewUrl = "",
-        year = year,
-        raw = "{}",
-    )
+    private fun song(id: String, title: String, artists: List<String>, album: String, year: String, duration: Int) =
+        RemoteSong(
+            id = id,
+            title = title,
+            artists = artists,
+            album = album,
+            coverUrl = "",
+            durationSeconds = duration,
+            url = "https://music.youtube.com/watch?v=$id",
+            source = CatalogSource.YouTube,
+            previewUrl = "",
+            year = year,
+            raw = "{}",
+        )
 
     // Every song has two artists, so a chip's word never repeats in a row's subtitle.
     private val page = listOf(

@@ -194,12 +194,7 @@ private fun ClearChip(onClick: () -> Unit) {
 
 /** One field of the page as a row of chips: "Any" or one of [values]. */
 @Composable
-private fun FacetRow(
-    title: String,
-    values: List<String>,
-    selected: String?,
-    onSelect: (String?) -> Unit,
-) {
+private fun FacetRow(title: String, values: List<String>, selected: String?, onSelect: (String?) -> Unit) {
     if (values.isEmpty()) return
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
         Text(
@@ -247,9 +242,12 @@ private fun FacetChip(label: String, selected: Boolean, onClick: () -> Unit) {
 private val ResultSort.label: Int
     get() = when (this) {
         ResultSort.Relevance -> R.string.s_sort_relevance
+
         ResultSort.Title -> R.string.s_sort_title
+
         // The same word as the artist pages and the library's order.
         ResultSort.Artist -> R.string.search_kind_artist
+
         ResultSort.Duration -> R.string.s_sort_duration
     }
 

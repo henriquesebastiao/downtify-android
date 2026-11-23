@@ -76,11 +76,8 @@ sealed interface ServerResults {
      * filter chips offer; [songs] are the rows the search shows, [page] narrowed and ordered by
      * those chips.
      */
-    data class Found(
-        val songs: List<RemoteSong>,
-        val albums: List<RemoteAlbum>,
-        val page: List<RemoteSong> = songs,
-    ) : ServerResults
+    data class Found(val songs: List<RemoteSong>, val albums: List<RemoteAlbum>, val page: List<RemoteSong> = songs) :
+        ServerResults
 
     data class Link(val link: ResolvedLink) : ServerResults
 }
