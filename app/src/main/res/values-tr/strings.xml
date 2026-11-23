@@ -2,6 +2,15 @@
 <resources>
 
     <!-- Navigation -->
+    <string name="s_filters">Filtreler</string>
+    <string name="s_filters_any">Herhangi</string>
+    <string name="s_filters_clear">Filtreleri temizle</string>
+    <string name="s_filter_nothing">Sunucunun sayfasında bu filtrelerle eşleşen bir şey yok.</string>
+    <string name="s_filter_year">Yıl</string>
+    <string name="s_sort">Sırala: %1$s</string>
+    <string name="s_sort_relevance">Alaka düzeyi</string>
+    <string name="s_sort_title">Başlık</string>
+    <string name="s_sort_duration">Süre</string>
     <string name="nav_home">Ana sayfa</string>
     <string name="nav_search">Ara</string>
     <string name="nav_library">Kitaplık</string>

@@ -2,6 +2,15 @@
 <resources>
 
     <!-- Navigation -->
+    <string name="s_filters">Филтри</string>
+    <string name="s_filters_any">Без значение</string>
+    <string name="s_filters_clear">Изчисти филтрите</string>
+    <string name="s_filter_nothing">Нищо в страницата на сървъра не отговаря на тези филтри.</string>
+    <string name="s_filter_year">Година</string>
+    <string name="s_sort">Подреди по: %1$s</string>
+    <string name="s_sort_relevance">Уместност</string>
+    <string name="s_sort_title">Заглавие</string>
+    <string name="s_sort_duration">Продължителност</string>
     <string name="nav_home">Начало</string>
     <string name="nav_search">Търсене</string>
     <string name="nav_library">Библиотека</string>

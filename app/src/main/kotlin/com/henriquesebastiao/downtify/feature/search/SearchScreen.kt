@@ -56,6 +56,7 @@ import com.henriquesebastiao.downtify.core.designsystem.theme.Spacing
 import com.henriquesebastiao.downtify.core.model.RemoteAlbum
 import com.henriquesebastiao.downtify.core.model.RemoteSong
 import com.henriquesebastiao.downtify.core.model.ResolvedLink
+import com.henriquesebastiao.downtify.core.model.ResultFilters
 import com.henriquesebastiao.downtify.core.model.ServerDownloadProgress
 import com.henriquesebastiao.downtify.core.model.StreamVideo
 import com.henriquesebastiao.downtify.core.model.Track
@@ -120,6 +121,7 @@ fun SearchRoute(
         navigation = navigation,
         onQueryChange = viewModel::onQueryChange,
         onFilterChange = viewModel::onFilterChange,
+        onFiltersChange = viewModel::onFiltersChange,
         onPlaySong = viewModel::playSong,
         trackActions = TrackActions(onAddToQueue = viewModel::addToQueue),
         remote = RemoteActions(
@@ -165,6 +167,7 @@ fun SearchScreen(
     trackActions: TrackActions = TrackActions(),
     modifier: Modifier = Modifier,
     remote: RemoteActions = RemoteActions(),
+    onFiltersChange: (ResultFilters) -> Unit = {},
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
@@ -240,6 +243,15 @@ fun SearchScreen(
                         },
                     )
                 }
+            }
+            // The server's page, narrowed and ordered here: worth chips once there is more than one row.
+            val page = (state.server as? ServerResults.Found)?.page.orEmpty()
+            if (page.size > 1 && state.filter != SearchFilter.Albums) {
+                ResultFiltersBar(
+                    options = state.filterOptions,
+                    filters = state.filters,
+                    onChange = onFiltersChange,
+                )
             }
             Results(query, state, navigation, onPlaySong, trackActions, remote)
         }
@@ -370,7 +382,16 @@ private fun LazyListScope.serverSection(
 
         is ServerResults.Found -> {
             if (server.songs.isEmpty() && server.albums.isEmpty()) {
-                item(key = "server-nothing") { StatusLine(stringResource(R.string.search_server_nothing, query)) }
+                item(key = "server-nothing") {
+                    // The page was empty, or the chips on it hid every row: say which.
+                    StatusLine(
+                        if (server.page.isEmpty()) {
+                            stringResource(R.string.search_server_nothing, query)
+                        } else {
+                            stringResource(R.string.s_filter_nothing)
+                        },
+                    )
+                }
             }
             if (showSongs) remoteSongs(server.songs, state, navigation, remote)
             if (showAlbums) remoteAlbums(server.albums, state, navigation, remote)

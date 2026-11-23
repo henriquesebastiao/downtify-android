@@ -2,6 +2,15 @@
 <resources>
 
     <!-- Navigation -->
+    <string name="s_filters">Φίλτρα</string>
+    <string name="s_filters_any">Οποιοδήποτε</string>
+    <string name="s_filters_clear">Εκκαθάριση φίλτρων</string>
+    <string name="s_filter_nothing">Τίποτα στη σελίδα του διακομιστή δεν ταιριάζει με αυτά τα φίλτρα.</string>
+    <string name="s_filter_year">Έτος</string>
+    <string name="s_sort">Ταξινόμηση κατά: %1$s</string>
+    <string name="s_sort_relevance">Συνάφεια</string>
+    <string name="s_sort_title">Τίτλος</string>
+    <string name="s_sort_duration">Διάρκεια</string>
     <string name="nav_home">Αρχική</string>
     <string name="nav_search">Αναζήτηση</string>
     <string name="nav_library">Βιβλιοθήκη</string>
