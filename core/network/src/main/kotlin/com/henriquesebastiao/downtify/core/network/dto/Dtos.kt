@@ -49,6 +49,7 @@ data class ServerInfoDto(
                     lyrics = c.lyrics,
                     librarySync = c.librarySync,
                     passwordSignIn = c.passwordSignIn,
+                    playlistEditing = c.playlistEditing,
                 )
             },
         )
@@ -66,6 +67,8 @@ data class CapabilitiesDto(
     @SerialName("library_sync") val librarySync: Boolean = false,
     /** Missing on servers older than `POST /api/auth/token`, and false while sign-in is turned off. */
     @SerialName("password_sign_in") val passwordSignIn: Boolean = false,
+    /** Missing on servers without the playlist write routes: absent reads as false. */
+    @SerialName("playlist_editing") val playlistEditing: Boolean = false,
 ) {
     fun toModel() = Capabilities(
         transcoding.toModel(),
@@ -76,6 +79,7 @@ data class CapabilitiesDto(
         lyrics,
         librarySync,
         passwordSignIn,
+        playlistEditing,
     )
 }
 
@@ -221,13 +225,32 @@ data class TrackDto(
 data class PlaylistDto(
     val name: String,
     val liked: Boolean = false,
+    /** A playlist made in the library's own list: only these can be edited by track ID. */
+    val manual: Boolean = false,
     val count: Int = 0,
     val cover: String = "",
     @SerialName("track_ids") val trackIds: List<String> = emptyList(),
     val favorite: Boolean? = null,
     @SerialName("display_name") val displayName: String = "",
+    val owner: String = "",
+    /** The caller owns it (only then may it be renamed). */
+    val mine: Boolean = true,
+    /** The caller may add, remove and reorder its songs (their own, or an editor of a shared one). */
+    @SerialName("can_edit_tracks") val canEditTracks: Boolean = false,
 ) {
-    fun toModel() = Playlist(name, liked, cover, trackIds, favorite == true, displayName, favorite != null)
+    fun toModel() = Playlist(
+        name = name,
+        liked = liked,
+        cover = cover,
+        trackIds = trackIds,
+        favorite = favorite == true,
+        displayName = displayName,
+        favoriteSupported = favorite != null,
+        manual = manual,
+        canEditTracks = canEditTracks,
+        mine = mine,
+        owner = owner,
+    )
 }
 
 @Serializable

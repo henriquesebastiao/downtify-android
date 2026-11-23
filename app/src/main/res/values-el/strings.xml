@@ -2,6 +2,41 @@
 <resources>
 
     <!-- Navigation -->
+    <string name="pl_new">Νέα λίστα</string>
+    <string name="pl_name_label">Όνομα λίστας</string>
+    <string name="pl_create">Δημιουργία</string>
+    <string name="pl_rename">Μετονομασία</string>
+    <string name="pl_add_songs">Προσθήκη κομματιών</string>
+    <string name="pl_add_to_playlist">Προσθήκη στη λίστα</string>
+    <string name="pl_edit_songs">Επεξεργασία κομματιών</string>
+    <string name="pl_done">Τέλος</string>
+    <string name="pl_more">Επιλογές λίστας</string>
+    <string name="pl_select_song">Επιλογή τραγουδιού</string>
+    <string name="pl_select_all">Επιλογή όλων</string>
+    <string name="pl_clear_selection">Εκκαθάριση επιλογής</string>
+    <string name="pl_close_selection">Κλείσιμο επιλογής</string>
+    <string name="pl_reorder_handle">Μετακίνηση τραγουδιού</string>
+    <string name="pl_remove_from_playlist">Αφαίρεση από τη λίστα</string>
+    <string name="pl_edit_hint">Κράτησε πατημένη τη λαβή μιας γραμμής για να μετακινήσεις ένα τραγούδι ή σύρε το για να το βγάλεις.</string>
+    <string name="pl_error_unsupported">Αυτός ο διακομιστής δεν μπορεί να επεξεργαστεί λίστες. Αν τον ενημερώσεις, θα μπορείς να προσθέτεις κομμάτια εδώ.</string>
+    <string name="pl_error_forbidden">Μπορείς να αλλάξεις τα κομμάτια αυτής της λίστας, αλλά όχι το όνομά της.</string>
+    <string name="pl_error_limit">Μια λίστα χωράει το πολύ 10.000 τραγούδια.</string>
+    <string name="pl_error_index">Ο διακομιστής ευρετηριάζει ακόμη τη βιβλιοθήκη. Δοκίμασε ξανά σε λίγο.</string>
+    <string name="pl_error_not_found">Αυτή η λίστα ή το τραγούδι δεν είναι πια στον διακομιστή.</string>
+    <string name="pl_error_stale">Η λίστα άλλαξε στο μεταξύ. Άνοιξέ την ξανά και δοκίμασε πάλι.</string>
+    <string name="pl_error_offline">Δεν είναι δυνατή η πρόσβαση στον διακομιστή.</string>
+    <string name="pl_error_generic">Δεν ήταν δυνατή η αλλαγή της λίστας.</string>
+    <string name="playlist_play">Αναπαραγωγή</string>
+    <string name="playlist_shuffle">Τυχαία σειρά</string>
+    <string name="playlist_open">Άνοιγμα λίστας</string>
+    <plurals name="pl_add_n_to_playlist">
+        <item quantity="one">Προσθήκη %1$d τραγουδιού στη λίστα</item>
+        <item quantity="other">Προσθήκη %1$d τραγουδιών στη λίστα</item>
+    </plurals>
+    <plurals name="pl_selected_count">
+        <item quantity="one">%1$d επιλεγμένο</item>
+        <item quantity="other">%1$d επιλεγμένα</item>
+    </plurals>
     <string name="nav_home">Αρχική</string>
     <string name="nav_search">Αναζήτηση</string>
     <string name="nav_library">Βιβλιοθήκη</string>

@@ -2,6 +2,41 @@
 <resources>
 
     <!-- Navigation -->
+    <string name="pl_new">Új lejátszási lista</string>
+    <string name="pl_name_label">Lejátszási lista neve</string>
+    <string name="pl_create">Létrehozás</string>
+    <string name="pl_rename">Átnevezés</string>
+    <string name="pl_add_songs">Dalok hozzáadása</string>
+    <string name="pl_add_to_playlist">Hozzáadás listához</string>
+    <string name="pl_edit_songs">Dalok szerkesztése</string>
+    <string name="pl_done">Kész</string>
+    <string name="pl_more">Lista lehetőségei</string>
+    <string name="pl_select_song">Dal kijelölése</string>
+    <string name="pl_select_all">Összes kijelölése</string>
+    <string name="pl_clear_selection">Kijelölés törlése</string>
+    <string name="pl_close_selection">Kijelölés bezárása</string>
+    <string name="pl_reorder_handle">Dal áthelyezése</string>
+    <string name="pl_remove_from_playlist">Eltávolítás a listáról</string>
+    <string name="pl_edit_hint">Tartsd nyomva egy sor fogantyúját egy dal áthelyezéséhez, vagy húzd el a kivételéhez.</string>
+    <string name="pl_error_unsupported">Ez a szerver nem tud lejátszási listákat szerkeszteni. Ha frissíted, itt is adhatsz hozzá dalokat.</string>
+    <string name="pl_error_forbidden">Módosíthatod a lista dalait, de a nevét nem.</string>
+    <string name="pl_error_limit">Egy lejátszási lista legfeljebb 10 000 dalt tartalmazhat.</string>
+    <string name="pl_error_index">A szerver még indexeli a könyvtárat. Próbáld újra egy pillanat múlva.</string>
+    <string name="pl_error_not_found">Az a lista vagy dal már nincs a szerveren.</string>
+    <string name="pl_error_stale">A lista közben megváltozott. Nyisd meg újra, és próbáld újra.</string>
+    <string name="pl_error_offline">A szerver nem érhető el.</string>
+    <string name="pl_error_generic">Nem sikerült módosítani a listát.</string>
+    <string name="playlist_play">Lejátszás</string>
+    <string name="playlist_shuffle">Véletlen</string>
+    <string name="playlist_open">Lista megnyitása</string>
+    <plurals name="pl_add_n_to_playlist">
+        <item quantity="one">%1$d dal hozzáadása a listához</item>
+        <item quantity="other">%1$d dal hozzáadása a listához</item>
+    </plurals>
+    <plurals name="pl_selected_count">
+        <item quantity="one">%1$d kijelölve</item>
+        <item quantity="other">%1$d kijelölve</item>
+    </plurals>
     <string name="nav_home">Kezdőlap</string>
     <string name="nav_search">Keresés</string>
     <string name="nav_library">Könyvtár</string>

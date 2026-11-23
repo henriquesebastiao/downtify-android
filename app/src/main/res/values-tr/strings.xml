@@ -2,6 +2,41 @@
 <resources>
 
     <!-- Navigation -->
+    <string name="pl_new">Yeni çalma listesi</string>
+    <string name="pl_name_label">Çalma listesi adı</string>
+    <string name="pl_create">Oluştur</string>
+    <string name="pl_rename">Yeniden adlandır</string>
+    <string name="pl_add_songs">Şarkı ekle</string>
+    <string name="pl_add_to_playlist">Çalma listesine ekle</string>
+    <string name="pl_edit_songs">Şarkıları düzenle</string>
+    <string name="pl_done">Tamam</string>
+    <string name="pl_more">Çalma listesi seçenekleri</string>
+    <string name="pl_select_song">Şarkı seç</string>
+    <string name="pl_select_all">Tümünü seç</string>
+    <string name="pl_clear_selection">Seçimi temizle</string>
+    <string name="pl_close_selection">Seçimi kapat</string>
+    <string name="pl_reorder_handle">Şarkıyı taşı</string>
+    <string name="pl_remove_from_playlist">Çalma listesinden çıkar</string>
+    <string name="pl_edit_hint">Bir şarkıyı taşımak için satırın tutamacını basılı tut, çıkarmak için kaydır.</string>
+    <string name="pl_error_unsupported">Bu sunucu çalma listelerini düzenleyemiyor. Güncellemen burada şarkı eklemeni sağlar.</string>
+    <string name="pl_error_forbidden">Bu çalma listesinin şarkılarını değiştirebilirsin, adını değiştiremezsin.</string>
+    <string name="pl_error_limit">Bir çalma listesi en fazla 10.000 şarkı alır.</string>
+    <string name="pl_error_index">Sunucu kitaplığı hâlâ dizinliyor. Birazdan tekrar dene.</string>
+    <string name="pl_error_not_found">O çalma listesi ya da şarkı artık sunucuda değil.</string>
+    <string name="pl_error_stale">Bu çalma listesi bu arada değişti. Yeniden açıp tekrar dene.</string>
+    <string name="pl_error_offline">Sunucuya ulaşılamıyor.</string>
+    <string name="pl_error_generic">Çalma listesi değiştirilemedi.</string>
+    <string name="playlist_play">Çal</string>
+    <string name="playlist_shuffle">Karıştır</string>
+    <string name="playlist_open">Listeyi aç</string>
+    <plurals name="pl_add_n_to_playlist">
+        <item quantity="one">Çalma listesine %1$d şarkı ekle</item>
+        <item quantity="other">Çalma listesine %1$d şarkı ekle</item>
+    </plurals>
+    <plurals name="pl_selected_count">
+        <item quantity="one">%1$d seçili</item>
+        <item quantity="other">%1$d seçili</item>
+    </plurals>
     <string name="nav_home">Ana sayfa</string>
     <string name="nav_search">Ara</string>
     <string name="nav_library">Kitaplık</string>

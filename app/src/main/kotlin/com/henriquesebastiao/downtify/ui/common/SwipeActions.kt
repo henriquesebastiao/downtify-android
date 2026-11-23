@@ -60,12 +60,13 @@ fun SwipeToRemove(
     onRemove: () -> Unit,
     modifier: Modifier = Modifier,
     shape: Shape = RectangleShape,
+    label: String = stringResource(R.string.player_queue_remove),
     content: @Composable RowScope.() -> Unit,
 ) {
     SwipeAction(
         direction = SwipeToDismissBoxValue.EndToStart,
         icon = DowntifyIcons.Delete,
-        label = stringResource(R.string.player_queue_remove),
+        label = label,
         containerColor = MaterialTheme.colorScheme.errorContainer,
         contentColor = MaterialTheme.colorScheme.onErrorContainer,
         resetAfter = false,

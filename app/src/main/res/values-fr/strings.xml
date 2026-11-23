@@ -2,6 +2,43 @@
 <resources>
 
     <!-- Navigation -->
+    <string name="pl_new">Nouvelle playlist</string>
+    <string name="pl_name_label">Nom de la playlist</string>
+    <string name="pl_create">Créer</string>
+    <string name="pl_rename">Renommer</string>
+    <string name="pl_add_songs">Ajouter des titres</string>
+    <string name="pl_add_to_playlist">Ajouter à une playlist</string>
+    <string name="pl_edit_songs">Modifier les titres</string>
+    <string name="pl_done">Terminé</string>
+    <string name="pl_more">Options de la playlist</string>
+    <string name="pl_select_song">Sélectionner le titre</string>
+    <string name="pl_select_all">Tout sélectionner</string>
+    <string name="pl_clear_selection">Effacer la sélection</string>
+    <string name="pl_close_selection">Fermer la sélection</string>
+    <string name="pl_reorder_handle">Déplacer le titre</string>
+    <string name="pl_remove_from_playlist">Retirer de la playlist</string>
+    <string name="pl_edit_hint">Maintenez la poignée d’une ligne pour déplacer un titre, ou faites-la glisser pour le retirer.</string>
+    <string name="pl_error_unsupported">Ce serveur ne peut pas modifier les playlists. Mettez-le à jour pour ajouter des titres ici.</string>
+    <string name="pl_error_forbidden">Vous pouvez modifier les titres de cette playlist, mais pas son nom.</string>
+    <string name="pl_error_limit">Une playlist contient au maximum 10 000 titres.</string>
+    <string name="pl_error_index">Le serveur indexe encore la bibliothèque. Réessayez dans un instant.</string>
+    <string name="pl_error_not_found">Cette playlist ou ce titre n’est plus sur le serveur.</string>
+    <string name="pl_error_stale">La playlist a changé entre-temps. Rouvrez-la et réessayez.</string>
+    <string name="pl_error_offline">Le serveur est injoignable.</string>
+    <string name="pl_error_generic">Impossible de modifier la playlist.</string>
+    <string name="playlist_play">Lire</string>
+    <string name="playlist_shuffle">Aléatoire</string>
+    <string name="playlist_open">Ouvrir la liste</string>
+    <plurals name="pl_add_n_to_playlist">
+        <item quantity="one">Ajouter %1$d titre à la playlist</item>
+        <item quantity="many">Ajouter les %1$d de titres à la playlist</item>
+        <item quantity="other">Ajouter %1$d titres à la playlist</item>
+    </plurals>
+    <plurals name="pl_selected_count">
+        <item quantity="one">%1$d sélectionné</item>
+        <item quantity="many">%1$d de sélectionnés</item>
+        <item quantity="other">%1$d sélectionnés</item>
+    </plurals>
     <string name="nav_home">Accueil</string>
     <string name="nav_search">Recherche</string>
     <string name="nav_library">Bibliothèque</string>

@@ -113,6 +113,14 @@ class LibraryRepository @Inject constructor(
         api()?.let { runCatching { refreshLikes(it) }.onFailure { if (it is CancellationException) throw it } }
     }
 
+    /**
+     * Refetches the playlists now: a write changed one, or the server said `playlists_changed`.
+     * Failures leave the local copy as it was, as the rest of this class does.
+     */
+    suspend fun refreshPlaylists() {
+        api()?.let { runCatching { refreshPlaylists(it) }.onFailure { if (it is CancellationException) throw it } }
+    }
+
     suspend fun setPlaylistFavorite(name: String, favorite: Boolean): Boolean {
         val session = sessions.current ?: return false
         val api = apis.create(session.baseUrl)

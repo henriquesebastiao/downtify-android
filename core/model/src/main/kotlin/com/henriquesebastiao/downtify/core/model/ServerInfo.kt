@@ -38,6 +38,11 @@ data class Capabilities(
     val librarySync: Boolean = false,
     /** The app may sign in with a username and password (`POST /api/auth/token`); else it pairs with a code. */
     val passwordSignIn: Boolean = false,
+    /**
+     * The server has `POST /api/v1/playlists`, `/rename`, `/tracks` and `PUT /order`. Absent on older
+     * servers: playlists stay read-only here instead of answering `403` to a write.
+     */
+    val playlistEditing: Boolean = false,
 )
 
 data class Transcoding(

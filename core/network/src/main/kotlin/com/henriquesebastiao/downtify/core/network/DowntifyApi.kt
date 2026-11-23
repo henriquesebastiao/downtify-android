@@ -2,6 +2,7 @@ package com.henriquesebastiao.downtify.core.network
 
 import com.henriquesebastiao.downtify.core.network.dto.AuthStatusDto
 import com.henriquesebastiao.downtify.core.network.dto.BlockArtistRequest
+import com.henriquesebastiao.downtify.core.network.dto.CreatePlaylistRequest
 import com.henriquesebastiao.downtify.core.network.dto.DiscoverArtistsDto
 import com.henriquesebastiao.downtify.core.network.dto.DiscoverCollectionsDto
 import com.henriquesebastiao.downtify.core.network.dto.DiscoverRequest
@@ -19,10 +20,14 @@ import com.henriquesebastiao.downtify.core.network.dto.PlaybackActivityRequest
 import com.henriquesebastiao.downtify.core.network.dto.PlaylistDto
 import com.henriquesebastiao.downtify.core.network.dto.PlaylistFavoriteRequest
 import com.henriquesebastiao.downtify.core.network.dto.PlaylistFavoriteResponse
+import com.henriquesebastiao.downtify.core.network.dto.PlaylistOrderRequest
+import com.henriquesebastiao.downtify.core.network.dto.PlaylistTracksRequest
+import com.henriquesebastiao.downtify.core.network.dto.PlaylistWriteDto
 import com.henriquesebastiao.downtify.core.network.dto.PodcastEpisodeDto
 import com.henriquesebastiao.downtify.core.network.dto.PodcastEpisodesDto
 import com.henriquesebastiao.downtify.core.network.dto.PodcastPlaybackRequest
 import com.henriquesebastiao.downtify.core.network.dto.PodcastShowDto
+import com.henriquesebastiao.downtify.core.network.dto.RenamePlaylistRequest
 import com.henriquesebastiao.downtify.core.network.dto.ServerInfoDto
 import com.henriquesebastiao.downtify.core.network.dto.SignInRequest
 import kotlinx.serialization.json.JsonArray
@@ -65,6 +70,22 @@ interface DowntifyApi {
 
     @PUT("api/v1/playlists/favorite")
     suspend fun setPlaylistFavorite(@Body body: PlaylistFavoriteRequest): PlaylistFavoriteResponse
+
+    // The playlist write routes ("Editing playlists"): manual playlists only, by stable track ID.
+    // A refused write throws: 409 stale order, 403 not allowed, 400 over 10,000 references, 503
+    // while the sync index is not ready.
+
+    @POST("api/v1/playlists")
+    suspend fun createPlaylist(@Body body: CreatePlaylistRequest): PlaylistWriteDto
+
+    @POST("api/v1/playlists/rename")
+    suspend fun renamePlaylist(@Body body: RenamePlaylistRequest): PlaylistWriteDto
+
+    @POST("api/v1/playlists/tracks")
+    suspend fun editPlaylistTracks(@Body body: PlaylistTracksRequest): PlaylistWriteDto
+
+    @PUT("api/v1/playlists/order")
+    suspend fun reorderPlaylist(@Body body: PlaylistOrderRequest): PlaylistWriteDto
 
     @GET("api/v1/likes")
     suspend fun likes(): LikesDto

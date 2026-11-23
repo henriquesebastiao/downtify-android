@@ -1,5 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="pl_new">New playlist</string>
+    <string name="pl_name_label">Playlist name</string>
+    <string name="pl_create">Create</string>
+    <string name="pl_rename">Rename</string>
+    <string name="pl_add_songs">Add songs</string>
+    <string name="pl_add_to_playlist">Add to playlist</string>
+    <string name="pl_edit_songs">Edit songs</string>
+    <string name="pl_done">Done</string>
+    <string name="pl_more">Playlist options</string>
+    <string name="pl_select_song">Select song</string>
+    <string name="pl_select_all">Select all</string>
+    <string name="pl_clear_selection">Clear selection</string>
+    <string name="pl_close_selection">Close selection</string>
+    <string name="pl_reorder_handle">Move song</string>
+    <string name="pl_remove_from_playlist">Remove from playlist</string>
+    <string name="pl_edit_hint">Press and hold a row’s handle to move a song, or swipe it to take it out.</string>
+    <string name="pl_error_unsupported">This server can’t edit playlists. Updating it lets you add songs here.</string>
+    <string name="pl_error_forbidden">You can change this playlist’s songs, but not its name.</string>
+    <string name="pl_error_limit">A playlist holds at most 10,000 songs.</string>
+    <string name="pl_error_index">The server is still indexing the library. Try again in a moment.</string>
+    <string name="pl_error_not_found">That playlist or song is no longer on the server.</string>
+    <string name="pl_error_stale">This playlist changed in the meantime. Reopen it and try again.</string>
+    <string name="pl_error_offline">Could not reach the server.</string>
+    <string name="pl_error_generic">Could not change the playlist.</string>
+    <string name="playlist_play">Play</string>
+    <string name="playlist_shuffle">Shuffle</string>
+    <string name="playlist_open">Open playlist</string>
+    <plurals name="pl_add_n_to_playlist">
+        <item quantity="one">Add %1$d song to playlist</item>
+        <item quantity="other">Add %1$d songs to playlist</item>
+    </plurals>
+    <plurals name="pl_selected_count">
+        <item quantity="one">%1$d selected</item>
+        <item quantity="other">%1$d selected</item>
+    </plurals>
     <string name="app_name" translatable="false">Downtify</string>
 
     <!-- Navigation -->

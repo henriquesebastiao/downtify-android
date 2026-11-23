@@ -9,6 +9,7 @@ import com.henriquesebastiao.downtify.core.data.catalog.ServerQueueRepository
 import com.henriquesebastiao.downtify.core.data.library.LibraryRepository
 import com.henriquesebastiao.downtify.core.data.library.LibrarySnapshot
 import com.henriquesebastiao.downtify.core.data.library.SyncStatus
+import com.henriquesebastiao.downtify.core.data.playlists.PlaylistEditorRepository
 import com.henriquesebastiao.downtify.core.data.settings.LibraryLayout
 import com.henriquesebastiao.downtify.core.data.settings.LibrarySort
 import com.henriquesebastiao.downtify.core.data.settings.SettingsRepository
@@ -51,6 +52,7 @@ class DerivedLibraryStateTest {
     private val catalog = mockk<CatalogRepository>()
     private val queue = mockk<ServerQueueRepository>()
     private val remotePlayback = mockk<RemotePlayback>()
+    private val editor = mockk<PlaylistEditorRepository>()
     private val snapshot = MutableStateFlow<LibrarySnapshot?>(LibrarySnapshot(listOf(track("b"), track("a"))))
     private val playlists = MutableStateFlow<List<Playlist>>(emptyList())
     private val likes = MutableStateFlow<List<String>>(emptyList())
@@ -69,6 +71,9 @@ class DerivedLibraryStateTest {
         every { queue.jobs } returns MutableStateFlow<Map<String, ServerJob>>(emptyMap())
         every { catalog.requestedAlbums } returns MutableStateFlow<Map<String, List<String>>>(emptyMap())
         every { remotePlayback.resolvingId } returns MutableStateFlow<String?>(null)
+        // The playlist writes this slice adds: a server that has them, with nothing listed yet.
+        every { editor.playlists } returns MutableStateFlow<List<Playlist>>(emptyList())
+        every { editor.editingSupported } returns MutableStateFlow(true)
     }
 
     @After
@@ -79,7 +84,7 @@ class DerivedLibraryStateTest {
 
     @Test
     fun `likes layout and playback preserve sorted lists but sorting still updates`() = runTest(dispatcher) {
-        val model = LibraryViewModel(repository, settings, mockk<SyncCoordinator>(), player, SavedStateHandle())
+        val model = LibraryViewModel(repository, settings, mockk<SyncCoordinator>(), player, editor, SavedStateHandle())
         viewModels.put("subject", model)
         model.uiState.test {
             val original = matching { !it.loading }
@@ -140,7 +145,14 @@ class DerivedLibraryStateTest {
             viewModels.clear()
             snapshot.value = syntheticLibrary(size)
             likes.value = emptyList()
-            val model = LibraryViewModel(repository, settings, mockk<SyncCoordinator>(), player, SavedStateHandle())
+            val model = LibraryViewModel(
+                repository,
+                settings,
+                mockk<SyncCoordinator>(),
+                player,
+                editor,
+                SavedStateHandle(),
+            )
             viewModels.put("subject", model)
             model.uiState.test {
                 var previous = matching { !it.loading }

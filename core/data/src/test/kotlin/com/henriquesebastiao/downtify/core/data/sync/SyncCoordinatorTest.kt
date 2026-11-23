@@ -3,6 +3,7 @@ package com.henriquesebastiao.downtify.core.data.sync
 import com.henriquesebastiao.downtify.core.data.catalog.ServerQueueRepository
 import com.henriquesebastiao.downtify.core.data.library.LibraryRepository
 import com.henriquesebastiao.downtify.core.data.listens.ListenReporter
+import com.henriquesebastiao.downtify.core.data.playlists.PlaylistEditorRepository
 import com.henriquesebastiao.downtify.core.data.session.ConnectionState
 import com.henriquesebastiao.downtify.core.data.session.ServerRepository
 import com.henriquesebastiao.downtify.core.data.settings.SettingsRepository
@@ -28,6 +29,7 @@ class SyncCoordinatorTest {
     private val settings = mockk<SettingsRepository>(relaxed = true)
     private val live = mockk<LiveUpdatesClient>()
     private val queue = mockk<ServerQueueRepository>(relaxed = true)
+    private val playlists = mockk<PlaylistEditorRepository>(relaxed = true)
     private val session = Session("http://localhost", "server", "Test", "device", "test-token")
 
     @Test
@@ -38,7 +40,7 @@ class SyncCoordinatorTest {
             emit(LiveEvent.Connected)
             awaitCancellation()
         }
-        val coordinator = SyncCoordinator(server, library, listens, settings, live, queue, backgroundScope)
+        val coordinator = SyncCoordinator(server, library, listens, settings, live, queue, playlists, backgroundScope)
         backgroundScope.launch { coordinator.whilePaired(session) }
         runCurrent()
         coVerify(exactly = 1) { library.sync(false) }
@@ -56,7 +58,7 @@ class SyncCoordinatorTest {
                 if (++connections > 1) awaitCancellation()
             }
         }
-        val coordinator = SyncCoordinator(server, library, listens, settings, live, queue, backgroundScope)
+        val coordinator = SyncCoordinator(server, library, listens, settings, live, queue, playlists, backgroundScope)
         backgroundScope.launch { coordinator.whilePaired(session) }
         runCurrent()
         coVerify(exactly = 1) { library.sync(false) }
@@ -79,7 +81,7 @@ class SyncCoordinatorTest {
                 }
             }
         }
-        val coordinator = SyncCoordinator(server, library, listens, settings, live, queue, backgroundScope)
+        val coordinator = SyncCoordinator(server, library, listens, settings, live, queue, playlists, backgroundScope)
         backgroundScope.launch { coordinator.whilePaired(session) }
         runCurrent()
         coVerify(exactly = 1) { library.sync(false) }
@@ -94,7 +96,7 @@ class SyncCoordinatorTest {
         coEvery { server.refresh() } returns ConnectionState.Connected
         coEvery { library.sync(any()) } coAnswers { awaitCancellation() }
         every { live.events(any(), any()) } returns flow { awaitCancellation() }
-        val coordinator = SyncCoordinator(server, library, listens, settings, live, queue, backgroundScope)
+        val coordinator = SyncCoordinator(server, library, listens, settings, live, queue, playlists, backgroundScope)
         val job = backgroundScope.launch { coordinator.whilePaired(session) }
         runCurrent()
         job.cancel()

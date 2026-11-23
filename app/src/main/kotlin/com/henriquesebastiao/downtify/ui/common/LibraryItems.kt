@@ -50,6 +50,7 @@ import com.henriquesebastiao.downtify.core.designsystem.component.CircleButton
 import com.henriquesebastiao.downtify.core.designsystem.component.DowntifyIcons
 import com.henriquesebastiao.downtify.core.designsystem.component.MediaListItem
 import com.henriquesebastiao.downtify.core.designsystem.component.PlayingBars
+import com.henriquesebastiao.downtify.core.designsystem.component.SelectionCheckbox
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyShape
 import com.henriquesebastiao.downtify.core.designsystem.theme.ListStyle
 import com.henriquesebastiao.downtify.core.designsystem.theme.Spacing
@@ -146,6 +147,12 @@ fun TrackItem(
     shape: Shape = ListStyle.Separated.shapeOf(0, 1),
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainer,
     compact: Boolean = false,
+    /** Selection mode: the row shows its check instead of its menu, and a tap picks it. */
+    selectionMode: Boolean = false,
+    selected: Boolean = false,
+    /** A press-and-hold starts a selection (see [selectionMode]). */
+    onLongClick: (() -> Unit)? = null,
+    longClickLabel: String? = null,
 ) {
     val scheme = MaterialTheme.colorScheme
     val motion = MaterialTheme.motionScheme
@@ -153,8 +160,16 @@ fun TrackItem(
 
     @Composable
     fun color(target: Color, label: String) = animateColorAsState(target, motion.defaultEffectsSpec(), label = label)
-    val container by color(if (isCurrent) scheme.primaryContainer else containerColor, "playingContainer")
-    val content by color(if (isCurrent) scheme.onPrimaryContainer else scheme.onSurface, "playingContent")
+    val resting = if (selected) scheme.secondaryContainer else containerColor
+    val container by color(if (isCurrent) scheme.primaryContainer else resting, "playingContainer")
+    val content by color(
+        when {
+            isCurrent -> scheme.onPrimaryContainer
+            selected -> scheme.onSecondaryContainer
+            else -> scheme.onSurface
+        },
+        "playingContent",
+    )
     val supporting by color(
         if (isCurrent) scheme.onPrimaryContainer.copy(alpha = PLAYING_SUBTITLE_ALPHA) else scheme.onSurfaceVariant,
         "playingSupporting",
@@ -174,6 +189,8 @@ fun TrackItem(
             // The duration is a technical value: its own line, in tabular figures.
             meta = if (compact) null else formatDuration(track.duration),
             onClick = onClick,
+            onLongClick = onLongClick,
+            onLongClickLabel = longClickLabel,
             active = isCurrent,
             shape = rowShape,
             containerColor = container,
@@ -212,13 +229,14 @@ fun TrackItem(
                 null
             },
             trailing = {
-                if (isCurrent) PlayingBars(animate = isPlaying, color = content)
-                TrackMenu(track, isLiked, actions, more)
+                if (isCurrent && !selectionMode) PlayingBars(animate = isPlaying, color = content)
+                if (selectionMode) SelectionCheckbox(selected) else TrackMenu(track, isLiked, actions, more)
             },
         )
     }
     val addToQueue = actions.onAddToQueue
-    if (addToQueue != null) {
+    // A swipe would fight the long press that picks rows: it's off while selecting.
+    if (addToQueue != null && !selectionMode) {
         SwipeToQueue(onAddToQueue = { addToQueue(track) }, shape = rowShape, modifier = modifier) { item(Modifier) }
     } else {
         item(modifier)
@@ -282,6 +300,8 @@ data class TrackActions(
     val onFindSimilar: ((artist: String, title: String) -> Unit)? = null,
     /** Only for an admin's pairing while the server has the music trash on (see `LocalMoveToTrash`). */
     val onMoveToTrash: ((Track) -> Unit)? = null,
+    /** Opens the playlist sheet for this song; null on a server that can't edit playlists. */
+    val onAddToPlaylist: ((Track) -> Unit)? = null,
 )
 
 /** The colors of a track row's "more" button: light on the row that's playing. */
@@ -305,6 +325,16 @@ private fun TrackMenu(track: Track, isLiked: Boolean, actions: TrackActions, col
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.track_add_to_queue)) },
                     leadingIcon = { Icon(painterResource(DowntifyIcons.AddToQueue), contentDescription = null) },
+                    onClick = {
+                        open = false
+                        add(track)
+                    },
+                )
+            }
+            actions.onAddToPlaylist?.let { add ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.pl_add_to_playlist)) },
+                    leadingIcon = { Icon(painterResource(DowntifyIcons.Playlist), contentDescription = null) },
                     onClick = {
                         open = false
                         add(track)
