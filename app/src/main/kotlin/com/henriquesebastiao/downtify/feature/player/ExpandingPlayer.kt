@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
@@ -34,6 +33,7 @@ import androidx.compose.ui.unit.toSize
 import com.henriquesebastiao.downtify.core.designsystem.component.Artwork
 import com.henriquesebastiao.downtify.core.designsystem.component.CoverTheme
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyShape
+import com.henriquesebastiao.downtify.core.designsystem.theme.pxRoundedShape
 import kotlin.math.pow
 import kotlin.math.roundToInt
 
@@ -101,7 +101,7 @@ fun ExpandingPlayer(
                         val p = progress()
                         val top = mix(barCorner, 0f, p)
                         val bottom = mix(bottomCorner, 0f, p)
-                        shape = RoundedCornerShape(top, top, bottom, bottom)
+                        shape = pxRoundedShape(top, top, bottom, bottom)
                         clip = true
                     }
                     .drawBehind { drawRect(color) }
@@ -242,12 +242,15 @@ private fun Modifier.flying(base: Size, rect: () -> Rect, radius: () -> Float, a
             placeable.placeWithLayer(0, 0) {
                 val r = rect()
                 val scale = r.width / placeable.width
+                // A zero-width frame divides by zero: the corner is NaN (0/0) or infinite there, and
+                // a rounded shape resolved from NaN throws while the frame draws.
+                val corner = radius() / scale
                 transformOrigin = TransformOrigin(0f, 0f)
                 translationX = r.left
                 translationY = r.top
                 scaleX = scale
                 scaleY = scale
-                shape = RoundedCornerShape(radius() / scale)
+                shape = pxRoundedShape(corner, corner, corner, corner)
                 clip = true
                 this.alpha = alpha()
             }
