@@ -69,11 +69,7 @@ fun AddSongsSheet(
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun AddSongsContent(
-    songs: List<Track>,
-    onConfirm: (List<String>) -> Unit,
-    modifier: Modifier = Modifier,
-) {
+fun AddSongsContent(songs: List<Track>, onConfirm: (List<String>) -> Unit, modifier: Modifier = Modifier) {
     var picked by remember { mutableStateOf(Selection()) }
     Column(
         modifier

@@ -5,6 +5,7 @@ import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.henriquesebastiao.downtify.core.data.playlists.PlaylistEditError
 import com.henriquesebastiao.downtify.core.designsystem.theme.DowntifyTheme
@@ -17,7 +18,7 @@ import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 
 /** A playlist page's own editing: the menu, edit mode and the songs a write refused. */
-@Config(qualifiers = "w360dp-h800dp")
+@Config(qualifiers = "w360dp-h1200dp")
 @RunWith(AndroidJUnit4::class)
 class CollectionEditTest {
     @get:Rule
@@ -99,7 +100,9 @@ class CollectionEditTest {
     fun editModeShowsAHandlePerRowAndOneDone() {
         var toggled = 0
         show(state(editing = true), CollectionEditActions(onToggleEditing = { toggled++ }))
-        // Three songs, three handles: one per row, repeated song or not.
+        // Three songs, three handles: one per row, repeated song or not. The viewport is
+        // deliberately tall: a lazy list only composes the rows that fit.
+        compose.onNodeWithText("Salt & Glass").performScrollTo()
         assertEquals(3, compose.onAllNodesWithContentDescription("Move song").fetchSemanticsNodes().size)
         compose.onNodeWithText("Done").performClick()
 
@@ -113,7 +116,7 @@ class CollectionEditTest {
             state(error = PlaylistEditError.Forbidden),
             CollectionEditActions(onDismissError = { dismissed++ }),
         )
-        compose.onNodeWithText("You can change this playlist's songs, but not its name.").performClick()
+        compose.onNodeWithText("You can change this playlist’s songs, but not its name.").performClick()
 
         assertEquals(1, dismissed)
     }

@@ -55,6 +55,5 @@ data class Playlist(
     fun isEditable(serverSupportsEditing: Boolean): Boolean = serverSupportsEditing && manual && canEditTracks
 
     /** Whether it may be renamed here: its owner, on a server that edits playlists, never an editor. */
-    fun isRenamable(serverSupportsEditing: Boolean): Boolean =
-        serverSupportsEditing && manual && mine && canEditTracks
+    fun isRenamable(serverSupportsEditing: Boolean): Boolean = serverSupportsEditing && manual && mine && canEditTracks
 }

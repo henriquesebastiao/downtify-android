@@ -61,7 +61,14 @@ class PlaylistEditorRepositoryTest {
         every { apiFactory.create(any()) } returns api
         every { server.serverInfo } returns info
         coEvery { api.playlists() } returns listOf(
-            PlaylistDto(name = "Mix", manual = true, count = 2, trackIds = listOf("t1", "t2"), mine = true, canEditTracks = true),
+            PlaylistDto(
+                name = "Mix",
+                manual = true,
+                count = 2,
+                trackIds = listOf("t1", "t2"),
+                mine = true,
+                canEditTracks = true,
+            ),
         )
     }
 
@@ -134,7 +141,8 @@ class PlaylistEditorRepositoryTest {
     @Test
     fun `a dragged order goes out whole, repeats included`() = runTest {
         setUpApi()
-        coEvery { api.reorderPlaylist(any()) } returns PlaylistWriteDto(name = "Mix", trackIds = listOf("t2", "t1", "t2"))
+        coEvery { api.reorderPlaylist(any()) } returns
+            PlaylistWriteDto(name = "Mix", trackIds = listOf("t2", "t1", "t2"))
 
         repository().reorder("Mix", listOf("t2", "t1", "t2"))
 

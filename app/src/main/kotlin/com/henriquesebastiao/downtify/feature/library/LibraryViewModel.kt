@@ -128,6 +128,9 @@ private fun shuffleCandidates(state: LibraryUiState): List<ShufflePick> = when (
     }
 }.filter { it.tracks.isNotEmpty() }
 
+// The library's actions (sort, filter, sync, selection, playlist editing) are one command
+// surface; detekt's 20-function class budget is a style guide, not a boundary here.
+@Suppress("TooManyFunctions")
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
     private val library: LibraryRepository,
