@@ -77,6 +77,7 @@ internal class CarServiceFixture {
         service.resolver = mockk(relaxed = true)
         service.streamingClient = mockk(relaxed = true)
         service.syncCoordinator = mockk(relaxed = true)
+        service.sleepTimer = mockk(relaxed = true)
     }
 
     private fun track(id: String) = Track(

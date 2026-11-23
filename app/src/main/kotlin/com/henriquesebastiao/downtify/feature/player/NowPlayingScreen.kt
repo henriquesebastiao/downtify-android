@@ -99,10 +99,14 @@ data class NowPlayingActions(
     /** Moves the synced lyrics this many ms later (earlier when negative). */
     val onShiftLyrics: (Long) -> Unit = {},
     val onResetLyrics: () -> Unit = {},
+    /** Opens the sleep timer's choices. */
+    val onOpenSleepTimer: () -> Unit = {},
+    /** Turns a running sleep timer off. */
+    val onCancelSleepTimer: () -> Unit = {},
 )
 
 /**
- * Now Playing (v3), in the cover's colors: lyrics and the queue as a pair at the top end, the
+ * Now Playing (v3), in the cover's colors: the sleep timer, lyrics and the queue at the top end, the
  * cover as large as the controls leave room for, the title, the wavy seek bar with the sample
  * rate, bitrate and format between its times, the expressive transport, and the shuffle / repeat
  * / like toggles (beside a stream's download button).
@@ -179,6 +183,9 @@ fun NowPlayingScreen(
                             else -> null
                         },
                     )
+                    if (state.sleepTimer.active) {
+                        SleepTimerChip(state.sleepTimer, actions.onCancelSleepTimer)
+                    }
                     SeekBar(state, actions.onSeek, formatOf(track, state))
                     if (episode != null) {
                         EpisodeTransport(state, actions, compact)
@@ -210,9 +217,9 @@ fun NowPlayingScreen(
 
 /**
  * The top row: collapse, where it plays from (tap to go there) — or just "Now playing" when that's
- * the whole library or nowhere in particular — and lyrics and the queue as a pair of buttons,
- * round outside, at the end. A stream with no library copy has no lyrics: the queue stands alone.
- * An episode has neither.
+ * the whole library or nowhere in particular — and the sleep timer's moon, then lyrics and the
+ * queue as a pair of buttons, round outside, at the end. A stream with no library copy has no
+ * lyrics: the queue stands alone. An episode has neither.
  */
 @Composable
 private fun Header(
@@ -268,6 +275,12 @@ private fun Header(
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+            HeaderButton(
+                DowntifyIcons.DarkMode,
+                stringResource(R.string.sleep_timer),
+                actions.onOpenSleepTimer,
+                CircleShape,
+            )
             if (lyrics) {
                 HeaderButton(
                     DowntifyIcons.Lyrics,

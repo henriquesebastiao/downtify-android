@@ -116,6 +116,8 @@ class PlaybackService : MediaLibraryService() {
 
     @Inject lateinit var syncCoordinator: SyncCoordinator
 
+    @Inject lateinit var sleepTimer: SleepTimerController
+
     private var session: MediaLibrarySession? = null
     private var artworkTracker: SessionArtworkTracker? = null
     private var listens: ListenTracker? = null
@@ -192,6 +194,7 @@ class PlaybackService : MediaLibraryService() {
                 !readAhead.enabled
             }).also { it.start() }
         readAhead.start(player, scope)
+        sleepTimer.attach(player, scope)
         keepLikeButtonCurrent(player)
         stopWhenSignedOut(player)
         removeDeletedLibraryTracks(player)
@@ -247,6 +250,7 @@ class PlaybackService : MediaLibraryService() {
         syncCoordinator.setMediaServiceActive(false)
         artworkTracker?.stop()
         readAhead.stop()
+        sleepTimer.stop()
         persistence?.stop()
         listens?.stop()
         activity?.stop()

@@ -10,6 +10,8 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import com.henriquesebastiao.downtify.core.model.AppFont
 import com.henriquesebastiao.downtify.core.model.NormalizationLevel
 import com.henriquesebastiao.downtify.core.model.ReadAheadPolicy
+import com.henriquesebastiao.downtify.core.model.SavedSleepTimer
+import com.henriquesebastiao.downtify.core.model.SleepTimerMode
 import com.henriquesebastiao.downtify.core.model.StreamQuality
 import java.util.UUID
 import javax.inject.Inject
@@ -18,6 +20,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
+// One setter per preference, plus the sleep timer's deadline; same reason as PlayerController.
+@Suppress("TooManyFunctions")
 @Singleton
 class SettingsRepository @Inject constructor(private val store: DataStore<Preferences>) {
     val settings: Flow<UserSettings> = store.data.map { prefs ->
@@ -45,6 +49,7 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
                 prefs[STREAM_CACHE_MB] ?: defaults.readAhead.cacheMb,
                 prefs[READ_AHEAD_MOBILE] ?: defaults.readAhead.mobile,
             ).normalized(),
+            sleepTimer = sleepTimerOf(prefs),
         )
     }
 
@@ -126,12 +131,56 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
         store.edit { it[READ_AHEAD_MOBILE] = enabled }
     }
 
+    /**
+     * Keeps the sleep timer where a restarted service finds it (null clears it): what it ends, and
+     * the playback time left of it. The service writes it as it counts, so a timer lost with the
+     * process costs seconds, not the whole countdown.
+     */
+    suspend fun setSleepTimer(timer: SavedSleepTimer?) {
+        store.edit { prefs ->
+            if (timer == null) {
+                prefs.remove(SLEEP_TIMER_MODE)
+                prefs.remove(SLEEP_TIMER_MINUTES)
+                prefs.remove(SLEEP_TIMER_REMAINING)
+            } else {
+                val mode = timer.mode
+                prefs[SLEEP_TIMER_MODE] = when (mode) {
+                    is SleepTimerMode.AfterMinutes -> {
+                        prefs[SLEEP_TIMER_MINUTES] = mode.minutes
+                        MODE_AFTER_MINUTES
+                    }
+
+                    SleepTimerMode.EndOfTrack -> MODE_END_OF_TRACK
+
+                    SleepTimerMode.EndOfEpisode -> MODE_END_OF_EPISODE
+                }
+                if (mode !is SleepTimerMode.AfterMinutes) prefs.remove(SLEEP_TIMER_MINUTES)
+                prefs[SLEEP_TIMER_REMAINING] = timer.remainingMs
+            }
+        }
+    }
+
     /** A stable id for this install, sent as the WebSocket's `client_id`. */
     suspend fun clientId(): String {
         store.data.first()[CLIENT_ID]?.let { return it }
         val id = UUID.randomUUID().toString()
         store.edit { if (it[CLIENT_ID] == null) it[CLIENT_ID] = id }
         return store.data.first()[CLIENT_ID] ?: id
+    }
+
+    /** The kept sleep timer, or null when there is none or what is there makes no sense. */
+    private fun sleepTimerOf(prefs: Preferences): SavedSleepTimer? {
+        val mode = when (prefs[SLEEP_TIMER_MODE]) {
+            MODE_AFTER_MINUTES -> SleepTimerMode.AfterMinutes(prefs[SLEEP_TIMER_MINUTES] ?: return null)
+                .takeIf { it.minutes > 0 } ?: return null
+
+            MODE_END_OF_TRACK -> SleepTimerMode.EndOfTrack
+
+            MODE_END_OF_EPISODE -> SleepTimerMode.EndOfEpisode
+
+            else -> return null
+        }
+        return SavedSleepTimer(mode, (prefs[SLEEP_TIMER_REMAINING] ?: 0L).coerceAtLeast(0))
     }
 
     private inline fun <reified E : Enum<E>> enumOr(value: String?, default: E): E =
@@ -157,5 +206,13 @@ class SettingsRepository @Inject constructor(private val store: DataStore<Prefer
         val READ_AHEAD = intPreferencesKey("read_ahead_tracks")
         val STREAM_CACHE_MB = intPreferencesKey("stream_cache_mb")
         val READ_AHEAD_MOBILE = booleanPreferencesKey("read_ahead_mobile")
+        val SLEEP_TIMER_MODE = stringPreferencesKey("sleep_timer_mode")
+        val SLEEP_TIMER_MINUTES = intPreferencesKey("sleep_timer_minutes")
+        val SLEEP_TIMER_REMAINING = longPreferencesKey("sleep_timer_remaining_ms")
+
+        // What SLEEP_TIMER_MODE holds: names of its own, so a rename of the model's types keeps the key.
+        const val MODE_AFTER_MINUTES = "after_minutes"
+        const val MODE_END_OF_TRACK = "end_of_track"
+        const val MODE_END_OF_EPISODE = "end_of_episode"
     }
 }

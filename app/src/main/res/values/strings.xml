@@ -294,6 +294,11 @@
     <string name="collection_remove_title">Remove from this phone?</string>
     <string name="collection_remove_message">%1$s stays in your library and streams from the server.</string>
     <string name="collection_remove_confirm">Remove</string>
+    <string name="sleep_chip_remaining">%1$s left</string>
+    <string name="sleep_timer">Sleep timer</string>
+    <string name="sleep_end_of_track">End of track</string>
+    <string name="sleep_end_of_episode">End of episode</string>
+    <string name="sleep_cancel">Cancel sleep timer</string>
     <string name="settings_downloads">Downloads</string>
     <string name="settings_server_version" translatable="false">Downtify %1$s</string>
     <string name="settings_signed_in_as">Signed in as %1$s</string>
